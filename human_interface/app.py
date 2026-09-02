@@ -9,7 +9,14 @@ Run locally with:  streamlit run human_interface/app.py
 
 import streamlit as st
 import uuid
+
 from logging_utils import log_action
+from session_analysis import (
+    count_actions,
+    action_rates,
+    resource_change,
+    get_drought_action,
+)
 
 # ---------- CONFIG (keep in sync with agents/environment.py in Group 2) ----------
 GRID_SIZE = 5
@@ -177,26 +184,110 @@ def game_screen():
 # ---------- SCREEN 4: DEBRIEF ----------
 def debrief_screen():
     st.title("Thank You")
+
     st.write(
-        """
-        That's the end of the study. Thank you for participating.
+    """
+    That's the end of the study. Thank you for participating.
 
-        **About this study:** we're comparing how AI agents and human
-        participants behave when facing the same resource-scarcity
-        situations, to understand where AI decision-making diverges from
-        human decision-making. Your anonymized actions help us measure
-        this.
+    **About this study:** we're comparing how AI agents and human
+    participants behave when facing the same resource-scarcity
+    situations, to understand where AI decision-making diverges from
+    human decision-making. Your anonymized actions help us measure
+    this.
 
-        If you have questions about this research, please contact the
-        research team via your guide/instructor.
-        """
+    If you have questions about this research, please contact the
+    research team via your guide/instructor.
+    """
     )
-    st.subheader("Your session summary")
-    st.write(f"Participant ID: `{st.session_state.participant_id}`")
-    st.write(f"Rounds completed: {st.session_state.round}")
-    st.write(f"Final water level: {st.session_state.resource}")
-    st.dataframe(st.session_state.action_log)
 
+    st.subheader("Your Session Summary")
+
+    action_log = st.session_state.action_log
+    rounds_completed = len(action_log)
+
+    st.write(
+        f"Participant ID: `{st.session_state.participant_id}`"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Rounds Completed", rounds_completed)
+
+    with col2:
+        st.metric("Final Water", st.session_state.resource)
+
+    with col3:
+        status = "Survived" if st.session_state.alive else "Did Not Survive"
+        st.metric("Outcome", status)
+
+    st.divider()
+
+    # ---------- ACTION ANALYSIS ----------
+
+    st.subheader("Your Decision Pattern")
+
+    if action_log:
+
+        action_counts = count_actions(action_log)
+        action_percentages = action_rates(action_log)
+
+        st.bar_chart(action_counts)
+
+        st.subheader("Behavioral Metrics")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "Sharing Rate",
+                f"{action_percentages['share']:.1f}%"
+            )
+
+        with col2:
+            st.metric(
+                "Hoarding Rate",
+                f"{action_percentages['hoard']:.1f}%"
+            )
+
+        with col3:
+            st.metric(
+                "Gathering Rate",
+                f"{action_percentages['gather']:.1f}%"
+            )
+
+        net_resource_change = resource_change(action_log)
+
+        st.metric(
+            "Net Water Change",
+            net_resource_change
+        )
+
+        drought_action = get_drought_action(
+            action_log,
+            DROUGHT_ROUND
+        )
+
+        if drought_action:
+            st.info(
+                f"Your action during the drought round was: "
+                f"**{drought_action}**"
+            )
+
+    else:
+        st.info("No actions were recorded for this session.")
+
+    st.divider()
+
+    st.subheader("Recorded Actions")
+
+    if action_log:
+        st.dataframe(
+            action_log,
+            use_container_width=True
+        )
+    else:
+        st.info("No recorded actions available.")
 
 # ---------- ROUTER ----------
 stage = st.session_state.stage
