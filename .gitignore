@@ -219,3 +219,6 @@ __marimo__/
 
 # Human study logs
 data/human_logs/
+
+# Claude Code
+CLAUDE.md
