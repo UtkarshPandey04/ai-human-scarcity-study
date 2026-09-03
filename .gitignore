@@ -222,3 +222,5 @@ data/human_logs/
 
 # Claude Code
 CLAUDE.md
+.claude/
+skills-lock.json
