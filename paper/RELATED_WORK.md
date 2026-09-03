@@ -155,12 +155,40 @@ Three literatures, each missing the other's key ingredient:
 | Literature | Has | Missing |
 |---|---|---|
 | LLM commons societies (GovSim, AgentSociety) | Rich multi-agent scarcity dynamics | Any human baseline |
-| LLM-vs-human behavioural games (Akata, PGG work) | Rigorous human comparison | Only 2-player, abstract, non-spatial, no survival stakes |
+| LLM-vs-human behavioural games (Akata, PGG work) | Rigorous human comparison | Only 2-player, abstract, no survival stakes |
 | MARL social dilemmas (Melting Pot) | Spatial, embodied, survival stakes | No LLMs, no humans, no natural-language channel |
 
 **Your position:** the first *matched-protocol* comparison — real humans and hybrid RL+LLM agents in an
-identical spatial, embodied, survival-stakes commons game with a natural-language channel, compared
-with effect sizes and a distinguishability classifier.
+identical multi-player survival-stakes commons game with a natural-language channel, compared with
+effect sizes and a distinguishability classifier.
+
+> ⚠️ **The "spatial, embodied" half of that claim is not currently true.** `move` is a no-op in the
+> human app and no grid is rendered — see Blocker 3 in `INTEGRATION_ISSUES.md`. Either the grid gets
+> implemented on both sides, or drop spatiality from the claim. Do not let this one drift: it is
+> precisely the kind of overstated methods sentence a reviewer checks against the released code.
+> Spatiality is our *weakest* novelty claim and the most expensive to build. The matched protocol is
+> the strong one and it costs nothing extra.
+
+### The design that carries the novelty: focal-player substitution
+
+Forced by the merge (the human app has no co-players), and it turns out to be a better design than two
+independently-run societies:
+
+> Every session has five players. Four are co-players on a fixed policy, supplied by the agents track.
+> The fifth — the *focal* player — is a human in one arm and an AI agent in the other. Same seed means
+> the co-players behave identically across arms. Only the focal player changes.
+
+Write this up as a deliberate methodological choice in §4.3, not as a limitation. Two independently-run
+societies would differ in a dozen uncontrolled ways; here the causal comparison is clean, and it's
+standard practice in experimental economics (programmed co-players / confederates). It is also the
+sharpest possible contrast with arXiv:2505.17937, whose weakness was that its *humans* were scripted:
+in our design the co-players are scripted **and disclosed**, and the focal player is genuinely a person
+on one side and genuinely an agent on the other.
+
+The disclosure question — whether participants are told the co-players are computer-controlled — is an
+ethics decision on the critical path, and **whatever the consent form says, the LLM prompt must say the
+same thing.** If humans believe they are playing people and the model is told it is playing bots, the
+comparison is dead.
 
 **One-sentence contribution claim:**
 > We contribute the first matched-protocol human–AI behavioural comparison under resource scarcity,
@@ -225,10 +253,12 @@ published methodology; adds an interpretable results figure.
 
 ### Tier 3 — only if you're ahead of schedule
 
-**N10. Mixed human–AI groups.** Humans play alongside AI agents without being told which is which.
-Does human cooperation change once they suspect an artificial partner? This is a whole second paper's
-worth of material and a strong CHI-track angle — but it needs an ethics amendment (deception about
-co-player identity), so decide by **Week 3** or not at all.
+**N10. Mixed human–AI groups.** ~~Only if ahead of schedule~~ — **this is now the baseline design, not
+an extension.** Focal-player substitution (§7) means every human session already *is* a mixed human–AI
+group. What remains optional is the manipulation: vary whether participants are told the co-players are
+computer-controlled, and measure whether human cooperation shifts on belief alone. That variant is a
+strong CHI-track angle and needs the ethics submission to cover both disclosure conditions — so decide
+by **Week 3** or not at all.
 
 **N11. Release `ScarcityBench`.** Package env + AI logs + the human reference distribution as an open
 benchmark. The human data is the genuinely scarce asset here — nobody else has it, and a benchmark
