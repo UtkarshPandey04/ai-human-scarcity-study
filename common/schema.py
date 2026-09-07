@@ -24,9 +24,10 @@ ACTION_TYPES = {"gather", "share", "hoard", "move", "skip", "communicate"}
 # Keep in sync with common/config.py SCENARIOS.
 SCENARIOS = {"calm", "drought", "repeated_trust"}
 
-# Values for meta.arm — "human" covers focal-player-substitution human trials; the AI ablation
-# arms are defined in agents/PHASE_PLAN.md Phase F.
-ARMS = {"rl_only", "llm_only", "hybrid", "human"}
+# Values for meta.arm — "human" covers focal-player-substitution human trials; "scripted" is every
+# player on a fixed agents/coplayers.py policy (smoke tests, MSE-1 pilot logs, no real focal
+# player); the AI ablation arms are defined in agents/PHASE_PLAN.md Phase F.
+ARMS = {"rl_only", "llm_only", "hybrid", "human", "scripted"}
 
 MESSAGE_KINDS = {"claim_stock", "promise_share", "request", "accuse", "none"}
 

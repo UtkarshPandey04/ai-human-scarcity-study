@@ -32,14 +32,40 @@ def validate_logs() -> int:
 
 def smoke() -> int:
     """Phase B: run a short random-agent trial and validate its output."""
-    print("agents.smoke_random not implemented yet — see agents/PHASE_PLAN.md Phase B")
-    return 1
+    return subprocess.call(
+        [sys.executable, "-m", "agents.smoke_random", "--scenario", "drought", "--seed", "0"]
+    )
 
 
 def pilot() -> int:
-    """Phase B: generate the pilot AI logs needed for the MSE-1 EDA deliverable."""
-    print("pilot logs not implemented yet — see agents/PHASE_PLAN.md Phase B")
-    return 1
+    """Phase B: generate the pilot AI logs needed for the MSE-1 EDA deliverable.
+
+    ~20 trials per scenario across the random / cooperator / free_rider / tit_for_tat policies —
+    enough spread in behaviour that action-distribution and survival-rate plots aren't degenerate.
+    """
+    scenarios = ["calm", "drought", "repeated_trust"]
+    policies = ["random", "cooperator", "free_rider", "tit_for_tat"]
+    trials_per_policy = 5  # 4 policies * 5 trials * 3 scenarios = 60 pilot trials
+
+    exit_code = 0
+    for scenario in scenarios:
+        for policy in policies:
+            exit_code |= subprocess.call(
+                [
+                    sys.executable,
+                    "-m",
+                    "agents.smoke_random",
+                    "--scenario",
+                    scenario,
+                    "--policy",
+                    policy,
+                    "--seed",
+                    "0",
+                    "--trials",
+                    str(trials_per_policy),
+                ]
+            )
+    return exit_code
 
 
 def trials() -> int:
