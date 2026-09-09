@@ -28,6 +28,7 @@ def log_action(
     alive: bool,
     target_agent: str | None = None,
     message_sent: str | None = None,
+    meta: dict | None = None,
 ):
     """
     Append one action record to data/human_logs/<trial_id>.jsonl
@@ -50,6 +51,8 @@ def log_action(
         "alive": alive,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+    if meta is not None:
+        record["meta"] = meta
 
     log_path = os.path.join(LOG_DIR, f"{trial_id}.jsonl")
     with open(log_path, "a", encoding="utf-8") as f:
