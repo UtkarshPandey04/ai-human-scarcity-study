@@ -38,7 +38,17 @@ from common.config import (
 # gathering) is what keeps the pool alive. See agents/PHASE_PLAN.md Phase B for the derivation.
 POOL_CAPACITY = 100.0
 POOL_GROWTH_RATE = 0.4
-DROUGHT_GROWTH_MULTIPLIER = 0.3  # cuts regeneration ~70%, matching the roadmap's stated severity
+DROUGHT_GROWTH_MULTIPLIER = 0.3  # the scripted drought-round shock (round == DROUGHT_ROUND only),
+# cuts regeneration ~70% — a fixed scenario event, independent of `severity` below.
+
+# `severity` (Phase G, PHASE_PLAN.md N1: "scarcity dose-response curve") is a second, orthogonal
+# knob: an *ambient* cut to pool regeneration applied every round, in every scenario, on top of
+# whatever the scripted drought event does. This is what makes the severity sweep meaningful for
+# `calm` and `repeated_trust` too, not just `drought` — without it, sweeping severity over a
+# scenario with no scripted shock would be a no-op grid cell that burns LLM budget for nothing.
+# DEFAULT_SEVERITY = 0.0 reproduces pre-Phase-G behaviour exactly (no ambient cut, only the
+# scripted round-6 shock in `drought`) — existing callers that don't pass `severity` are unaffected.
+DEFAULT_SEVERITY = 0.0
 
 
 @dataclass
@@ -90,13 +100,21 @@ class ResourcePool:
         self.stock = capacity
 
     def draw_and_regenerate(
-        self, requested: dict[str, float], round_num: int, scenario: str
+        self,
+        requested: dict[str, float],
+        round_num: int,
+        scenario: str,
+        severity: float = DEFAULT_SEVERITY,
     ) -> dict[str, float]:
         """Attempt to satisfy every player's requested draw from current stock, then regenerate.
 
         If the pool can't cover total demand, every requester is scaled down proportionally —
         nobody is arbitrarily prioritized. Returns actual granted amount per player_id (only for
         players present in `requested`).
+
+        `severity` (in [0, 1]) is the ambient scarcity dose — see the module-level comment above
+        DEFAULT_SEVERITY. It stacks multiplicatively with the scripted drought-round shock, it
+        doesn't replace it.
         """
         total_requested = sum(requested.values())
         if total_requested <= 0:
@@ -107,7 +125,7 @@ class ResourcePool:
 
         self.stock = max(0.0, self.stock - sum(granted.values()))
 
-        growth = self.growth_rate
+        growth = self.growth_rate * (1 - severity)
         if is_drought(round_num, scenario):
             growth *= DROUGHT_GROWTH_MULTIPLIER
         self.stock += growth * self.stock * (1 - self.stock / self.capacity)
@@ -121,13 +139,22 @@ class ScarcityEnv:
     every player has died. See agents/scenarios.py for what `scenario` values mean.
     """
 
-    def __init__(self, scenario: str, seed: int, player_ids: list[str] | None = None):
+    def __init__(
+        self,
+        scenario: str,
+        seed: int,
+        player_ids: list[str] | None = None,
+        severity: float = DEFAULT_SEVERITY,
+    ):
         if scenario not in SCENARIOS:
             raise ValueError(f"unknown scenario {scenario!r}, must be one of {SCENARIOS}")
+        if not (0 <= severity <= 1):
+            raise ValueError(f"severity must be in [0, 1], got {severity}")
         from agents.scenarios import SCENARIO_CONFIG  # local import: avoids a circular import
 
         self.scenario = scenario
         self.seed = seed
+        self.severity = severity
         self.player_ids = list(player_ids) if player_ids else [f"A{i + 1}" for i in range(5)]
         self.total_rounds = SCENARIO_CONFIG[scenario].total_rounds
         self.round = 0
@@ -189,7 +216,7 @@ class ScarcityEnv:
             action = actions.get(pid)
             if action is not None and action.type == ActionType.GATHER:
                 requested[pid] = gather_yield(self.round, self.scenario)
-        granted = self.pool.draw_and_regenerate(requested, self.round, self.scenario)
+        granted = self.pool.draw_and_regenerate(requested, self.round, self.scenario, self.severity)
         for pid, amount in granted.items():
             self.players[pid].resource += amount
 

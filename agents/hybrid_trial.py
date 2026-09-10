@@ -16,11 +16,20 @@ import json
 import os
 from datetime import datetime, timezone
 
-from agents.environment import ScarcityEnv
+from agents.environment import DEFAULT_SEVERITY, ScarcityEnv
 from agents.hybrid_agent import HybridAgent, load_rl_model
 from common.schema import validate_trial
 
 LOG_DIR = os.path.join("data", "ai_logs")
+
+
+def build_trial_id(scenario: str, arm: str, severity: float, seed: int, trial_index: int = 0) -> str:
+    """Shared trial-id/filename format. Includes `severity` so the Phase G grid (which sweeps
+    severity for a fixed scenario/arm/seed) doesn't collide on disk — pre-Phase-G trial ids didn't
+    need this since severity didn't exist as a real axis yet.
+    """
+    sev_bucket = f"sev{round(severity * 100):03d}"
+    return f"{scenario}_ai_{arm}_{sev_bucket}_{seed:03d}_{trial_index:03d}"
 
 
 def run_trial(
@@ -31,15 +40,20 @@ def run_trial(
     model: str | None = None,
     model_path: str | None = None,
     trial_index: int = 0,
+    severity: float = DEFAULT_SEVERITY,
+    rl_model: object | None = None,
 ) -> tuple[list[dict], dict]:
-    needs_rl = model_path is not None or arm in ("rl_only", "hybrid")
-    rl_model = load_rl_model(**({"model_path": model_path} if model_path else {})) if needs_rl else None
+    """`rl_model` may be passed in pre-loaded (agents/run_ai_trials.py shares one loaded checkpoint
+    across an entire campaign rather than reloading it from disk per trial)."""
+    needs_rl = rl_model is not None or model_path is not None or arm in ("rl_only", "hybrid")
+    if rl_model is None and needs_rl:
+        rl_model = load_rl_model(**({"model_path": model_path} if model_path else {}))
     agent = HybridAgent(arm=arm, rl_model=rl_model, provider=provider, model=model)
 
-    env = ScarcityEnv(scenario=scenario, seed=seed)
+    env = ScarcityEnv(scenario=scenario, seed=seed, severity=severity)
     obs = env.reset()
 
-    trial_id = f"{scenario}_ai_{arm}_{seed:03d}_{trial_index:03d}"
+    trial_id = build_trial_id(scenario, arm, severity, seed, trial_index)
     timestamp = datetime.now(timezone.utc).isoformat()
 
     rows: list[dict] = []
@@ -77,7 +91,7 @@ def run_trial(
                 "seed": seed,
                 "arm": arm,
                 "model": m.get("model"),
-                "severity": None,
+                "severity": severity,
                 "decision_source": m.get("decision_source"),
                 "llm_parse_failure": m.get("llm_parse_failure", False),
                 # Kept separate from llm_parse_failure — see llm_reasoning.decide()'s docstring.
@@ -116,10 +130,19 @@ def _main() -> int:
     parser.add_argument("--provider", default=None, help="groq | gemini (llm_only/hybrid only)")
     parser.add_argument("--model", default=None)
     parser.add_argument("--model-path", default=None, help="RL checkpoint (rl_only/hybrid only)")
+    parser.add_argument(
+        "--severity", type=float, default=DEFAULT_SEVERITY, help="ambient scarcity dose in [0, 1]"
+    )
     args = parser.parse_args()
 
     rows, stats = run_trial(
-        args.scenario, args.seed, args.arm, provider=args.provider, model=args.model, model_path=args.model_path
+        args.scenario,
+        args.seed,
+        args.arm,
+        provider=args.provider,
+        model=args.model,
+        model_path=args.model_path,
+        severity=args.severity,
     )
     validate_trial(rows)
     path = write_trial(rows)

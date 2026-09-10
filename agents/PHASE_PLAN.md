@@ -323,9 +323,52 @@ that quota before the trial ran. Two real problems, both now fixed:
 
 ---
 
-## Phase G — Trial campaign (Week 6)
+## Phase G — Trial campaign (Week 6) — infra ✅ built, campaign not yet run
 
 **File:** `agents/run_ai_trials.py`
+
+**Infrastructure is done and tested; the actual budgeted campaign hasn't been executed.** Running
+the default grid is a real-money, real-quota action (see the cost estimate below) — a decision
+for whoever holds the API keys, not something to spend unattended. `python tasks.py trials
+--dry-run` prints the planned grid and a worst-case LLM-call ceiling with no network calls; a
+tiny free `rl_only` batch was run end-to-end to prove the resumability/manifest/parallelism logic
+actually works (8 trials, then re-run to confirm all 8 were skipped as already-done) and then
+deleted — it wasn't real campaign data, just a plumbing check.
+
+**`severity` is now a real environment parameter, not just a logged `null`.** It didn't exist as an
+actual knob before this phase — `agents/environment.py`'s `ResourcePool` only ever had the fixed,
+scenario-scripted `DROUGHT_GROWTH_MULTIPLIER` cut on round `DROUGHT_ROUND`. Implemented as an
+*ambient* scarcity dial, orthogonal to that scripted event: `effective_growth = POOL_GROWTH_RATE *
+(1 - severity)`, applied every round in every scenario, with the drought scenario's existing
+round-6 shock still stacking on top of it unchanged. This was a deliberate design call, not the
+only possible one — see the comment above `DEFAULT_SEVERITY` in `environment.py` — made because
+the obvious alternative (severity only scales the existing drought-round cut) would make the
+severity sweep a no-op for `calm` and `repeated_trust` (neither scripts a drought round), wasting
+LLM budget on cells with no real dose-response signal. `DEFAULT_SEVERITY = 0.0` reproduces
+pre-Phase-G behaviour exactly, so nothing upstream broke — the full fast suite (85 tests) still
+passes unchanged. `severity` stays out of `Observation` deliberately: participants (human or AI)
+never see a "severity" number, only its effects on the pool, matching the human app's screen.
+
+**Budget shape implemented as designed:** the full `scenario x severity` grid runs only on
+`--primary-arm` (default `hybrid`) x `--primary-provider` (default `groq`) at `--primary-seeds`
+(default 100) seeds per cell; `--ablation-arms` (default `rl_only,llm_only`) get a cheaper grid —
+every scenario, but only at `--ablation-severities` (default `0.0,0.7`) with `--ablation-seeds`
+(default 30). Against this repo's current 3 implemented scenarios (no `asymmetric`), that dry-runs
+to **1,860 trials, worst-case 84,000 LLM calls** (a ceiling — `hybrid`'s real rate was ~14% in
+Gate F's sample trial, and the ceiling counts every round as social). Tune down via `--primary-seeds`
+/ `--ablation-seeds` / `--severities` before committing real budget; `--limit N` caps how many
+*pending* trials a single invocation runs, so a campaign can be spent in deliberately small,
+checkpointed increments rather than one long unattended run.
+
+**Not yet resolved, both pre-existing and out of this phase's scope to invent:**
+- **Matched seeds.** `--matched-seeds` exists (marks `meta.matched_seed = true` on the specs it's
+  given) but no seed list has been agreed with Group 1 yet — see the Guiding Constraints and the
+  Risk register. Get that list before spending seeds that need to match a human arm.
+- **`repeated_trust` has no scripted drought round** (a Phase B gap noted in `scenarios.py`), so
+  `severity`'s ambient effect is the only thing that varies for it across the sweep — real, but a
+  smaller signal than `drought` gets from the stacked scripted shock.
+- Live run has not been checked against a real Gemini quota increase — Phase F's 20 req/day finding
+  still stands; `--primary-provider groq` is the safe default for any real-scale run.
 
 Design the run as a grid, not a loop:
 

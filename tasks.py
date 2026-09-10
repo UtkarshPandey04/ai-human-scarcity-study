@@ -85,9 +85,10 @@ def gate_d() -> int:
 
 
 def trials() -> int:
-    """Phase G: run the full AI trial campaign."""
-    print("agents.run_ai_trials not implemented yet — see agents/PHASE_PLAN.md Phase G")
-    return 1
+    """Phase G: run the AI trial campaign. Extra CLI args are passed straight through, e.g.
+    `python tasks.py trials --dry-run` or `python tasks.py trials --primary-seeds 5 --limit 20`.
+    """
+    return subprocess.call([sys.executable, "-m", "agents.run_ai_trials", *sys.argv[2:]])
 
 
 TASKS = {

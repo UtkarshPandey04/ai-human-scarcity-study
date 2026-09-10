@@ -200,6 +200,19 @@ PROVIDERS = {
     "gemini": _complete_gemini,
 }
 
+# Optional throttle hook for a trial campaign (agents/run_ai_trials.py, Phase G) making many calls
+# across a worker pool. `complete()` calls this (if set) before every provider request — deliberately
+# a single callable, not a class, so this file stays the one place that knows nothing about how the
+# limiter is implemented (token bucket, fixed delay, whatever the caller chooses).
+_rate_limiter = None  # Callable[[], None] | None
+
+
+def set_rate_limiter(fn) -> None:
+    """`fn` is called with no arguments immediately before every provider request; it should block
+    until the caller is allowed to proceed. Pass None to clear it (the default: unthrottled)."""
+    global _rate_limiter
+    _rate_limiter = fn
+
 
 def complete(
     messages: list[ChatMessage],
@@ -224,4 +237,6 @@ def complete(
     provider = provider or DEFAULT_PROVIDER
     if provider not in PROVIDERS:
         raise ValueError(f"unknown provider {provider!r}, must be one of {sorted(PROVIDERS)}")
+    if _rate_limiter is not None:
+        _rate_limiter()
     return PROVIDERS[provider](messages, schema, model, temperature, usage)
