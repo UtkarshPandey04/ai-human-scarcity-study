@@ -165,25 +165,43 @@ and `meta`.
 
 ---
 
-## Phase D — RL reflex policy (Weeks 3–4)
+## Phase D — RL reflex policy (Weeks 3–4) — ✅ done
 
 **File:** `agents/rl_policy.py`
 
 **⚠ Trap in the roadmap:** Stable-Baselines3 PPO is **single-agent**. You cannot drop five agents into
-it. Two routes:
+it. Two routes were considered — parameter-shared IPPO via self-play (recommended), or PettingZoo
+`ParallelEnv` + a MARL library (more correct, more setup, only worth it if the simpler route fails).
 
-- **Recommended — parameter-shared IPPO via self-play.** Each agent's `(obs, action, reward)` is a
-  separate sample into one shared PPO policy; other agents act with a frozen snapshot of it. ~40 lines
-  of wrapper, and it justifies itself in the paper as a homogeneous shared-policy population.
-- Alternative: PettingZoo `ParallelEnv` + a MARL library. More correct, more setup. Take it only if
-  IPPO visibly fails.
+**What's actually implemented is a deliberate simplification of the recommended route: single-slot
+self-play, not full IPPO.** True IPPO pushes every player's `(obs, action, reward)` into the training
+buffer each round — ~5x the samples per episode. What's built instead trains on only one designated
+"learner" seat; the other 4 seats are driven by the *same live model* (`set_self_play_policy`), so it's
+genuinely self-play against a shared policy, just without that sample-efficiency multiplier. This was a
+scope call, not an oversight — Gate D's actual bar (beat random under `calm`, no scarcity shock) doesn't
+need it, since `calm` has no real adversarial pressure at 5 players. Upgrading to true multi-slot IPPO,
+or moving to PufferLib's native multi-agent vectorization (the `pufferlib` skill is installed for this),
+is a bounded follow-up — do it only if a future training run proves the current approach too slow, not
+speculatively.
 
-Train on `calm` only. The RL layer learns movement and harvest timing — nothing social. Freeze it before
-the LLM enters.
+Learner action space is restricted to `gather` / `hoard` / `skip` / `move` (no `share`, no
+`communicate`) per "the RL layer learns movement and harvest timing — nothing social." `move` stays
+mechanically inert per the Phase B no-grid decision — decoded to a fixed direction. Reward is resource
+delta per round, with a fixed penalty on death.
 
-**Gate D:** shared policy beats random on mean survival under `calm` across 20 held-out seeds. If the RL
-agent can't survive with no scarcity shock at all, the environment is misspecified — stop and fix the
-environment, don't tune hyperparameters.
+Trained on `calm` only, exactly as planned, frozen before the LLM enters in Phase E.
+
+**Gate D — passed, real numbers, 20 held-out seeds (`python tasks.py train_rl && python tasks.py
+gate_d`):**
+
+| | Survival rate | Mean final resource |
+|---|---|---|
+| Trained policy | 100% | 16.45 |
+| Random baseline | 10% | -1.00 |
+
+Fast tests (`tests/test_rl_policy.py`) cover observation/action encoding, reward shaping, and Gymnasium
+API structure via `check_env` — deliberately *not* a full training run, which takes minutes and belongs
+in the manual `train_rl`/`gate_d` tasks, not the sub-2-second `validate` suite.
 
 ---
 
@@ -277,7 +295,7 @@ follow-up questions.
 |---|---|---|
 | Blockers 1–3 not resolved before recruitment | **High** | `INTEGRATION_ISSUES.md` on the next meeting agenda; ethics disclosure decision is on the critical path |
 | Constants drift between the two codebases | **High** | `common/config.py` imported by both; the `# keep in sync` comment deleted, not trusted |
-| SB3 can't do multi-agent as roadmap assumes | High | Phase D parameter-shared IPPO wrapper, decided up front |
+| ~~SB3 can't do multi-agent as roadmap assumes~~ | ~~High~~ | **Resolved** — single-slot self-play wrapper (Phase D), Gate D passed |
 | LLM free tier exhausted mid-campaign | High | Provider abstraction, local fallback, prompt cache, hybrid gating |
 | Ethics approval slips → human trials late | High | This track is independent until Week 8 — keep it that way |
 | Scope creep (10 scenarios, 5 models) | High | Cut list below |

@@ -224,6 +224,10 @@ data/human_logs/
 # agents/PHASE_PLAN.md Phase B; only the derived summary is committed, not raw logs
 data/ai_logs/
 
+# Trained RL checkpoints (regeneratable via `python -m agents.rl_policy train`) — see
+# agents/PHASE_PLAN.md Phase D
+models/
+
 # Claude Code
 CLAUDE.md
 .claude/

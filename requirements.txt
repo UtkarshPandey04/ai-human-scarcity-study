@@ -1,0 +1,8 @@
+# Pinned as actually used, not pre-installed speculatively — see agents/PHASE_PLAN.md Phase A.
+# Group 1's Streamlit dependency isn't here yet; add it (and a requirements split if needed)
+# when human_interface/ actually needs one pinned.
+
+stable-baselines3==2.9.0
+gymnasium==1.3.0
+numpy==2.5.2
+torch==2.14.0

@@ -68,6 +68,22 @@ def pilot() -> int:
     return exit_code
 
 
+def train_rl() -> int:
+    """Phase D: train the shared PPO reflex policy on `calm` and save it to models/.
+
+    Not run as part of `validate` — real training takes minutes, not milliseconds. Extra CLI args
+    are passed straight through, e.g. `python tasks.py train_rl --timesteps 50000`.
+    """
+    return subprocess.call([sys.executable, "-m", "agents.rl_policy", "train", *sys.argv[2:]])
+
+
+def gate_d() -> int:
+    """Phase D: evaluate the trained policy against a random baseline on held-out seeds — the
+    actual Gate D check from agents/PHASE_PLAN.md. Requires `train_rl` to have been run first.
+    """
+    return subprocess.call([sys.executable, "-m", "agents.rl_policy", "evaluate", *sys.argv[2:]])
+
+
 def trials() -> int:
     """Phase G: run the full AI trial campaign."""
     print("agents.run_ai_trials not implemented yet — see agents/PHASE_PLAN.md Phase G")
@@ -79,6 +95,8 @@ TASKS = {
     "validate_logs": validate_logs,
     "smoke": smoke,
     "pilot": pilot,
+    "train_rl": train_rl,
+    "gate_d": gate_d,
     "trials": trials,
 }
 
