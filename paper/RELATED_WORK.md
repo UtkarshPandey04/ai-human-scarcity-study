@@ -1,9 +1,11 @@
 # Related Work & Novelty Positioning
 
-> **Verify before citing.** These were located via search; titles/IDs are from result metadata and
+> **Verify before citing.** §§1-6 were located via search; titles/IDs are from result metadata and
 > abstracts, not full reads. Pull each PDF, confirm the ID, year and venue, and read at least the
 > abstract + limitations section before it goes in the paper. Two or three of these deserve a full read
-> (marked ★).
+> (marked ★). §7 (added 2026-09-10) was fetched and read at abstract level for every entry — still
+> confirm venue/exact citation details before the paper draft, but the substance has been checked, not
+> just surfaced.
 
 ---
 
@@ -148,19 +150,104 @@ give them a defensible protocol to cite.
 
 ---
 
-## 7. Where the gap actually is
+## 7. Second literature pass (2026-09-10) — verified, not just found
+
+Everything below was fetched and read (abstract-level), not just surfaced by a title. **No direct
+scoop of the core contribution** — nothing combines survival-stakes scarcity + machine-verifiable
+deception + a distinguishability curve — but two of these independently validate pieces of the
+*methodology*, which changes how precisely the contribution claim (§8) needs to be worded, and one
+is directly relevant to the Blocker 1 disclosure decision the team already made.
+
+★ **Cooperate to Compete: Strategic Coordination in Multi-Agent Conquest** — arXiv:2604.25088.
+**Read this one.** 82 games, one human + AI opponents; the same starting positions are then
+replayed AI-only for direct comparison. That is *exactly* the focal-player-substitution mechanism
+proposed for this project (§8, and `agents/PHASE_PLAN.md` Phase B) — same seed/position, swap who
+occupies one seat, compare. Independently arrived at, in a completely different domain (territorial
+conquest and diplomatic negotiation, not resource scarcity), with no survival stakes and no
+deception-verification mechanism. **This is good news, not bad news**: it means the core
+methodological move isn't an idiosyncratic hack, it's converged-on-independently as the right way
+to run this kind of comparison. Cite it explicitly as the nearest methodological precedent for
+focal-player substitution, and be precise in the intro that the *domain* (scarcity/commons,
+survival stakes) and the *deception mechanism* (structured, verifiable claims) are what's new here,
+not the substitution trick itself.
+
+★ **Collective cooperation without individual fidelity in LLM agents** — arXiv:2606.30454 (June
+2026). A genuinely matched protocol: nine open-weight LLMs vs. real human data in a large-scale
+networked Prisoner's Dilemma, same interaction protocol, payoff structure, and network topologies
+on both sides. No resource scarcity or survival mechanic — purely an abstract networked PD. The
+headline finding is the one worth building on: **LLM agents reproduce human-like *macro*-level
+cooperation trajectories while their *individual*-level decision rules diverge from humans'
+underlying mechanisms** — collective outcomes look human-like even when the behavioral
+distributions producing them aren't. That's a direct, usable frame for novelty proposal N3
+(distinguishability as a function of scarcity): the hypothesis becomes "the macro/micro
+dissociation this paper finds in an abstract PD *widens* under resource scarcity, where individual
+survival incentives diverge more sharply from aggregate patterns" — a sharper, better-motivated
+version of N3 than the original phrasing, and one line further from something a reviewer could call
+obvious.
+
+**Normative Equivalence in Human-AI Cooperation: Behaviour, Not Identity, Drives Cooperation in
+Mixed-Agent Groups** — arXiv:2601.20487. Humans play in real mixed human-AI groups, with disclosure
+of co-player identity varied. Core finding: *observed partner behavior*, not the disclosed
+human/AI label, is what drives subsequent cooperation — disclosure has only "bounded normative
+effects." **Directly relevant to the team's Blocker 1 decision.** Group 1 already chose disclosure
+(the consent screen tells participants their co-players are computer-controlled) — this paper is
+evidence that choice is unlikely to badly distort the results, since identity labels turned out to
+matter less than behavior itself in a comparable setting. Worth a sentence in Methodology 4.3
+justifying the disclosure choice, and worth citing if novelty proposal N10 (an undisclosed-vs-
+disclosed manipulation) ever gets built.
+
+**CoopEval: Benchmarking Cooperation-Sustaining Mechanisms and LLM Agents in Social Dilemmas** —
+arXiv:2604.15267. Six LLMs (Claude Sonnet 4.5, GPT-5.2, Gemini 3, GPT-4o, Qwen3-30B) across four
+cooperation mechanisms (repetition, reputation, mediation, contracting) and four dilemmas (PD,
+Traveler's Dilemma, Trust Game, Public Goods Game). **No human baseline at all** — further evidence
+for the gap-in-the-literature table in §8, and a second, more recent benchmark alongside GovSim to
+name in the intro as "even the newest LLM-cooperation benchmarks still have no human reference."
+Its mechanism taxonomy (repetition/reputation/mediation/contracting) is a clean vocabulary for
+describing what `repeated_trust`'s reputation-carryover design is doing, if that scenario needs
+tighter framing later.
+
+**LLM Agents as Static Level-k Players in Behavioural Games** — arXiv:2606.27845. Public goods game
+and beauty-contest; finds LLMs behave as *static* level-k reasoners (k set by model scale) with no
+within-game belief updating or backward induction across rounds. Relevant to interpreting
+`repeated_trust`: if this generalizes, LLM agents may not actually adapt their strategy across the
+three 10-round blocks the way the scenario is designed to test — worth watching for in the Phase G
+trial data, and worth citing either way (confirms or refutes it in a spatial/survival setting).
+
+**Hierarchical Control in Multi-Agent Games: LLM-based Planning and RL Execution** — arXiv:2606.20014.
+A different hybrid RL+LLM split than this project's: LLM as a *high-level strategic planner*, RL as
+the *low-level tactical executor* it directs — an abstraction-layer hierarchy, not a decision-type
+router. This project's Phase D/F design routes by *kind of decision* (RL handles reflexive
+movement/gathering, LLM handles social decisions) rather than by *level of abstraction*. Cite as
+related hybrid-architecture prior art in Methodology 4.2, and use the contrast to make the
+design choice legible: this isn't "we also did a hybrid," it's a specifically motivated division
+matched to what Gate D/E's cost and social-reasoning requirements actually needed.
+
+**LLMs as Policy-Agnostic Teammates: A Case Study in Human Proxy Design for Heterogeneous Agent
+Teams** — arXiv:2510.06151. Relevant to co-player policy design (`agents/coplayers.py`) if the
+fixed cooperator/free_rider/tit_for_tat/random roster ever needs a more principled "how do you
+design an agent meant to stand in for a class of teammate" justification.
+
+---
+
+## 8. Where the gap actually is
 
 Three literatures, each missing the other's key ingredient:
 
 | Literature | Has | Missing |
 |---|---|---|
-| LLM commons societies (GovSim, AgentSociety) | Rich multi-agent scarcity dynamics | Any human baseline |
+| LLM commons societies (GovSim, AgentSociety, CoopEval) | Rich multi-agent scarcity/cooperation dynamics | Any human baseline |
 | LLM-vs-human behavioural games (Akata, PGG work) | Rigorous human comparison | Only 2-player, abstract, no survival stakes |
 | MARL social dilemmas (Melting Pot) | Spatial, embodied, survival stakes | No LLMs, no humans, no natural-language channel |
+| Matched-protocol human/AI studies (arXiv:2604.25088, 2606.30454 — §7) | The exact comparison methodology this project uses | Abstract PD or territorial conquest; no scarcity, no survival stakes, no verifiable deception |
 
-**Your position:** the first *matched-protocol* comparison — real humans and hybrid RL+LLM agents in an
-identical multi-player survival-stakes commons game with a natural-language channel, compared with
-effect sizes and a distinguishability classifier.
+**Your position, precisely stated after §7's second pass:** not "the first matched-protocol
+comparison" — two concurrent papers now share that methodology in other domains (§7). The actual
+claim is narrower and stronger for it: **the first matched-protocol human–AI comparison under
+*survival-stakes resource scarcity*, with a *machine-verifiable* deception channel, showing
+AI-vs-human distinguishability is itself a measurable, scarcity-dependent quantity.** Every clause
+in that sentence is load-bearing — drop any one and a existing paper already covers it. Word the
+intro's contribution paragraph this precisely; a looser "first matched-protocol study" claim is now
+falsifiable by a citation search a reviewer will actually run.
 
 > ⚠️ **The "spatial, embodied" half of that claim is not currently true.** `move` is a no-op in the
 > human app and no grid is rendered — see Blocker 3 in `INTEGRATION_ISSUES.md`. Either the grid gets
@@ -185,18 +272,22 @@ sharpest possible contrast with arXiv:2505.17937, whose weakness was that its *h
 in our design the co-players are scripted **and disclosed**, and the focal player is genuinely a person
 on one side and genuinely an agent on the other.
 
-The disclosure question — whether participants are told the co-players are computer-controlled — is an
-ethics decision on the critical path, and **whatever the consent form says, the LLM prompt must say the
-same thing.** If humans believe they are playing people and the model is told it is playing bots, the
-comparison is dead.
+**Resolved:** the disclosure question was on the critical path when this was first written; Group 1's
+"Add human communication action and disclosure" commit settled it — participants are told their
+co-players are computer-controlled, in both the consent screen and the instructions screen. The LLM
+prompt (`agents/llm_reasoning.py`'s `CO_PLAYER_DISCLOSURE`) says the same thing, copied to match. See
+INTEGRATION_ISSUES.md Blocker 1 for the reconciliation and §7's note on arXiv:2601.20487, which found
+that disclosed co-player identity has only "bounded normative effects" on cooperation — reassuring
+evidence that this choice is unlikely to badly distort the comparison.
 
-**One-sentence contribution claim:**
-> We contribute the first matched-protocol human–AI behavioural comparison under resource scarcity,
-> and show that AI-vs-human distinguishability is *itself* a measurable, scarcity-dependent quantity.
+**One-sentence contribution claim (revised per §7):**
+> We contribute the first matched-protocol human–AI behavioural comparison under *survival-stakes*
+> resource scarcity, with a *machine-verifiable* deception channel, and show that AI-vs-human
+> distinguishability is itself a measurable, scarcity-dependent quantity.
 
 ---
 
-## 8. Novelty proposals, ranked by (impact ÷ effort)
+## 9. Novelty proposals, ranked by (impact ÷ effort)
 
 ### Tier 1 — do these; they're cheap and they make the paper
 
@@ -216,6 +307,15 @@ number. Make it a *curve*: fit the classifier separately per scarcity level and 
 The claim "**AI and human behaviour are nearly indistinguishable under abundance and diverge sharply
 under scarcity**" is a far better abstract sentence than "our classifier reaches 82% accuracy." Same
 data, same code, one extra loop.
+
+**Sharper framing after §7:** arXiv:2606.30454 finds that in an abstract networked Prisoner's Dilemma,
+LLM agents reproduce human-*like macro* cooperation trajectories while their *individual*-level
+decision rules diverge from humans' underlying mechanisms — aggregate behaviour looks human, the
+mechanism producing it doesn't. Frame N3's prediction explicitly against that: this study's hypothesis
+is that the macro/micro dissociation they found in the abstract case *widens measurably as scarcity
+increases* — individual survival incentives should pull decision rules further from human patterns
+even where aggregate metrics (mean hoarding rate, mean survival) still look similar. That's a directly
+falsifiable, citable extension rather than a standalone claim invented from nothing.
 
 **N4. Cross-model generalisation of the AI signature.** Train the classifier on model A's trials, test on
 models B and C. If it transfers, there's a *universal* behavioural AI signature — a genuinely strong
@@ -279,7 +379,7 @@ AI-for-social-good and HCI venues notice this.
 
 ---
 
-## 9. Venue implications
+## 10. Venue implications
 
 - N1 + N3 + N4 → **AI-for-social-good / AI-safety workshop** at NeurIPS/ICML/AAAI. The auditing angle
   ("can we detect AI agents from behaviour alone?") is what these venues want.
