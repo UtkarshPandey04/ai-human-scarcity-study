@@ -48,7 +48,21 @@ load_dotenv()  # pulls GROQ_API_KEY / GEMINI_API_KEY etc. from a local .env, if 
 class LLMCompletionError(RuntimeError):
     """Raised when a provider call fails outright or returns text that isn't valid JSON at all.
     Distinct from "valid JSON but wrong shape for our schema" — that's agents/llm_reasoning.py's
-    retry loop to handle, not this file's.
+    retry loop's job, not this file's.
+    """
+
+
+class LLMRateLimitError(LLMCompletionError):
+    """A specific, more useful subtype of LLMCompletionError: the provider refused the request
+    for quota/rate-limit reasons (HTTP 429), not because anything was wrong with the request.
+
+    This distinction matters for what ends up in the paper. Caught live: a Gemini free-tier quota
+    of 20 requests/day for a specific model produced a batch of failures that looked, from
+    meta.llm_parse_failure alone, exactly like the model producing bad output 69% of the time —
+    which would have been a false and damaging claim about the model if it had gone in a results
+    table unexamined. agents/llm_reasoning.py tags these separately (meta.llm_rate_limited) so the
+    parse-failure-rate metric stays a measure of model output quality, not of this project's quota
+    headroom.
     """
 
 
@@ -97,7 +111,7 @@ def _parse_json(text: str, provider: str) -> dict:
 def _complete_groq(
     messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
 ) -> dict:
-    from groq import Groq
+    from groq import Groq, RateLimitError
 
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
@@ -119,7 +133,9 @@ def _complete_groq(
         create_kwargs["response_format"] = {"type": "json_object"}
     try:
         response = client.chat.completions.create(**create_kwargs)
-    except Exception as exc:  # groq.APIError and friends — normalize to one exception type
+    except RateLimitError as exc:
+        raise LLMRateLimitError(f"groq rate limit: {exc}") from exc
+    except Exception as exc:  # other groq.APIError subclasses — normalize to one exception type
         raise LLMCompletionError(f"groq request failed: {exc}") from exc
 
     if usage is not None and response.usage is not None:
@@ -136,7 +152,7 @@ def _complete_gemini(
     messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
 ) -> dict:
     from google import genai
-    from google.genai import types
+    from google.genai import errors, types
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -163,7 +179,11 @@ def _complete_gemini(
         response = client.models.generate_content(
             model=model or DEFAULT_GEMINI_MODEL, contents=contents, config=config
         )
-    except Exception as exc:  # google.genai errors — normalize to one exception type
+    except errors.APIError as exc:
+        if exc.code == 429:
+            raise LLMRateLimitError(f"gemini rate limit: {exc}") from exc
+        raise LLMCompletionError(f"gemini request failed: {exc}") from exc
+    except Exception as exc:  # anything else — normalize to one exception type
         raise LLMCompletionError(f"gemini request failed: {exc}") from exc
 
     if usage is not None and response.usage_metadata is not None:

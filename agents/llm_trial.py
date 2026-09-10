@@ -35,7 +35,8 @@ def run_trial(
 
     rows: list[dict] = []
     total_calls = 0
-    parse_failures = 0
+    parse_failures = 0  # excludes rate-limited calls — see the note on llm_rate_limited below
+    rate_limited = 0
     total_prompt_tokens = 0
     total_completion_tokens = 0
 
@@ -51,7 +52,10 @@ def run_trial(
             decision_meta[pid] = meta
             total_calls += 1
             if meta.get("llm_parse_failure"):
-                parse_failures += 1
+                if meta.get("llm_rate_limited"):
+                    rate_limited += 1
+                else:
+                    parse_failures += 1
             total_prompt_tokens += meta.get("prompt_tokens", 0) or 0
             total_completion_tokens += meta.get("completion_tokens", 0) or 0
 
@@ -68,16 +72,23 @@ def run_trial(
                 "severity": None,
                 "decision_source": "llm",
                 "llm_parse_failure": m.get("llm_parse_failure"),
+                # Kept separate from llm_parse_failure — a rate-limited call isn't evidence the
+                # model produced bad output, it's evidence this project ran out of quota. See
+                # agents/llm_reasoning.py::decide()'s docstring. Filter this out before computing
+                # any parse-failure-rate figure for the paper.
+                "llm_rate_limited": m.get("llm_rate_limited", False),
                 "prompt_tokens": m.get("prompt_tokens"),
                 "completion_tokens": m.get("completion_tokens"),
             }
             rows.append(row)
 
+    non_rate_limited_calls = total_calls - rate_limited
     stats = {
         "trial_id": trial_id,
         "total_calls": total_calls,
         "parse_failures": parse_failures,
-        "parse_failure_rate": (parse_failures / total_calls) if total_calls else 0.0,
+        "rate_limited": rate_limited,
+        "parse_failure_rate": (parse_failures / non_rate_limited_calls) if non_rate_limited_calls else 0.0,
         "total_prompt_tokens": total_prompt_tokens,
         "total_completion_tokens": total_completion_tokens,
     }
@@ -108,10 +119,15 @@ def _main() -> int:
 
     print(f"OK   {path} ({len(rows)} rows)")
     print(f"Total LLM calls:     {stats['total_calls']}")
+    print(f"Rate-limited:        {stats['rate_limited']} (excluded from parse-failure rate below)")
     print(f"Parse failures:      {stats['parse_failures']} ({stats['parse_failure_rate']:.1%})")
     print(f"Prompt tokens:       {stats['total_prompt_tokens']}")
     print(f"Completion tokens:   {stats['total_completion_tokens']}")
-    print(f"Gate E (<2% parse failure rate): {'PASS' if stats['parse_failure_rate'] < 0.02 else 'FAIL'}")
+    print(f"Gate E (<2% parse failure rate, excluding rate limits): "
+          f"{'PASS' if stats['parse_failure_rate'] < 0.02 else 'FAIL'}")
+    if stats["rate_limited"]:
+        print("⚠ Some calls hit a provider rate limit this run — see llm_rate_limited in the "
+              "log's meta if you need to know exactly which rows.")
     return 0
 
 

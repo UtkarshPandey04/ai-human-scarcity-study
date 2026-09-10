@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from agents.environment import Observation, OtherPlayerView
-from agents.llm_client import LLMCompletionError
+from agents.llm_client import LLMCompletionError, LLMRateLimitError
 from agents.llm_reasoning import _parse_action, decide, render_observation
 from common.actions import ActionType
 
@@ -127,8 +127,27 @@ class TestDecideRetryLogic(unittest.TestCase):
             action, meta = decide(_make_observation())
         self.assertEqual(action.type, ActionType.SKIP)
         self.assertTrue(meta["llm_parse_failure"])
+        self.assertFalse(meta["llm_rate_limited"])
         self.assertEqual(meta["parse_attempts"], 2)
         self.assertIn("down", meta["parse_error"])
+
+    def test_rate_limit_failure_is_classified_separately_from_parse_failure(self):
+        """Regression test for a real bug: a Gemini free-tier quota (20 req/day) produced a batch
+        of failures that, seen only through llm_parse_failure, looked exactly like the model
+        failing to produce valid output 69% of the time. It wasn't a model-quality issue — it was
+        this project's quota headroom. llm_rate_limited must be set on exactly this failure mode
+        so a parse-failure-rate figure computed for the paper can filter it out correctly.
+        """
+        with patch("agents.llm_reasoning.complete", side_effect=LLMRateLimitError("quota exceeded")):
+            action, meta = decide(_make_observation())
+        self.assertEqual(action.type, ActionType.SKIP)
+        self.assertTrue(meta["llm_parse_failure"])
+        self.assertTrue(meta["llm_rate_limited"])
+
+    def test_success_meta_explicitly_marks_not_rate_limited(self):
+        with patch("agents.llm_reasoning.complete", return_value={"action_type": "gather"}):
+            _, meta = decide(_make_observation())
+        self.assertFalse(meta["llm_rate_limited"])
 
     def test_never_raises_even_on_total_failure(self):
         """The core Phase E guarantee: 'parse failures are data, not crashes.'"""

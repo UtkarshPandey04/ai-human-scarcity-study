@@ -26,7 +26,7 @@ grep for "computer-controlled co-players" to find every copy.
 from __future__ import annotations
 
 from agents.environment import Observation
-from agents.llm_client import ChatMessage, LLMCompletionError, complete
+from agents.llm_client import ChatMessage, LLMCompletionError, LLMRateLimitError, complete
 from common.actions import Action, ActionType, Direction, Message, MessageKind
 from common.config import NUM_PLAYERS
 
@@ -157,10 +157,18 @@ def decide(obs: Observation, *, provider: str | None = None, model: str | None =
     parse_attempts (int), and — on any successful provider round-trip, even a rejected one —
     prompt_tokens / completion_tokens / model / provider from agents/llm_client.py's usage
     tracking, so cost is counted even for attempts that failed our own validation.
+
+    On failure, meta also carries `llm_rate_limited` (bool) — kept **separate** from
+    `llm_parse_failure`. Caught live: a Gemini free-tier quota of 20 requests/day produced a batch
+    of failures that, viewed only through `llm_parse_failure`, looked exactly like the model
+    producing bad output 69% of the time. It wasn't a model-quality issue at all — it was this
+    project's quota headroom. Any parse-failure-rate figure that goes in the paper must filter out
+    `llm_rate_limited` rows, or it's reporting infrastructure noise as a finding about the model.
     """
     messages = [ChatMessage(role="system", content=SYSTEM_PROMPT), ChatMessage(role="user", content=render_observation(obs))]
     usage: dict = {}
     last_error: str | None = None
+    last_error_was_rate_limit = False
 
     for attempt in (1, 2):
         if last_error is not None:
@@ -177,14 +185,25 @@ def decide(obs: Observation, *, provider: str | None = None, model: str | None =
         try:
             data = complete(messages, schema=ACTION_SCHEMA, provider=provider, model=model, usage=usage)
             action = _parse_action(data)
-            return action, {"llm_parse_failure": False, "parse_attempts": attempt, **usage}
+            return action, {
+                "llm_parse_failure": False,
+                "llm_rate_limited": False,
+                "parse_attempts": attempt,
+                **usage,
+            }
+        except LLMRateLimitError as exc:
+            last_error = str(exc)
+            last_error_was_rate_limit = True
         except LLMCompletionError as exc:
             last_error = str(exc)
+            last_error_was_rate_limit = False
         except (KeyError, ValueError, TypeError) as exc:
             last_error = f"{exc.__class__.__name__}: {exc}"
+            last_error_was_rate_limit = False
 
     return Action(type=ActionType.SKIP), {
         "llm_parse_failure": True,
+        "llm_rate_limited": last_error_was_rate_limit,
         "parse_attempts": 2,
         "parse_error": last_error,
         **usage,

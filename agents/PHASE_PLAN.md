@@ -263,21 +263,63 @@ suite must never depend on a live key or cost real tokens. Live verification is 
 
 ---
 
-## Phase F — Hybrid arbitration (Week 5)
+## Phase F — Hybrid arbitration (Week 5) — ✅ done
 
-**File:** `agents/hybrid_agent.py`
+**Files:** `agents/hybrid_agent.py`, `agents/hybrid_trial.py`
 
-The architectural claim of the paper: reflex versus deliberation. Route social decisions — another
-player adjacent, a pending promise, stock below threshold — to the LLM; everything else to the RL
-policy. Log `meta.decision_source` on every row.
+The architectural claim of the paper: reflex versus deliberation. `is_social_decision(obs)` routes
+each round to the LLM or the RL policy; every row logs `meta.decision_source`.
 
-That field buys a free figure: *how often does the agent deliberate, and does deliberation rate climb
-with scarcity?* — and with Group 1 logging `decision_latency_ms`, it goes on the same axis as human
-deliberation time.
+**Adapted "social decision" trigger for the no-grid environment.** The plan's original wording
+("another player adjacent, a pending promise, stock below threshold") assumes spatial adjacency,
+which doesn't exist post-Blocker-3 — every alive co-player is present every round, so raw
+adjacency would fire on nearly every round and defeat the point of routing at all. Implemented
+trigger: social routing fires when the round has actual scarcity-relevant stakes — the player is
+under resource pressure (`own_resource <= SURVIVAL_COST * 2`), it's a drought round, or another
+player shared with them last round (a live reciprocity opportunity). Documented in
+`agents/hybrid_agent.py`'s docstring, not silently reinterpreted.
 
-Build the three ablation arms now, because Phase G runs all of them: `rl_only`, `llm_only`, `hybrid`.
+`rl_only`'s action space is gather/hoard/skip/move only — no share, no communicate — by
+construction of the RL policy (Phase D). That's a real ablation, not a gap: it answers "what
+happens if this agent can never act socially at all," which is exactly what an ablation arm should
+test.
 
-**Gate F:** all three arms run a trial each with no code change — the arm is a CLI flag.
+**Gate F — passed, all three arms run via one script, arm selected by CLI flag, no code change**
+(`python -m agents.hybrid_trial --scenario drought --seed <n> --arm <rl_only|llm_only|hybrid>`):
+
+| Arm | Decisions | Notes |
+|---|---|---|
+| `rl_only` | 50/50 from RL | All 5 players survived all 10 rounds; 0 API cost |
+| `hybrid` | 43 RL / 7 LLM | Real ~14% deliberation rate on this trial — the first real number for "how often does the agent deliberate" — 0 parse failures on the 7 LLM calls |
+| `llm_only` | 50/50 from LLM (Groq) | 0 parse failures, 0 rate-limited — same script, same numbers as Gate E |
+
+Once Group 1 logs `decision_latency_ms`, the hybrid deliberation rate goes on the same axis as
+human decision time — a genuinely novel figure, not originally planned, that falls out of this
+design for free.
+
+**Important finding while getting here, relevant to Phase G's model choice, not just a Phase F
+footnote.** The first `llm_only` attempt used Gemini and came back with a 69% "parse failure"
+rate — alarming, until traced to the actual cause: `gemini-3.6-flash`'s **free tier allows only 20
+requests per day per project per model.** This project's own testing had already burned most of
+that quota before the trial ran. Two real problems, both now fixed:
+
+1. **A metric-honesty bug**, not a model-quality one. `meta.llm_parse_failure` was conflating "the
+   model responded but the output didn't parse" (a real finding about the model) with "we
+   couldn't reach the API at all" (a fact about this project's quota, not the model). Publishing
+   "Gemini has a 69% parse failure rate" would have been false and damaging to the model. Fixed:
+   `agents/llm_client.py` now raises a distinct `LLMRateLimitError` (Groq's dedicated
+   `RateLimitError`, or Gemini's `APIError.code == 429`), and `agents/llm_reasoning.py::decide()`
+   tags `meta.llm_rate_limited` separately from `meta.llm_parse_failure`. Verified against a real
+   429 after the fix — `llm_rate_limited` came back `True`, `llm_parse_failure` stayed the umbrella
+   flag it always was. **Any parse-failure-rate figure computed for the paper must filter out
+   `llm_rate_limited` rows first**, or it's reporting this project's quota headroom as a finding
+   about the model.
+2. **A planning fact for Phase G.** 20 requests/day makes Gemini currently unusable at any real
+   trial-campaign scale on the free tier — even a single 10-round, 5-player trial can burn most of
+   that budget. Before Phase G's sweep, either request a quota increase, pick a Gemini tier/model
+   with a higher limit, or lean primarily on Groq (verified comfortable at 50 calls per trial with
+   room to spare) and treat Gemini as a smaller cross-model comparison sample, not an equal-weight
+   arm.
 
 ---
 
@@ -333,7 +375,7 @@ follow-up questions.
 | Blockers 1–3 not resolved before recruitment | **High** | `INTEGRATION_ISSUES.md` on the next meeting agenda; ethics disclosure decision is on the critical path |
 | Constants drift between the two codebases | **High** | `common/config.py` imported by both; the `# keep in sync` comment deleted, not trusted |
 | ~~SB3 can't do multi-agent as roadmap assumes~~ | ~~High~~ | **Resolved** — single-slot self-play wrapper (Phase D), Gate D passed |
-| LLM free tier exhausted mid-campaign | High | Provider abstraction, local fallback, prompt cache, hybrid gating |
+| LLM free tier exhausted mid-campaign | **Confirmed, not hypothetical** — Gemini's `gemini-3.6-flash` free tier is 20 req/day, already hit during Phase F testing | Provider abstraction, hybrid gating (fewer LLM calls than `llm_only`), lean primarily on Groq for Phase G's sweep, treat Gemini as a smaller cross-model sample or get a quota increase first |
 | Ethics approval slips → human trials late | High | This track is independent until Week 8 — keep it that way |
 | Scope creep (10 scenarios, 5 models) | High | Cut list below |
 | Co-player policies late → Group 1 blocked | Medium | Ship `coplayers.py` in Week 2 even if the policies are trivial |
@@ -355,6 +397,6 @@ down to 3 levels → ablation arms → the grid (Blocker 3 option b).
 | 2 | B, C | Env matches `app.py` mechanics; `coplayers.py` shipped to Group 1; **MSE-1 pilot logs** |
 | 3 | C, D | Six-action space live on both sides; IPPO wrapper training |
 | 4 | D, E | ✅ RL gate passed; ✅ LLM layer emitting valid JSON, Gate E passed live |
-| 5 | F | Hybrid agent + 3 ablation arms runnable |
+| 5 | F | ✅ Hybrid agent + 3 ablation arms runnable, Gate F passed |
 | 6 | G | Trial campaign complete, manifest written |
 | 7 | H | `ai_logs_v1` frozen, Methodology 4.1–4.2 drafted |
