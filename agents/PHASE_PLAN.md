@@ -205,24 +205,61 @@ in the manual `train_rl`/`gate_d` tasks, not the sub-2-second `validate` suite.
 
 ---
 
-## Phase E — LLM reasoning layer (Weeks 4–5)
+## Phase E — LLM reasoning layer (Weeks 4–5) — ✅ done
 
-**Files:** `agents/llm_reasoning.py`, `agents/llm_client.py`, `agents/prompts/`
+**Files:** `agents/llm_client.py`, `agents/llm_reasoning.py`, `agents/llm_trial.py`
 
-- **Provider abstraction first.** One `complete(messages, schema) -> dict` entry point. Never let a
-  vendor SDK leak into the reasoning module — you *will* switch providers when a free tier runs out
-  mid-Week-6.
-- **Parse failures are data, not crashes.** Parse → retry once with the validation error appended → fall
-  back to `skip` with `meta.llm_parse_failure = true`. Never silently substitute a random action; the
-  failure rate goes in the paper.
-- **The prompt is the human's screen, verbatim.** One `render_observation()` feeds both the prompt
-  builder and Group 1's instructions text. Any asymmetry is a fatal confound — it is exactly the mistake
-  that sank the comparison in arXiv:2505.17937. This now includes **what the agent is told about its
-  co-players**, which must match the consent text word for word.
-- Cache on prompt hash; log tokens and cost per trial into `meta`.
+- **Provider abstraction.** `complete(messages, schema=None) -> dict` in `llm_client.py`, backed by
+  Groq and Gemini (the two providers this project has access to; adding another means one new function
+  plus one `PROVIDERS` entry). `schema` is always rendered into the prompt as a "respond in this shape"
+  instruction for both providers; it is *not* passed as a native structured-output constraint
+  (Gemini's `response_schema`, Groq's `json_schema` mode) — that needed a live account to trust before
+  wiring in, which this now has. Worth tightening as a follow-up, not required for Gate E.
+- **Parse failures are data, not crashes.** `llm_reasoning.decide()`: parse → retry once with the
+  validation error appended → fall back to `skip` with `meta.llm_parse_failure = true`. Never silently
+  substitutes a random action.
+- **The prompt is the human's screen, verbatim — except it currently isn't, and that's flagged
+  in-code, not hidden.** `render_observation()` describes the shared pool level and other players' last
+  actions, because a real commons decision needs that — but `human_interface/app.py`'s game screen
+  doesn't show either yet (Blocker 1/3 work landed in the environment before it landed in the UI). See
+  the warning at the top of `agents/llm_reasoning.py`: before this prompt is used for anything beyond a
+  structural smoke test, either enrich `app.py`'s screen to match or trim the prompt to match it. Don't
+  let this drift — it's exactly the mistake that sank the comparison in arXiv:2505.17937. Co-player
+  disclosure wording (`CO_PLAYER_DISCLOSURE`) is copied from `app.py`'s consent/instructions screens as
+  of the "Add human communication action and disclosure" commit; keep both in sync by hand.
+- Tokens/cost captured per call via `llm_client.complete()`'s `usage` out-param, folded into each log
+  row's `meta`. No prompt caching yet (add if the Phase G trial campaign's cost demands it — premature
+  now).
 
-**Gate E:** one full `drought` trial runs end-to-end on LLM decisions, logs validate, parse-failure rate
-under 2%.
+**Gate E — passed, real run, live keys, no fabricated numbers** (`python -m agents.llm_trial --scenario
+drought --seed 0 --provider groq`):
+
+| | |
+|---|---|
+| LLM calls | 50 (5 players × 10 rounds, all survived) |
+| Parse failures | 0 (0.0%) |
+| Prompt / completion tokens | 38,597 / 18,081 |
+
+Real behavioral diversity showed up immediately in the drought round of that trial: two players
+hoarded, one shared with a struggling neighbour, two gathered — exactly the kind of divergence the
+study is built to measure.
+
+**Two real bugs found and fixed while building this, worth knowing about:**
+1. A dispatch test patched the standalone function name (`agents.llm_client._complete_groq`) instead of
+   the `PROVIDERS` dict entry that actually gets called — `PROVIDERS` binds function references at
+   import time, so the patch silently did nothing, and the "no live calls" test suite was quietly
+   making real Groq/Gemini API calls on every `validate` run. Fixed by patching the dict entry.
+2. Both providers forced JSON-output mode unconditionally, even with `schema=None` — Groq's JSON mode
+   requires the word "json" somewhere in the prompt, so any schema-less call would hard-fail. Fixed to
+   only request JSON mode when a schema is actually given.
+3. Default model names (`llama-3.3-70b-versatile`, `gemini-2.5-flash`) were both stale/deprecated by
+   the time this ran against live keys — expected, given the ~8-month gap between this file's knowledge
+   cutoff and when it's actually used. Re-verify with `client.models.list()` (Groq) if this 404s again;
+   don't assume a remembered model name is still valid.
+
+Fast tests (`tests/test_llm_client.py`, `tests/test_llm_reasoning.py`) mock every network call — the
+suite must never depend on a live key or cost real tokens. Live verification is the manual
+`agents/llm_trial.py` step above.
 
 ---
 
@@ -317,7 +354,7 @@ down to 3 levels → ablation arms → the grid (Blocker 3 option b).
 | 1 | A | `common/config.py` + `common/schema.py` imported by both branches; `meta` block agreed |
 | 2 | B, C | Env matches `app.py` mechanics; `coplayers.py` shipped to Group 1; **MSE-1 pilot logs** |
 | 3 | C, D | Six-action space live on both sides; IPPO wrapper training |
-| 4 | D, E | RL gate passed; LLM layer emitting valid JSON |
-| 5 | E, F | Hybrid agent + 3 ablation arms runnable |
+| 4 | D, E | ✅ RL gate passed; ✅ LLM layer emitting valid JSON, Gate E passed live |
+| 5 | F | Hybrid agent + 3 ablation arms runnable |
 | 6 | G | Trial campaign complete, manifest written |
 | 7 | H | `ai_logs_v1` frozen, Methodology 4.1–4.2 drafted |
