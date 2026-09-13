@@ -24,7 +24,8 @@ TOTAL_ROUNDS = 10
 DROUGHT_ROUND = 6
 NUM_AGENTS_ON_ISLAND = 5  # includes the human participant
 SCENARIO = "drought"
-ACTIONS = ["gather", "share", "hoard", "move", "skip"]
+ACTIONS = ["gather", "share", "hoard", "move", "skip", "communicate"]
+MESSAGE_KINDS = ["claim_stock", "promise_share", "request", "accuse", "none"]
 
 st.set_page_config(page_title="Scarcity Study", layout="centered")
 
@@ -59,8 +60,10 @@ def consent_screen():
         about how people make decisions when resources are limited.
 
         **What you'll do:** play a short round-based game where you manage a
-        resource (e.g. water) shared with a few other players, and decide
+        resource (e.g. water) shared with four computer-controlled co-players, and decide
         whether to gather, share, hoard, or communicate with others.
+
+        You will not be matched with other human participants during the game.
 
         **What we record:** your in-game actions and any messages you send
         to other players during the game. No personally identifying
@@ -86,24 +89,26 @@ def consent_screen():
 def instructions_screen():
     st.title("How the Game Works")
     st.write(
-        f"""
-        - You are one of **{NUM_AGENTS_ON_ISLAND} players** on a small island.
-        - The game lasts **{TOTAL_ROUNDS} rounds**. Each round you need
-          **2 units of water** to survive.
-        - Available actions each round:
-            - **Gather** — collect water from the shared source
-            - **Share** — give some of your water to another player
-            - **Hoard** — keep all your water, take no other action
-            - **Move** — reposition on the island (may reveal new resources)
-            - **Skip** — take no action this round
-        - You may also send a short message to another player when you
-          share or communicate.
-        - Water availability changes over time — pay attention each round.
+                f"""
+                - You are one of **{NUM_AGENTS_ON_ISLAND} players** on a small island.
+                    The other four players are computer-controlled co-players.
+                - The game lasts **{TOTAL_ROUNDS} rounds**. Each round you need
+                    **2 units of water** to survive.
+                - Available actions each round:
+                        - **Gather** — collect water from the shared source
+                        - **Share** — give some of your water to another player
+                        - **Hoard** — keep all your water, take no other action
+                        - **Move** — reposition on the island (may reveal new resources)
+                        - **Skip** — take no action this round
+                        - **Communicate** — send a structured message to another player
+                - You may attach a structured message when you share or communicate:
+                    choose its kind, numeric value, and target, with optional wording.
+                - Water availability changes over time — pay attention each round.
 
-        There are no right or wrong answers. Please play naturally, as you
-        actually would in this situation.
-        """
-    )
+            There are no right or wrong answers. Please play naturally, as you
+            actually would in this situation.
+            """
+            )
     if st.button("Start Game", type="primary"):
         go_to("game")
 
@@ -130,16 +135,37 @@ def game_screen():
     st.divider()
     st.subheader("Choose your action")
 
-    action = st.radio("Action", ACTIONS, horizontal=True, label_visibility="collapsed")
+    action = st.radio(
+        "Action",
+        ACTIONS,
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
     target = None
     message = None
-    if action == "share":
+    message_claim = None
+    if action in ("share", "communicate"):
         target = st.selectbox(
-            "Share with which player?",
-            [f"A{i}" for i in range(1, NUM_AGENTS_ON_ISLAND) if f"A{i}" != st.session_state.participant_id],
+            "Target player",
+            (["all"] if action == "communicate" else [])
+            + [f"A{i}" for i in range(1, NUM_AGENTS_ON_ISLAND)],
         )
-        message = st.text_input("Optional message to them")
+        message_kind = st.selectbox("Message kind", MESSAGE_KINDS)
+        message_value = st.number_input(
+            "Message value",
+            min_value=0,
+            step=1,
+            value=0,
+            help="Use 0 when this message kind has no numeric value.",
+        )
+        message = st.text_input("Optional message wording")
+        message_claim = {
+            "kind": message_kind,
+            "value": None if message_kind == "none" else message_value,
+            "target": target,
+            "surface": message or None,
+        }
 
     if st.button("Submit Action", type="primary"):
         resource_before = st.session_state.resource
@@ -156,6 +182,8 @@ def game_screen():
             pass
         elif action == "skip":
             pass
+        elif action == "communicate":
+            pass
 
         st.session_state.resource -= 2  # survival cost per round
         st.session_state.alive = st.session_state.resource >= 0
@@ -171,6 +199,7 @@ def game_screen():
             alive=st.session_state.alive,
             target_agent=target,
             message_sent=message,
+            meta={"claim": message_claim} if message_claim else None,
         )
         st.session_state.action_log.append(record)
 
