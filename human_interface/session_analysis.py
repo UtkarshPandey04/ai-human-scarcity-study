@@ -6,7 +6,7 @@ logging_utils.log_action().
 """
 
 
-ACTIONS = ["gather", "share", "hoard", "move", "skip"]
+ACTIONS = ["gather", "share", "hoard", "move", "skip", "communicate"]
 
 
 def count_actions(action_log):

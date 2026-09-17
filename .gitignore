@@ -219,3 +219,16 @@ __marimo__/
 
 # Human study logs
 data/human_logs/
+
+# AI trial logs (regeneratable via `python tasks.py pilot` / `trials`) — see
+# agents/PHASE_PLAN.md Phase B; only the derived summary is committed, not raw logs
+data/ai_logs/
+
+# Trained RL checkpoints (regeneratable via `python -m agents.rl_policy train`) — see
+# agents/PHASE_PLAN.md Phase D
+models/
+
+# Claude Code
+CLAUDE.md
+.claude/
+skills-lock.json
