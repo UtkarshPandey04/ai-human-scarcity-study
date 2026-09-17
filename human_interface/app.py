@@ -7,25 +7,39 @@ Flow: consent -> instructions -> game (multiple rounds) -> debrief
 Run locally with:  streamlit run human_interface/app.py
 """
 
-import streamlit as st
+import os
+import sys
 import uuid
+import streamlit as st
 
+# Ensure project root is on sys.path so common modules can be imported
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from common.actions import ActionType, MessageKind
+from common.config import (
+    DROUGHT_ROUND,
+    GRID_SIZE,
+    NUM_PLAYERS as NUM_AGENTS_ON_ISLAND,
+    START_WATER,
+    SURVIVAL_COST,
+    TOTAL_ROUNDS,
+    gather_yield,
+    is_alive,
+)
 from logging_utils import log_action
 from session_analysis import (
-    count_actions,
     action_rates,
-    resource_change,
+    count_actions,
     get_drought_action,
+    resource_change,
 )
 
-# ---------- CONFIG (keep in sync with agents/environment.py in Group 2) ----------
-GRID_SIZE = 5
-TOTAL_ROUNDS = 10
-DROUGHT_ROUND = 6
-NUM_AGENTS_ON_ISLAND = 5  # includes the human participant
+# ---------- CONFIG ----------
 SCENARIO = "drought"
-ACTIONS = ["gather", "share", "hoard", "move", "skip", "communicate"]
-MESSAGE_KINDS = ["claim_stock", "promise_share", "request", "accuse", "none"]
+ACTIONS = [a.value for a in ActionType]
+MESSAGE_KINDS = [m.value for m in MessageKind]
 
 st.set_page_config(page_title="Scarcity Study", layout="centered")
 
@@ -39,7 +53,7 @@ if "participant_id" not in st.session_state:
 if "round" not in st.session_state:
     st.session_state.round = 1
 if "resource" not in st.session_state:
-    st.session_state.resource = 5
+    st.session_state.resource = START_WATER
 if "alive" not in st.session_state:
     st.session_state.alive = True
 if "action_log" not in st.session_state:
@@ -170,10 +184,9 @@ def game_screen():
     if st.button("Submit Action", type="primary"):
         resource_before = st.session_state.resource
 
-        # --- simplified resource logic (mirror agents/environment.py rules) ---
+        # --- resource logic (mirrors common/config.py and agents/environment.py) ---
         if action == "gather":
-            gained = 1 if is_drought else 3
-            st.session_state.resource += gained
+            st.session_state.resource += gather_yield(r, SCENARIO)
         elif action == "share":
             st.session_state.resource -= 1
         elif action == "hoard":
@@ -185,8 +198,8 @@ def game_screen():
         elif action == "communicate":
             pass
 
-        st.session_state.resource -= 2  # survival cost per round
-        st.session_state.alive = st.session_state.resource >= 0
+        st.session_state.resource -= SURVIVAL_COST  # survival cost per round
+        st.session_state.alive = is_alive(st.session_state.resource)
 
         record = log_action(
             trial_id=st.session_state.trial_id,
@@ -313,7 +326,7 @@ def debrief_screen():
     if action_log:
         st.dataframe(
             action_log,
-            use_container_width=True
+            width="stretch"
         )
     else:
         st.info("No recorded actions available.")

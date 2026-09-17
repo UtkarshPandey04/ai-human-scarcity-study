@@ -8,7 +8,15 @@ with whatever Group 2 uses for AI trial logs.
 
 import json
 import os
+import sys
 from datetime import datetime, timezone
+
+# Ensure project root is on sys.path so common modules can be imported
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from common.schema import validate_row
 
 LOG_DIR = os.path.join("data", "human_logs")
 
@@ -53,6 +61,8 @@ def log_action(
     }
     if meta is not None:
         record["meta"] = meta
+
+    validate_row(record)
 
     log_path = os.path.join(LOG_DIR, f"{trial_id}.jsonl")
     with open(log_path, "a", encoding="utf-8") as f:
