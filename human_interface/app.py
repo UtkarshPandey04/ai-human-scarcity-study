@@ -7,17 +7,39 @@ Flow: consent -> instructions -> game (multiple rounds) -> debrief
 Run locally with:  streamlit run human_interface/app.py
 """
 
-import streamlit as st
+import os
+import sys
 import uuid
-from logging_utils import log_action
+import streamlit as st
 
-# ---------- CONFIG (keep in sync with agents/environment.py in Group 2) ----------
-GRID_SIZE = 5
-TOTAL_ROUNDS = 10
-DROUGHT_ROUND = 6
-NUM_AGENTS_ON_ISLAND = 5  # includes the human participant
+# Ensure project root is on sys.path so common modules can be imported
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from common.actions import ActionType, MessageKind
+from common.config import (
+    DROUGHT_ROUND,
+    GRID_SIZE,
+    NUM_PLAYERS as NUM_AGENTS_ON_ISLAND,
+    START_WATER,
+    SURVIVAL_COST,
+    TOTAL_ROUNDS,
+    gather_yield,
+    is_alive,
+)
+from logging_utils import log_action
+from session_analysis import (
+    action_rates,
+    count_actions,
+    get_drought_action,
+    resource_change,
+)
+
+# ---------- CONFIG ----------
 SCENARIO = "drought"
-ACTIONS = ["gather", "share", "hoard", "move", "skip"]
+ACTIONS = [a.value for a in ActionType]
+MESSAGE_KINDS = [m.value for m in MessageKind]
 
 st.set_page_config(page_title="Scarcity Study", layout="centered")
 
@@ -31,7 +53,7 @@ if "participant_id" not in st.session_state:
 if "round" not in st.session_state:
     st.session_state.round = 1
 if "resource" not in st.session_state:
-    st.session_state.resource = 5
+    st.session_state.resource = START_WATER
 if "alive" not in st.session_state:
     st.session_state.alive = True
 if "action_log" not in st.session_state:
@@ -52,8 +74,10 @@ def consent_screen():
         about how people make decisions when resources are limited.
 
         **What you'll do:** play a short round-based game where you manage a
-        resource (e.g. water) shared with a few other players, and decide
+        resource (e.g. water) shared with four computer-controlled co-players, and decide
         whether to gather, share, hoard, or communicate with others.
+
+        You will not be matched with other human participants during the game.
 
         **What we record:** your in-game actions and any messages you send
         to other players during the game. No personally identifying
@@ -79,24 +103,26 @@ def consent_screen():
 def instructions_screen():
     st.title("How the Game Works")
     st.write(
-        f"""
-        - You are one of **{NUM_AGENTS_ON_ISLAND} players** on a small island.
-        - The game lasts **{TOTAL_ROUNDS} rounds**. Each round you need
-          **2 units of water** to survive.
-        - Available actions each round:
-            - **Gather** — collect water from the shared source
-            - **Share** — give some of your water to another player
-            - **Hoard** — keep all your water, take no other action
-            - **Move** — reposition on the island (may reveal new resources)
-            - **Skip** — take no action this round
-        - You may also send a short message to another player when you
-          share or communicate.
-        - Water availability changes over time — pay attention each round.
+                f"""
+                - You are one of **{NUM_AGENTS_ON_ISLAND} players** on a small island.
+                    The other four players are computer-controlled co-players.
+                - The game lasts **{TOTAL_ROUNDS} rounds**. Each round you need
+                    **2 units of water** to survive.
+                - Available actions each round:
+                        - **Gather** — collect water from the shared source
+                        - **Share** — give some of your water to another player
+                        - **Hoard** — keep all your water, take no other action
+                        - **Move** — reposition on the island (may reveal new resources)
+                        - **Skip** — take no action this round
+                        - **Communicate** — send a structured message to another player
+                - You may attach a structured message when you share or communicate:
+                    choose its kind, numeric value, and target, with optional wording.
+                - Water availability changes over time — pay attention each round.
 
-        There are no right or wrong answers. Please play naturally, as you
-        actually would in this situation.
-        """
-    )
+            There are no right or wrong answers. Please play naturally, as you
+            actually would in this situation.
+            """
+            )
     if st.button("Start Game", type="primary"):
         go_to("game")
 
@@ -123,24 +149,44 @@ def game_screen():
     st.divider()
     st.subheader("Choose your action")
 
-    action = st.radio("Action", ACTIONS, horizontal=True, label_visibility="collapsed")
+    action = st.radio(
+        "Action",
+        ACTIONS,
+        horizontal=True,
+        label_visibility="collapsed",
+    )
 
     target = None
     message = None
-    if action == "share":
+    message_claim = None
+    if action in ("share", "communicate"):
         target = st.selectbox(
-            "Share with which player?",
-            [f"A{i}" for i in range(1, NUM_AGENTS_ON_ISLAND) if f"A{i}" != st.session_state.participant_id],
+            "Target player",
+            (["all"] if action == "communicate" else [])
+            + [f"A{i}" for i in range(1, NUM_AGENTS_ON_ISLAND)],
         )
-        message = st.text_input("Optional message to them")
+        message_kind = st.selectbox("Message kind", MESSAGE_KINDS)
+        message_value = st.number_input(
+            "Message value",
+            min_value=0,
+            step=1,
+            value=0,
+            help="Use 0 when this message kind has no numeric value.",
+        )
+        message = st.text_input("Optional message wording")
+        message_claim = {
+            "kind": message_kind,
+            "value": None if message_kind == "none" else message_value,
+            "target": target,
+            "surface": message or None,
+        }
 
     if st.button("Submit Action", type="primary"):
         resource_before = st.session_state.resource
 
-        # --- simplified resource logic (mirror agents/environment.py rules) ---
+        # --- resource logic (mirrors common/config.py and agents/environment.py) ---
         if action == "gather":
-            gained = 1 if is_drought else 3
-            st.session_state.resource += gained
+            st.session_state.resource += gather_yield(r, SCENARIO)
         elif action == "share":
             st.session_state.resource -= 1
         elif action == "hoard":
@@ -149,9 +195,11 @@ def game_screen():
             pass
         elif action == "skip":
             pass
+        elif action == "communicate":
+            pass
 
-        st.session_state.resource -= 2  # survival cost per round
-        st.session_state.alive = st.session_state.resource >= 0
+        st.session_state.resource -= SURVIVAL_COST  # survival cost per round
+        st.session_state.alive = is_alive(st.session_state.resource)
 
         record = log_action(
             trial_id=st.session_state.trial_id,
@@ -164,6 +212,7 @@ def game_screen():
             alive=st.session_state.alive,
             target_agent=target,
             message_sent=message,
+            meta={"claim": message_claim} if message_claim else None,
         )
         st.session_state.action_log.append(record)
 
@@ -177,26 +226,110 @@ def game_screen():
 # ---------- SCREEN 4: DEBRIEF ----------
 def debrief_screen():
     st.title("Thank You")
+
     st.write(
-        """
-        That's the end of the study. Thank you for participating.
+    """
+    That's the end of the study. Thank you for participating.
 
-        **About this study:** we're comparing how AI agents and human
-        participants behave when facing the same resource-scarcity
-        situations, to understand where AI decision-making diverges from
-        human decision-making. Your anonymized actions help us measure
-        this.
+    **About this study:** we're comparing how AI agents and human
+    participants behave when facing the same resource-scarcity
+    situations, to understand where AI decision-making diverges from
+    human decision-making. Your anonymized actions help us measure
+    this.
 
-        If you have questions about this research, please contact the
-        research team via your guide/instructor.
-        """
+    If you have questions about this research, please contact the
+    research team via your guide/instructor.
+    """
     )
-    st.subheader("Your session summary")
-    st.write(f"Participant ID: `{st.session_state.participant_id}`")
-    st.write(f"Rounds completed: {st.session_state.round}")
-    st.write(f"Final water level: {st.session_state.resource}")
-    st.dataframe(st.session_state.action_log)
 
+    st.subheader("Your Session Summary")
+
+    action_log = st.session_state.action_log
+    rounds_completed = len(action_log)
+
+    st.write(
+        f"Participant ID: `{st.session_state.participant_id}`"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Rounds Completed", rounds_completed)
+
+    with col2:
+        st.metric("Final Water", st.session_state.resource)
+
+    with col3:
+        status = "Survived" if st.session_state.alive else "Did Not Survive"
+        st.metric("Outcome", status)
+
+    st.divider()
+
+    # ---------- ACTION ANALYSIS ----------
+
+    st.subheader("Your Decision Pattern")
+
+    if action_log:
+
+        action_counts = count_actions(action_log)
+        action_percentages = action_rates(action_log)
+
+        st.bar_chart(action_counts)
+
+        st.subheader("Behavioral Metrics")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric(
+                "Sharing Rate",
+                f"{action_percentages['share']:.1f}%"
+            )
+
+        with col2:
+            st.metric(
+                "Hoarding Rate",
+                f"{action_percentages['hoard']:.1f}%"
+            )
+
+        with col3:
+            st.metric(
+                "Gathering Rate",
+                f"{action_percentages['gather']:.1f}%"
+            )
+
+        net_resource_change = resource_change(action_log)
+
+        st.metric(
+            "Net Water Change",
+            net_resource_change
+        )
+
+        drought_action = get_drought_action(
+            action_log,
+            DROUGHT_ROUND
+        )
+
+        if drought_action:
+            st.info(
+                f"Your action during the drought round was: "
+                f"**{drought_action}**"
+            )
+
+    else:
+        st.info("No actions were recorded for this session.")
+
+    st.divider()
+
+    st.subheader("Recorded Actions")
+
+    if action_log:
+        st.dataframe(
+            action_log,
+            width="stretch"
+        )
+    else:
+        st.info("No recorded actions available.")
 
 # ---------- ROUTER ----------
 stage = st.session_state.stage
