@@ -25,6 +25,8 @@ grep for "computer-controlled co-players" to find every copy.
 
 from __future__ import annotations
 
+import os
+
 from agents.environment import Observation
 from agents.llm_client import ChatMessage, LLMCompletionError, LLMRateLimitError, complete
 from common.actions import Action, ActionType, Direction, Message, MessageKind
@@ -148,24 +150,43 @@ def _parse_action(data: dict) -> Action:
     return action
 
 
-def decide(obs: Observation, *, provider: str | None = None, model: str | None = None) -> tuple[Action, dict]:
+from agents.human_exemplars import format_exemplars_prompt, query_human_exemplars
+
+
+def decide(
+    obs: Observation,
+    *,
+    provider: str | None = None,
+    model: str | None = None,
+    use_human_exemplars: bool | None = None,
+    n_exemplars: int = 2,
+) -> tuple[Action, dict]:
     """Decide one action for `obs`'s player. Never raises — on repeated failure it returns a
     `skip` action and flags `llm_parse_failure` in the returned meta dict, per
     agents/PHASE_PLAN.md Phase E ("parse failures are data, not crashes").
+
+    If `use_human_exemplars` is True (or env LLM_USE_HUMAN_EXEMPLARS=1), dynamically retrieves
+    actual human play trajectories from data/scarcity_study.db to condition the LLM via
+    few-shot In-Context Learning (ICL).
 
     Returns (action, meta) where meta includes at least: llm_parse_failure (bool),
     parse_attempts (int), and — on any successful provider round-trip, even a rejected one —
     prompt_tokens / completion_tokens / model / provider from agents/llm_client.py's usage
     tracking, so cost is counted even for attempts that failed our own validation.
-
-    On failure, meta also carries `llm_rate_limited` (bool) — kept **separate** from
-    `llm_parse_failure`. Caught live: a Gemini free-tier quota of 20 requests/day produced a batch
-    of failures that, viewed only through `llm_parse_failure`, looked exactly like the model
-    producing bad output 69% of the time. It wasn't a model-quality issue at all — it was this
-    project's quota headroom. Any parse-failure-rate figure that goes in the paper must filter out
-    `llm_rate_limited` rows, or it's reporting infrastructure noise as a finding about the model.
     """
-    messages = [ChatMessage(role="system", content=SYSTEM_PROMPT), ChatMessage(role="user", content=render_observation(obs))]
+    if use_human_exemplars is None:
+        use_human_exemplars = os.environ.get("LLM_USE_HUMAN_EXEMPLARS", "0").lower() in ("1", "true", "yes")
+
+    obs_prompt = render_observation(obs)
+    exemplars_count = 0
+    if use_human_exemplars:
+        exemplars = query_human_exemplars(obs, limit=n_exemplars)
+        exemplars_count = len(exemplars)
+        ex_text = format_exemplars_prompt(exemplars)
+        if ex_text:
+            obs_prompt = f"{ex_text}\n\n{obs_prompt}"
+
+    messages = [ChatMessage(role="system", content=SYSTEM_PROMPT), ChatMessage(role="user", content=obs_prompt)]
     usage: dict = {}
     last_error: str | None = None
     last_error_was_rate_limit = False
@@ -189,6 +210,8 @@ def decide(obs: Observation, *, provider: str | None = None, model: str | None =
                 "llm_parse_failure": False,
                 "llm_rate_limited": False,
                 "parse_attempts": attempt,
+                "use_human_exemplars": bool(use_human_exemplars),
+                "exemplars_count": exemplars_count,
                 **usage,
             }
         except LLMRateLimitError as exc:
@@ -206,5 +229,7 @@ def decide(obs: Observation, *, provider: str | None = None, model: str | None =
         "llm_rate_limited": last_error_was_rate_limit,
         "parse_attempts": 2,
         "parse_error": last_error,
+        "use_human_exemplars": bool(use_human_exemplars),
+        "exemplars_count": exemplars_count,
         **usage,
     }

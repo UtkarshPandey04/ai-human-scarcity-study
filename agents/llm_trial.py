@@ -25,12 +25,18 @@ LOG_DIR = os.path.join("data", "ai_logs")
 
 
 def run_trial(
-    scenario: str, seed: int, provider: str | None = None, model: str | None = None, trial_index: int = 0
+    scenario: str,
+    seed: int,
+    provider: str | None = None,
+    model: str | None = None,
+    trial_index: int = 0,
+    use_human_exemplars: bool = False,
 ) -> tuple[list[dict], dict]:
     env = ScarcityEnv(scenario=scenario, seed=seed)
     obs = env.reset()
 
-    trial_id = f"{scenario}_ai_llm_{provider or 'default'}_{seed:03d}_{trial_index:03d}"
+    arm_name = "llm_human_steered" if use_human_exemplars else "llm_only"
+    trial_id = f"{scenario}_ai_{arm_name}_{provider or 'default'}_{seed:03d}_{trial_index:03d}"
     timestamp = datetime.now(timezone.utc).isoformat()
 
     rows: list[dict] = []
@@ -47,7 +53,7 @@ def run_trial(
         for pid, o in obs.items():
             if not env.players[pid].alive:
                 continue
-            action, meta = decide(o, provider=provider, model=model)
+            action, meta = decide(o, provider=provider, model=model, use_human_exemplars=use_human_exemplars)
             actions[pid] = action
             decision_meta[pid] = meta
             total_calls += 1
@@ -67,15 +73,13 @@ def run_trial(
             row["timestamp"] = timestamp
             row["meta"] = {
                 "seed": seed,
-                "arm": "llm_only",
+                "arm": arm_name,
                 "model": m.get("model"),
                 "severity": None,
                 "decision_source": "llm",
+                "use_human_exemplars": use_human_exemplars,
+                "exemplars_count": m.get("exemplars_count", 0),
                 "llm_parse_failure": m.get("llm_parse_failure"),
-                # Kept separate from llm_parse_failure — a rate-limited call isn't evidence the
-                # model produced bad output, it's evidence this project ran out of quota. See
-                # agents/llm_reasoning.py::decide()'s docstring. Filter this out before computing
-                # any parse-failure-rate figure for the paper.
                 "llm_rate_limited": m.get("llm_rate_limited", False),
                 "prompt_tokens": m.get("prompt_tokens"),
                 "completion_tokens": m.get("completion_tokens"),
@@ -111,9 +115,20 @@ def _main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--provider", default=None, help="groq | gemini (defaults to LLM_PROVIDER env)")
     parser.add_argument("--model", default=None)
+    parser.add_argument(
+        "--use-human-exemplars",
+        action="store_true",
+        help="Condition LLM decisions on empirical human study exemplars from SQLite database",
+    )
     args = parser.parse_args()
 
-    rows, stats = run_trial(args.scenario, args.seed, provider=args.provider, model=args.model)
+    rows, stats = run_trial(
+        args.scenario,
+        args.seed,
+        provider=args.provider,
+        model=args.model,
+        use_human_exemplars=args.use_human_exemplars,
+    )
     validate_trial(rows)
     path = write_trial(rows)
 

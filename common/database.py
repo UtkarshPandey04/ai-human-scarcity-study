@@ -475,6 +475,86 @@ def export_combined_dataset(
     return output_path
 
 
+def export_sft_dataset(
+    output_path: str = os.path.join(PROJECT_ROOT, "data", "llm_sft_dataset.jsonl"),
+    db_path: str = DEFAULT_DB_PATH,
+) -> str:
+    """Export human trial actions as a Supervised Fine-Tuning (SFT / LoRA) JSONL dataset.
+
+    Formats each human turn into OpenAI / HuggingFace standard conversational format:
+    {"messages": [{"role": "system", ...}, {"role": "user", ...}, {"role": "assistant", ...}]}
+    """
+    init_db(db_path)
+    system_instruction = (
+        "You are a player in a resource-scarcity survival game. Each round you need 2 units of "
+        "water to survive. Decide your action (gather, share, hoard, skip, communicate) to survive "
+        "while navigating shared commons dilemmas."
+    )
+
+    records = []
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        query = """
+            SELECT a.trial_id, a.round, a.agent_id, a.action_type, a.target_agent,
+                   a.message_kind, a.message_value, a.message_surface,
+                   a.resource_before, a.decision_latency_ms,
+                   t.scenario, t.severity
+            FROM actions a
+            JOIN trials t ON a.trial_id = t.trial_id
+            WHERE a.source = 'human'
+            ORDER BY a.trial_id, a.round
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        for r in rows:
+            act_type = r["action_type"]
+            target = r["target_agent"]
+            msg = None
+            if r["message_kind"] and r["message_kind"] != "none":
+                msg = {
+                    "kind": r["message_kind"],
+                    "value": int(r["message_value"]) if r["message_value"] is not None else None,
+                    "target": target,
+                    "surface": r["message_surface"] or "",
+                }
+
+            completion_payload = {
+                "action_type": act_type,
+                "target": target if act_type in ["share", "communicate"] else None,
+                "amount": 1 if act_type == "share" else None,
+                "message": msg,
+            }
+
+            user_prompt = (
+                f"Round {r['round']} of 20.\n"
+                f"Scenario: {r['scenario'] or 'drought'}.\n"
+                f"Your water: {float(r['resource_before']):.1f}.\n"
+                "Decide your action. Respond only with the JSON object."
+            )
+
+            record = {
+                "messages": [
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_prompt},
+                    {"role": "assistant", "content": json.dumps(completion_payload)},
+                ],
+                "metadata": {
+                    "trial_id": r["trial_id"],
+                    "round": r["round"],
+                    "latency_ms": r["decision_latency_ms"],
+                },
+            }
+            records.append(record)
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        for rec in records:
+            f.write(json.dumps(rec) + "\n")
+
+    return output_path
+
+
 if __name__ == "__main__":
     print(f"Initializing database at: {DEFAULT_DB_PATH}")
     init_db()
@@ -482,6 +562,8 @@ if __name__ == "__main__":
     print(f"Synced {synced}/{total} JSONL trial logs to SQLite database.")
     csv_file = export_combined_dataset()
     print(f"Exported combined dataset to: {csv_file}")
+    sft_file = export_sft_dataset()
+    print(f"Exported SFT dataset to: {sft_file}")
     stats = get_db_summary()
     print(f"Summary: {stats}")
 

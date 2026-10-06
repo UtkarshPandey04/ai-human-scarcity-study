@@ -214,6 +214,42 @@ def export_data() -> int:
     return 0
 
 
+def export_sft() -> int:
+    """Export human trial actions as Supervised Fine-Tuning JSONL dataset (data/llm_sft_dataset.jsonl)."""
+    from common.database import export_sft_dataset
+    path = export_sft_dataset()
+    print(f"LLM SFT dataset exported to: {path}")
+    return 0
+
+
+def test_exemplars() -> int:
+    """Demonstrate dynamic human exemplar retrieval and prompt generation for LLMs."""
+    from agents.environment import Observation, OtherPlayerView
+    from common.actions import ActionType
+    from agents.human_exemplars import query_human_exemplars, format_exemplars_prompt
+
+    obs = Observation(
+        player_id="A1",
+        round=10,
+        total_rounds=20,
+        scenario="drought",
+        is_drought=True,
+        own_resource=3.0,
+        own_alive=True,
+        received_share_last_round=0.0,
+        pool_stock=8.0,
+        pool_capacity=30.0,
+        others=(OtherPlayerView(player_id="A2", alive=True, last_action=ActionType.GATHER, last_action_target=None),),
+    )
+    exemplars = query_human_exemplars(obs, limit=2)
+    prompt = format_exemplars_prompt(exemplars)
+    print("=== DYNAMIC HUMAN IN-CONTEXT LEARNING PROMPT BLOCK ===")
+    print(prompt)
+    print("======================================================")
+    print(f"Retrieved {len(exemplars)} human exemplars successfully [DONE]")
+    return 0
+
+
 TASKS = {
     "validate": validate,
     "validate_logs": validate_logs,
@@ -229,6 +265,8 @@ TASKS = {
     "sync_db": sync_db,
     "train": train,
     "export_data": export_data,
+    "export_sft": export_sft,
+    "test_exemplars": test_exemplars,
 }
 
 
