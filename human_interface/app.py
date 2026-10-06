@@ -110,6 +110,15 @@ if "severity" not in st.session_state:
 if "participant_id" not in st.session_state:
     st.session_state.participant_id = f"P{uuid.uuid4().hex[:4].upper()}"
 
+if "participant_name" not in st.session_state:
+    st.session_state.participant_name = ""
+
+if "demographics" not in st.session_state:
+    st.session_state.demographics = {}
+
+if "trial_synced_to_db" not in st.session_state:
+    st.session_state.trial_synced_to_db = False
+
 if "trial_id" not in st.session_state:
     st.session_state.trial_id = f"{st.session_state.scenario}_human_{st.session_state.seed:03d}_{uuid.uuid4().hex[:6]}"
 
@@ -154,6 +163,7 @@ def reset_environment():
     st.session_state.all_trial_rows = []
     st.session_state.last_round_events = []
     st.session_state.round_start_time = time.time()
+    st.session_state.trial_synced_to_db = False
 
 
 def go_to(stage: str):
@@ -201,12 +211,23 @@ with st.sidebar:
         st.write(f"**Severity:** `{st.session_state.severity}`")
 
     st.divider()
-    st.caption(f"Participant: `{st.session_state.participant_id}`")
+    p_name_val = st.session_state.get("participant_name", "").strip()
+    p_badge = f"**{p_name_val}** (`{st.session_state.participant_id}`)" if p_name_val else f"`{st.session_state.participant_id}`"
+    st.markdown(f"👤 **Participant:** {p_badge}")
     st.caption(f"Trial ID: `{st.session_state.trial_id}`")
 
     with st.expander("📥 Researcher Data Export", expanded=False):
-        from common.database import DEFAULT_DB_PATH, export_combined_dataset
-        csv_path = export_combined_dataset()
+        from common.database import DEFAULT_DB_PATH, export_combined_dataset, export_sft_dataset, get_db_summary, sync_all_logs_to_db
+        try:
+            sync_all_logs_to_db()
+            csv_path = export_combined_dataset()
+            export_sft_dataset()
+            db_summary = get_db_summary()
+            st.caption(f"💾 Total Trials: **{db_summary['total_trials']}** ({db_summary['human_trials']} Human)")
+            st.caption(f"📊 Action Steps: **{db_summary['total_actions']}**")
+        except Exception:
+            csv_path = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+
         if os.path.exists(csv_path):
             with open(csv_path, "r", encoding="utf-8") as f:
                 st.download_button(
@@ -225,6 +246,25 @@ with st.sidebar:
                     mime="application/x-sqlite3",
                     use_container_width=True,
                 )
+
+    with st.expander("🤖 AI & LLM Training Center", expanded=False):
+        st.markdown("**Model Training & LLM Steering**")
+        st.caption("Train ML models and update LLM exemplars directly using banked human data.")
+        if st.button("⚡ Train / Retrain Models", use_container_width=True):
+            with st.spinner("Training models on all human and AI trials..."):
+                try:
+                    from analysis.train_models import train_all_models_summary
+                    results = train_all_models_summary()
+                    st.success("✅ Models retrained successfully!")
+                    cls_res = results.get("classifier", {})
+                    pol_res = results.get("policy", {})
+                    if "accuracy" in cls_res:
+                        st.metric("Classifier CV Accuracy", f"{cls_res['accuracy'] * 100:.1f}%")
+                    if "test_accuracy" in pol_res:
+                        st.metric("Human Clone Policy Acc", f"{pol_res['test_accuracy'] * 100:.1f}%")
+                    st.info("💡 LLM agents automatically incorporate these updated trajectories as few-shot exemplars.")
+                except Exception as e:
+                    st.error(f"Training error: {e}")
 
 
 
@@ -258,7 +298,12 @@ def consent_screen():
     st.caption("Used solely for statistical subgroup analysis in the research paper.")
     dcol1, dcol2 = st.columns(2)
     with dcol1:
-        p_name = st.text_input("Name or Alias (Optional)", value="")
+        p_name = st.text_input(
+            "👤 Your Name or Alias (Optional)",
+            value=st.session_state.get("participant_name", ""),
+            placeholder="e.g. Alex, Sam, Utkarsh (or leave blank for Anonymous)",
+            help="If provided, your name will be linked to your trial in the database and CSV export.",
+        )
         age_group = st.selectbox(
             "Age Group",
             ["18-24", "25-34", "35-44", "45-54", "55+", "Prefer not to say"],
@@ -276,8 +321,10 @@ def consent_screen():
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Agree & Continue", disabled=not agree, type="primary"):
+            cleaned_name = p_name.strip() if p_name.strip() else None
+            st.session_state.participant_name = cleaned_name or ""
             st.session_state.demographics = {
-                "name": p_name.strip() if p_name.strip() else None,
+                "name": cleaned_name,
                 "age_group": age_group,
                 "gender": gender,
                 "ai_familiarity": ai_fam,
@@ -302,33 +349,20 @@ def instructions_screen():
 
     st.markdown(
         f"""
-        ### The Island Setting
-        - You are one of **{NUM_PLAYERS} players** sharing a water source on an island.
-        - The other four players (**A2, A3, A4, A5**) are computer-controlled co-players.
-        - The game lasts **{rounds_total} rounds**.
-        - You start with **{START_WATER} units of water**. Each round, you consume **{SURVIVAL_COST} units** to survive.
-        - If your water drops below 0 at the end of a round, you do not survive.
+        ### 🏝️ Survival Rules at a Glance
+        You are one of **{NUM_PLAYERS} players** (you + co-players A2, A3, A4, A5) surviving on a remote island for **{rounds_total} rounds**.
 
-        ### The Shared Water Source
-        - The central water pool is a **shared commons**. It regenerates naturally, but excessive harvesting
-          will deplete it. If the pool empties, gathering yields nothing!
+        | Rule / Action | How It Works | Strategic Impact |
+        | :--- | :--- | :--- |
+        | 💧 **Survival Need** | You automatically consume **{SURVIVAL_COST} units of water** every round. | If your water drops below 0, you die. |
+        | 🌊 **Shared Lake** | All players harvest from this central commons. | If over-harvested, the lake empties to 0! |
+        | 💧 **Gather** | Draws water from the lake (**+3 units** normal, **+1 unit** in drought). | Recharges your stock, but drains lake. |
+        | 🛡️ **Hoard / Ration** | Rest and ration reserves. Consumes only **{HOARD_SURVIVAL_COST} unit** (saves 1 unit!). | Conserves your water & protects lake! |
+        | 🤝 **Share** | Gift 1+ water units to a struggling co-player. | Saves teammates and builds mutual trust. |
+        | 💬 **Communicate** | Broadcast statements, promises, or requests. | Coordinates team actions. |
+        | ⏳ **Skip** | Take no action (still consumes {SURVIVAL_COST} units). | Inactive turn. |
 
-        ### Your Actions
-        Each round, choose one of five actions:
-        - 💧 **Gather** — Draw water from the shared pool. (Yields 3 water normally, but only 1 during drought).
-        - 🤝 **Share** — Transfer 1 or more water units from your personal stock to another player.
-        - 🛡️ **Hoard** — Ration and conserve your personal reserves. Hoarding reduces your consumption cost to **{HOARD_SURVIVAL_COST} water** (saving 1 unit) while drawing nothing from the shared pool.
-        - ⏳ **Skip** — Take no action this round (consumes standard {SURVIVAL_COST} water).
-        - 💬 **Communicate** — Broadcast a structured message or claim to one or all players without transferring water.
-
-        ### Communication & Claims
-        When you **Share** or **Communicate**, you can attach a structured claim:
-        - `claim_stock`: Report how much water you currently hold (e.g. "I have 1 water left").
-        - `promise_share`: Promise to share water in future rounds.
-        - `request`: Ask another player for help.
-        - `accuse`: Flag another player's selfish behavior.
-
-        *(Note: Water levels are private. Other players only see what you do and what you claim.)*
+        *(Note: Personal water reserves are private. Players only see actions and public broadcast claims.)*
         """
     )
 
@@ -356,21 +390,48 @@ def game_screen():
     drought_now = is_drought(r, env.scenario)
     round_label = "⚠️ Drought Round — Severe Scarcity!" if drought_now else "Normal Round"
 
+    p_name_val = st.session_state.get("participant_name", "").strip()
+    p_display = f"Player: **{p_name_val}** (`{focal_id}`)" if p_name_val else f"Player: `{focal_id}`"
+
     st.title(f"Round {r} of {total_r}")
-    st.caption(f"Scenario: **{env.scenario.upper()}** | {round_label}")
+    st.caption(f"{p_display} | Scenario: **{env.scenario.upper()}** | {round_label}")
+
+    if focal_player.alive and focal_player.resource <= 2.0:
+        st.warning(
+            f"⚠️ **Low Water Critical Warning:** You have **{focal_player.resource:.1f} units** remaining! "
+            f"You will consume **{SURVIVAL_COST} units** at the end of this round. "
+            "Consider **Gathering** or **Hoarding** (which cuts cost to 1 unit) to survive!"
+        )
 
     # Top Status Bar
     col1, col2, col3 = st.columns(3)
     col1.metric("Your Water", f"{focal_player.resource:.1f}")
-    col2.metric("Your Status", "Alive" if focal_player.alive else "Deceased")
+    col2.metric("Your Status", "Alive ✅" if focal_player.alive else "Deceased ❌")
     pool_pct = max(0.0, min(100.0, (env.pool.stock / env.pool.capacity) * 100))
-    col3.metric("Shared Pool Stock", f"{env.pool.stock:.1f} / {env.pool.capacity:.0f}")
+    if env.pool.stock > 15.0:
+        pool_status = "🟢 Lake Healthy"
+    elif env.pool.stock >= 6.0:
+        pool_status = "🟡 Lake Stressed"
+    else:
+        pool_status = "🔴 Lake Depleted"
+    col3.metric("Shared Lake Stock", f"{env.pool.stock:.1f} / {env.pool.capacity:.0f}", pool_status)
 
     st.progress(pool_pct / 100.0)
 
     # If focal player died
     if not focal_player.alive:
-        st.error("You ran out of water and could not survive on the island.")
+        st.error("💀 **Game Over:** You ran out of water and could not survive on the island.")
+        # Ensure trial is validated and synced to SQLite database and CSV right now!
+        if not st.session_state.get("trial_synced_to_db") and st.session_state.all_trial_rows:
+            try:
+                from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
+                validate_trial_log(st.session_state.trial_id)
+                sync_trial_log_to_db(st.session_state.all_trial_rows)
+                export_combined_dataset()
+                export_sft_dataset()
+                st.session_state.trial_synced_to_db = True
+            except Exception:
+                pass
         if st.button("Proceed to Debrief", type="primary"):
             go_to("debrief")
         return
@@ -411,6 +472,15 @@ def game_screen():
             "communicate": "💬 Communicate",
         }.get(a, a),
     )
+
+    action_helpers = {
+        "gather": f"💧 **Gather Water:** Draw water from the shared lake (Yields **+{1 if drought_now else 3} units** this round). End-of-round consumption: **-{SURVIVAL_COST} units**.",
+        "share": "🤝 **Share Water:** Gift 1 or more units from your personal stock to a co-player to keep them alive and foster mutual trust.",
+        "hoard": f"🛡️ **Hoard / Ration:** Rest and conserve personal reserves. **Consumes only -{HOARD_SURVIVAL_COST} unit** (saves 1 water!) and draws **0** from the lake.",
+        "skip": f"⏳ **Skip Round:** Take no action this round. Still consumes normal **-{SURVIVAL_COST} units**.",
+        "communicate": "💬 **Communicate:** Broadcast a coordination claim, request, or pledge without transferring water.",
+    }
+    st.info(action_helpers.get(action_type_str, ""))
 
     target_agent = None
     share_amount = 1
@@ -575,6 +645,14 @@ def game_screen():
         st.session_state.round_start_time = time.time()
         if done:
             validate_trial_log(st.session_state.trial_id)
+            try:
+                from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
+                sync_trial_log_to_db(st.session_state.all_trial_rows)
+                export_combined_dataset()
+                export_sft_dataset()
+                st.session_state.trial_synced_to_db = True
+            except Exception:
+                pass
             go_to("debrief")
         else:
             st.rerun()
@@ -582,13 +660,24 @@ def game_screen():
 # ---------- SCREEN 4: DEBRIEF & BEHAVIORAL TURING TEST ----------
 
 def debrief_screen():
-    st.title("Study Completed — Thank You!")
+    # Guarantee that trial is synced to SQLite database and CSV export right upon landing!
+    if not st.session_state.get("trial_synced_to_db") and st.session_state.all_trial_rows:
+        try:
+            from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
+            validate_trial_log(st.session_state.trial_id)
+            sync_trial_log_to_db(st.session_state.all_trial_rows)
+            export_combined_dataset()
+            export_sft_dataset()
+            st.session_state.trial_synced_to_db = True
+        except Exception:
+            pass
+
+    p_name = st.session_state.get("participant_name", "").strip()
+    p_display = f"{p_name} ({st.session_state.participant_id})" if p_name else st.session_state.participant_id
+    st.title(f"Study Completed — Thank You, {p_name or st.session_state.participant_id}!")
     st.write(
-        """
-        Your trial has finished and all data has been securely logged.
-        Below is an analysis of your behavioral profile, society-level outcomes,
-        and an interactive behavioral Turing test.
-        """
+        f"Your trial has finished and your decision log has been securely saved into the research database "
+        f"under participant **{p_display}**."
     )
 
     action_log = st.session_state.action_log
@@ -661,7 +750,7 @@ def debrief_screen():
             "Which trajectory was produced by the HUMAN participant?",
             ["Trajectory A is Human, Trajectory B is AI", "Trajectory B is Human, Trajectory A is AI"],
         )
-        if st.button("Submit Judgment"):
+        if st.button("Submit Judgment", type="primary"):
             st.session_state.turing_guess = choice
             st.session_state.turing_submitted = True
             is_correct_val = "Trajectory A is Human" in choice
@@ -680,8 +769,10 @@ def debrief_screen():
                     + "\n"
                 )
             try:
-                from common.database import save_turing_judgment
+                from common.database import export_combined_dataset, save_turing_judgment, sync_trial_log_to_db
                 save_turing_judgment(st.session_state.participant_id, choice, is_correct_val)
+                sync_trial_log_to_db(st.session_state.all_trial_rows)
+                export_combined_dataset()
             except Exception:
                 pass
             st.rerun()
@@ -697,16 +788,82 @@ def debrief_screen():
     st.divider()
 
     # ---------- SECTION D: ACTION LOG DATA ----------
-    st.subheader("📄 Recorded Trial Log")
+    st.subheader(f"📄 Recorded Trial Log for {p_display}")
     if action_log:
         st.dataframe(action_log, width="stretch")
         jsonl_str = "\n".join([json.dumps(r) for r in all_rows])
-        st.download_button(
-            label="Download Complete Trial JSONL",
-            data=jsonl_str,
-            file_name=f"{st.session_state.trial_id}.jsonl",
-            mime="application/jsonlines",
+        dcol1, dcol2 = st.columns(2)
+        with dcol1:
+            st.download_button(
+                label="📥 Download Complete Trial JSONL",
+                data=jsonl_str,
+                file_name=f"{st.session_state.trial_id}.jsonl",
+                mime="application/jsonlines",
+                use_container_width=True,
+            )
+        with dcol2:
+            from common.database import export_combined_dataset
+            csv_path = export_combined_dataset()
+            if os.path.exists(csv_path):
+                with open(csv_path, "r", encoding="utf-8") as f:
+                    st.download_button(
+                        label="📥 Download Combined CSV (With Your Trial)",
+                        data=f.read(),
+                        file_name="combined_scarcity_dataset.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                    )
+
+    # ---------- SECTION E: AI & LLM MODEL TRAINING CENTER ----------
+    st.divider()
+    st.subheader("🤖 How Your Decisions Train Our AI & LLM Models")
+    st.write(
+        """
+        Your trial was automatically banked into the research database. Here is how your gameplay powers each model:
+        - **Model A (Distinguishability Classifier):** Learns behavioral feature weights to separate human reciprocity from AI reflex rules.
+        - **Model B (Human Clone Policy):** Uses imitation learning to predict human actions directly from game states.
+        - **Model C (Dynamic In-Context LLM Steering):** Groq (LLaMA-3) & Gemini agents pull your strategies as few-shot exemplars.
+        - **Model D (SFT Fine-Tuning Dataset):** Your game steps are formatted into `data/llm_sft_dataset.jsonl` for offline fine-tuning.
+        """
+    )
+
+    mcol1, mcol2 = st.columns([2, 1])
+    with mcol1:
+        from common.database import get_db_summary
+        summary = get_db_summary()
+        st.metric(
+            "Total Trials in Database",
+            f"{summary['total_trials']} trials",
+            f"{summary['human_trials']} human sessions",
         )
+        st.caption(f"Banked Action Steps: **{summary['total_actions']}**")
+    with mcol2:
+        if st.button("⚡ Retrain AI Models with My Data Now", type="primary", use_container_width=True):
+            with st.spinner("Retraining Classifier & Human Clone Policy on all data..."):
+                try:
+                    from analysis.train_models import train_all_models_summary
+                    results = train_all_models_summary()
+                    st.session_state.latest_training_results = results
+                    st.balloons()
+                    st.success("🎉 Models successfully updated with your gameplay!")
+                except Exception as e:
+                    st.error(f"Training error: {e}")
+
+    if st.session_state.get("latest_training_results"):
+        res = st.session_state.latest_training_results
+        cls_res = res.get("classifier", {})
+        pol_res = res.get("policy", {})
+        rcol1, rcol2 = st.columns(2)
+        with rcol1:
+            st.markdown("🎯 **Model A: Distinguishability Classifier**")
+            st.write(f"- 5-Fold Cross-Val Accuracy: **{cls_res.get('accuracy', 0.0) * 100:.1f}%**")
+            st.write(f"- ROC-AUC Score: **{cls_res.get('auc', 0.0):.3f}**")
+            st.caption("Checkpoint: `models/distinguishability_classifier.json`")
+        with rcol2:
+            st.markdown("🧬 **Model B: Human Clone Policy**")
+            st.write(f"- Test Set Accuracy: **{pol_res.get('test_accuracy', 0.0) * 100:.1f}%**")
+            st.write(f"- Trained Steps: **{pol_res.get('n_samples', 0)}**")
+            st.caption("Checkpoint: `models/human_clone_policy.json`")
 
 
 # ---------- ROUTER ----------

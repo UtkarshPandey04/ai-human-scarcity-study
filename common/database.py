@@ -144,9 +144,10 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
         )
 
         # 5. Unified View combining trial metadata, demographics, and behavioral features
+        cursor.execute("DROP VIEW IF EXISTS v_combined_dataset")
         cursor.execute(
             """
-            CREATE VIEW IF NOT EXISTS v_combined_dataset AS
+            CREATE VIEW v_combined_dataset AS
             SELECT 
                 t.trial_id,
                 t.source,
@@ -192,16 +193,17 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
 
     init_db(db_path)
     trial_id = rows[0]["trial_id"]
-    source = rows[0].get("source", "ai")
     scenario = rows[0].get("scenario", "drought")
     meta = rows[0].get("meta") or {}
-    arm = meta.get("arm", "human" if source == "human" else "ai")
-    seed = meta.get("seed", 0)
-    severity = meta.get("severity", 0.7 if scenario == "drought" else 0.0)
 
     # Determine focal agent
     human_agents = [r["agent_id"] for r in rows if r.get("source") == "human"]
     focal_id = human_agents[0] if human_agents else "A1"
+
+    source = "human" if human_agents else rows[0].get("source", "ai")
+    arm = "human" if human_agents else meta.get("arm", "ai")
+    seed = meta.get("seed", 0)
+    severity = meta.get("severity", 0.7 if scenario == "drought" else 0.0)
 
     focal_rows = [r for r in rows if r["agent_id"] == focal_id]
     rounds_completed = len(focal_rows)
@@ -229,8 +231,15 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
 
     created_at = rows[0].get("timestamp", datetime.now(timezone.utc).isoformat())
 
-    # Extract demographic info if recorded
+    # Extract demographic info if recorded across any row
     demographics = meta.get("demographics") or {}
+    if not demographics:
+        for r in rows:
+            r_meta = r.get("meta") or {}
+            if r_meta.get("demographics"):
+                demographics = r_meta["demographics"]
+                break
+
     p_name = demographics.get("name")
     p_age = demographics.get("age_group")
     p_gender = demographics.get("gender")
@@ -428,6 +437,25 @@ def get_db_summary(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any]:
         "turing_accuracy": turing_acc,
         "scenario_counts": scenario_counts,
     }
+
+
+def save_turing_judgment(
+    participant_id: str,
+    guess: str,
+    correct: bool,
+    db_path: str = DEFAULT_DB_PATH,
+) -> None:
+    """Save participant judgment from the Behavioral Turing Test."""
+    init_db(db_path)
+    with get_connection(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO turing_judgments (participant_id, guess, correct, timestamp)
+            VALUES (?, ?, ?, ?)
+            """,
+            (participant_id, guess, 1 if correct else 0, datetime.now(timezone.utc).isoformat()),
+        )
 
 
 def load_human_action_dataset(db_path: str = DEFAULT_DB_PATH) -> list[dict[str, Any]]:

@@ -349,6 +349,17 @@ class HumanClonePolicy:
             return Action(type=ActionType.GATHER)
 
 
+def train_all_models_summary() -> dict[str, Any]:
+    """Train both models and return structured metrics dictionary for UI consumption."""
+    sync_all_logs_to_db()
+    res_cls = train_distinguishability_classifier()
+    res_pol = train_human_behavior_policy()
+    return {
+        "classifier": res_cls,
+        "policy": res_pol,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
