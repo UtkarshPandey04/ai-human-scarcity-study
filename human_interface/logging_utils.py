@@ -16,7 +16,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from common.schema import validate_row
+from common.schema import validate_row, validate_trial
 
 LOG_DIR = os.path.join("data", "human_logs")
 
@@ -37,6 +37,7 @@ def log_action(
     target_agent: str | None = None,
     message_sent: str | None = None,
     meta: dict | None = None,
+    source: str = "human",
 ):
     """
     Append one action record to data/human_logs/<trial_id>.jsonl
@@ -47,7 +48,7 @@ def log_action(
 
     record = {
         "trial_id": trial_id,
-        "source": "human",
+        "source": source,
         "agent_id": agent_id,
         "round": round_num,
         "scenario": scenario,
@@ -71,6 +72,19 @@ def log_action(
     return record
 
 
+def log_round_records(trial_id: str, records: list[dict]) -> list[dict]:
+    """Append a batch of records (all players for a round) to the trial log.
+    Validates each row before writing."""
+    ensure_log_dir()
+    log_path = os.path.join(LOG_DIR, f"{trial_id}.jsonl")
+    for r in records:
+        validate_row(r)
+    with open(log_path, "a", encoding="utf-8") as f:
+        for r in records:
+            f.write(json.dumps(r) + "\n")
+    return records
+
+
 def load_trial_log(trial_id: str):
     """Read back a trial's full log as a list of dicts. Useful for the
     debrief screen or for quick local debugging."""
@@ -79,3 +93,19 @@ def load_trial_log(trial_id: str):
         return []
     with open(log_path, "r", encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
+
+
+def validate_trial_log(trial_id: str) -> None:
+    """Validate all rows of a completed trial against cross-row invariants,
+    and persist the verified trial to the SQLite database.
+    """
+    rows = load_trial_log(trial_id)
+    if rows:
+        validate_trial(rows)
+        try:
+            from common.database import save_trial_to_db
+            save_trial_to_db(rows)
+        except Exception:
+            pass
+
+

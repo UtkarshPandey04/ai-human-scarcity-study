@@ -1,68 +1,264 @@
 """
 app.py — Group 1 (Sujal & Utkarsh)
 
-Streamlit interface for the human side of the scarcity study.
-Flow: consent -> instructions -> game (multiple rounds) -> debrief
+Streamlit interface for the human side of the AI-Human Scarcity Study.
+Flow: consent -> instructions -> game (multiple rounds with focal-player substitution) -> debrief
+
+Architecture:
+- Matched-protocol design: 5 players on the island (1 focal human participant + 4 co-players
+  running deterministic policies from agents/coplayers.py).
+- Shared logistic pool (agents/environment.ScarcityEnv): real commons depletion and tragedy dynamics.
+- Slotted communication: machine-verifiable deception arithmetic.
+- Full trial logging compliant with LOGGING_SCHEMA.md and common/schema.py.
+- Novelties: Decision latency logging, Scarcity severity sweep, Behavioral Turing Test debrief module.
 
 Run locally with:  streamlit run human_interface/app.py
 """
 
+from __future__ import annotations
+
+import json
 import os
 import sys
+import time
 import uuid
+from datetime import datetime, timezone
 import streamlit as st
 
-# Ensure project root is on sys.path so common modules can be imported
+# Ensure project root is on sys.path so common and agent modules can be imported
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from common.actions import ActionType, MessageKind
+from common.actions import Action, ActionType, Message, MessageKind
 from common.config import (
     DROUGHT_ROUND,
-    GRID_SIZE,
-    NUM_PLAYERS as NUM_AGENTS_ON_ISLAND,
+    MATCHED_SEEDS,
+    NUM_PLAYERS,
+    SCENARIOS,
     START_WATER,
     SURVIVAL_COST,
     TOTAL_ROUNDS,
     gather_yield,
     is_alive,
+    is_drought,
 )
-from logging_utils import log_action
-from session_analysis import (
+from agents.coplayers import get_policy
+from agents.environment import ScarcityEnv
+from human_interface.logging_utils import (
+    LOG_DIR,
+    log_round_records,
+    load_trial_log,
+    validate_trial_log,
+)
+from human_interface.session_analysis import (
     action_rates,
+    calculate_deception,
+    calculate_gini,
+    calculate_latency_stats,
     count_actions,
     get_drought_action,
     resource_change,
 )
 
-# ---------- CONFIG ----------
-SCENARIO = "drought"
-ACTIONS = [a.value for a in ActionType]
+# ---------- CONSTANTS & CO-PLAYERS CONFIG ----------
+COPLAYER_IDS = [f"A{i}" for i in range(2, NUM_PLAYERS + 1)]
+COPLAYER_POLICIES = ["cooperator", "free_rider", "tit_for_tat", "random"]
+ACTIONS = [
+    ActionType.GATHER.value,
+    ActionType.SHARE.value,
+    ActionType.HOARD.value,
+    ActionType.SKIP.value,
+    ActionType.COMMUNICATE.value,
+]
 MESSAGE_KINDS = [m.value for m in MessageKind]
 
-st.set_page_config(page_title="Scarcity Study", layout="centered")
+st.set_page_config(
+    page_title="AI-Human Scarcity Study",
+    page_icon="🏝️",
+    layout="centered",
+)
+
+# ---------- RESEARCHER CONTROLS & QUERY PARAMS ----------
+query_params = st.query_params
+default_scenario = query_params.get("scenario", "drought")
+if default_scenario not in SCENARIOS:
+    default_scenario = "drought"
+
+try:
+    default_seed = int(query_params.get("seed", 0))
+    if default_seed not in MATCHED_SEEDS:
+        default_seed = 0
+except (ValueError, TypeError):
+    default_seed = 0
 
 # ---------- SESSION STATE INIT ----------
 if "stage" not in st.session_state:
     st.session_state.stage = "consent"
-if "trial_id" not in st.session_state:
-    st.session_state.trial_id = f"{SCENARIO}_human_{uuid.uuid4().hex[:6]}"
+
+if "scenario" not in st.session_state:
+    st.session_state.scenario = default_scenario
+
+if "seed" not in st.session_state:
+    st.session_state.seed = default_seed
+
+if "severity" not in st.session_state:
+    st.session_state.severity = 0.7 if st.session_state.scenario == "drought" else 0.0
+
 if "participant_id" not in st.session_state:
     st.session_state.participant_id = f"P{uuid.uuid4().hex[:4].upper()}"
-if "round" not in st.session_state:
-    st.session_state.round = 1
-if "resource" not in st.session_state:
-    st.session_state.resource = START_WATER
-if "alive" not in st.session_state:
-    st.session_state.alive = True
+
+if "demographics" not in st.session_state:
+    st.session_state.demographics = {}
+
+if "trial_synced_to_db" not in st.session_state:
+    st.session_state.trial_synced_to_db = False
+
+if "trial_id" not in st.session_state:
+    st.session_state.trial_id = f"{st.session_state.scenario}_human_{st.session_state.seed:03d}_{uuid.uuid4().hex[:6]}"
+
 if "action_log" not in st.session_state:
     st.session_state.action_log = []
 
+if "all_trial_rows" not in st.session_state:
+    st.session_state.all_trial_rows = []
 
-def go_to(stage):
+if "round_start_time" not in st.session_state:
+    st.session_state.round_start_time = time.time()
+
+if "last_round_events" not in st.session_state:
+    st.session_state.last_round_events = []
+
+if "turing_guess" not in st.session_state:
+    st.session_state.turing_guess = None
+
+if "turing_submitted" not in st.session_state:
+    st.session_state.turing_submitted = False
+
+
+def reset_environment():
+    """Instantiate ScarcityEnv with focal-player substitution and co-players."""
+    focal_id = st.session_state.participant_id
+    player_ids = [focal_id] + COPLAYER_IDS
+    env = ScarcityEnv(
+        scenario=st.session_state.scenario,
+        seed=st.session_state.seed,
+        player_ids=player_ids,
+    )
+    # Instantiate co-player policies with matched deterministic seeds
+    coplayers = {
+        pid: get_policy(COPLAYER_POLICIES[i], seed=st.session_state.seed + i + 1)
+        for i, pid in enumerate(COPLAYER_IDS)
+    }
+    obs = env.reset()
+    st.session_state.env = env
+    st.session_state.coplayers = coplayers
+    st.session_state.current_obs = obs
+    st.session_state.action_log = []
+    st.session_state.all_trial_rows = []
+    st.session_state.last_round_events = []
+    st.session_state.round_start_time = time.time()
+    st.session_state.trial_synced_to_db = False
+
+
+def go_to(stage: str):
     st.session_state.stage = stage
     st.rerun()
+
+
+# ---------- SIDEBAR: STUDY CONFIG (Editable prior to game start) ----------
+with st.sidebar:
+    st.header("🔬 Session Parameters")
+    if st.session_state.stage in ("consent", "instructions"):
+        selected_scenario = st.selectbox(
+            "Scenario",
+            options=list(SCENARIOS),
+            index=list(SCENARIOS).index(st.session_state.scenario),
+            help="Experimental condition: calm (baseline), drought (resource shock), repeated_trust (30 rounds)",
+        )
+        selected_seed = st.selectbox(
+            "Matched Seed",
+            options=list(MATCHED_SEEDS),
+            index=st.session_state.seed,
+            help="Fixed RNG seed matched against the AI primary arm trials (0-29)",
+        )
+        severity_val = st.slider(
+            "Scarcity Severity",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.7 if selected_scenario == "drought" else 0.0,
+            step=0.1,
+            help="Novelty N1: dose-response parameter",
+        )
+        if (
+            selected_scenario != st.session_state.scenario
+            or selected_seed != st.session_state.seed
+            or severity_val != st.session_state.severity
+        ):
+            st.session_state.scenario = selected_scenario
+            st.session_state.seed = selected_seed
+            st.session_state.severity = severity_val
+            st.session_state.trial_id = f"{selected_scenario}_human_{selected_seed:03d}_{uuid.uuid4().hex[:6]}"
+            st.rerun()
+    else:
+        st.write(f"**Scenario:** `{st.session_state.scenario}`")
+        st.write(f"**Matched Seed:** `{st.session_state.seed}`")
+        st.write(f"**Severity:** `{st.session_state.severity}`")
+
+    st.divider()
+    st.markdown(f"👤 **Participant ID:** `{st.session_state.participant_id}`")
+    st.caption(f"Trial ID: `{st.session_state.trial_id}`")
+
+    with st.expander("📥 Researcher Data Export", expanded=False):
+        from common.database import DEFAULT_DB_PATH, export_combined_dataset, export_sft_dataset, get_db_summary, sync_all_logs_to_db
+        try:
+            sync_all_logs_to_db()
+            csv_path = export_combined_dataset()
+            export_sft_dataset()
+            db_summary = get_db_summary()
+            st.caption(f"💾 Total Trials: **{db_summary['total_trials']}** ({db_summary['human_trials']} Human)")
+            st.caption(f"📊 Action Steps: **{db_summary['total_actions']}**")
+        except Exception:
+            csv_path = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+
+        if os.path.exists(csv_path):
+            with open(csv_path, "r", encoding="utf-8") as f:
+                st.download_button(
+                    label="Download Combined CSV",
+                    data=f.read(),
+                    file_name="combined_scarcity_dataset.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+        if os.path.exists(DEFAULT_DB_PATH):
+            with open(DEFAULT_DB_PATH, "rb") as f:
+                st.download_button(
+                    label="Download SQLite DB",
+                    data=f.read(),
+                    file_name="scarcity_study.db",
+                    mime="application/x-sqlite3",
+                    use_container_width=True,
+                )
+
+    with st.expander("🤖 AI & LLM Training Center", expanded=False):
+        st.markdown("**Model Training & LLM Steering**")
+        st.caption("Train ML models and update LLM exemplars directly using banked human data.")
+        if st.button("⚡ Train / Retrain Models", use_container_width=True):
+            with st.spinner("Training models on all human and AI trials..."):
+                try:
+                    from analysis.train_models import train_all_models_summary
+                    results = train_all_models_summary()
+                    st.success("✅ Models retrained successfully!")
+                    cls_res = results.get("classifier", {})
+                    pol_res = results.get("policy", {})
+                    if "accuracy" in cls_res:
+                        st.metric("Classifier CV Accuracy", f"{cls_res['accuracy'] * 100:.1f}%")
+                    if "test_accuracy" in pol_res:
+                        st.metric("Human Clone Policy Acc", f"{pol_res['test_accuracy'] * 100:.1f}%")
+                    st.info("💡 LLM agents automatically incorporate these updated trajectories as few-shot exemplars.")
+                except Exception as e:
+                    st.error(f"Training error: {e}")
+
 
 
 # ---------- SCREEN 1: CONSENT ----------
@@ -70,266 +266,589 @@ def consent_screen():
     st.title("Research Study: Resource Decisions Under Scarcity")
     st.write(
         """
-        You are invited to take part in a short research study (10-15 minutes)
-        about how people make decisions when resources are limited.
+        You are invited to take part in a research study (10–15 minutes) examining how people
+        make allocation decisions when essential shared resources are scarce.
 
-        **What you'll do:** play a short round-based game where you manage a
-        resource (e.g. water) shared with four computer-controlled co-players, and decide
-        whether to gather, share, hoard, or communicate with others.
+        **What you will do:**
+        - You will participate in a round-based survival simulation set on an island.
+        - You and four computer-controlled co-players share a common water pool.
+        - Each round you must manage your water to survive while deciding whether to
+          gather, share, hoard, or communicate.
 
-        You will not be matched with other human participants during the game.
-
-        **What we record:** your in-game actions and any messages you send
-        to other players during the game. No personally identifying
-        information is collected — you are assigned an anonymous ID.
-
-        **Voluntary participation:** you may stop at any time without
-        penalty. Your data will be used only for academic research purposes
-        and reported in aggregate.
+        **Ethics & Co-Player Disclosure:**
+        - **Co-players:** The other four players on the island are automated computer policies.
+          You are not playing with other active human subjects in real time.
+        - **Anonymity:** No personally identifying information is collected. Your decisions
+          are recorded under an anonymous participant ID.
+        - **Voluntary Participation:** You may withdraw at any time by closing this browser tab.
+          All data is collected solely for scientific research and reported in aggregate.
         """
     )
-    agree = st.checkbox("I have read the above and agree to participate.")
+
+    agree = st.checkbox("I have read the information above and consent to participate.")
+
+    st.subheader("Demographic Background (Optional)")
+    st.caption("Used solely for statistical subgroup analysis in the research paper.")
+    dcol1, dcol2 = st.columns(2)
+    with dcol1:
+        age_group = st.selectbox(
+            "Age Group",
+            ["18-24", "25-34", "35-44", "45-54", "55+", "Prefer not to say"],
+        )
+        gender = st.selectbox(
+            "Gender",
+            ["Female", "Male", "Non-binary", "Other", "Prefer not to say"],
+        )
+    with dcol2:
+        ai_fam = st.selectbox(
+            "AI / Tech Familiarity",
+            ["Beginner (rarely use)", "Intermediate (regular user)", "Advanced (developer / researcher)"],
+        )
+
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Agree & Continue", disabled=not agree, type="primary"):
+            st.session_state.demographics = {
+                "age_group": age_group,
+                "gender": gender,
+                "ai_familiarity": ai_fam,
+            }
             go_to("instructions")
     with col2:
         if st.button("Decline"):
-            st.warning("Thank you for your time. You may close this window.")
+            st.warning("Thank you for your consideration. You may close this window.")
             st.stop()
+
 
 
 # ---------- SCREEN 2: INSTRUCTIONS ----------
 def instructions_screen():
     st.title("How the Game Works")
-    st.write(
-                f"""
-                - You are one of **{NUM_AGENTS_ON_ISLAND} players** on a small island.
-                    The other four players are computer-controlled co-players.
-                - The game lasts **{TOTAL_ROUNDS} rounds**. Each round you need
-                    **2 units of water** to survive.
-                - Available actions each round:
-                        - **Gather** — collect water from the shared source
-                        - **Share** — give some of your water to another player
-                        - **Hoard** — keep all your water, take no other action
-                        - **Move** — reposition on the island (may reveal new resources)
-                        - **Skip** — take no action this round
-                        - **Communicate** — send a structured message to another player
-                - You may attach a structured message when you share or communicate:
-                    choose its kind, numeric value, and target, with optional wording.
-                - Water availability changes over time — pay attention each round.
 
-            There are no right or wrong answers. Please play naturally, as you
-            actually would in this situation.
-            """
-            )
-    if st.button("Start Game", type="primary"):
+    rounds_total = (
+        TOTAL_ROUNDS * 3
+        if st.session_state.scenario == "repeated_trust"
+        else TOTAL_ROUNDS
+    )
+
+    st.markdown(
+        f"""
+        ### 🏝️ Survival Rules at a Glance
+        You are one of **{NUM_PLAYERS} players** (you + co-players A2, A3, A4, A5) surviving on a remote island for **{rounds_total} rounds**.
+
+        | Rule / Action | How It Works | Strategic Impact |
+        | :--- | :--- | :--- |
+        | 💧 **Survival Need** | You automatically consume **{SURVIVAL_COST} units of water** every round. | If your water drops below 0, you die. |
+        | 🌊 **Shared Lake** | All players harvest from this central commons. | If over-harvested, the lake empties to 0! |
+        | 💧 **Gather** | Draws water from the lake (**+3 units** normal, **+1 unit** in drought). | Recharges your stock, but drains lake. |
+        | 🛡️ **Hoard / Ration** | Rest and ration reserves. Consumes only **{HOARD_SURVIVAL_COST} unit** (saves 1 unit!). | Conserves your water & protects lake! |
+        | 🤝 **Share** | Gift 1+ water units to a struggling co-player. | Saves teammates and builds mutual trust. |
+        | 💬 **Communicate** | Broadcast statements, promises, or requests. | Coordinates team actions. |
+        | ⏳ **Skip** | Take no action (still consumes {SURVIVAL_COST} units). | Inactive turn. |
+
+        *(Note: Personal water reserves are private. Players only see actions and public broadcast claims.)*
+        """
+    )
+
+    if st.session_state.scenario == "drought":
+        st.warning(
+            f"⚠️ **Drought Alert:** In Round {DROUGHT_ROUND}, an environmental shock will drastically reduce water yield and pool regeneration."
+        )
+
+    if st.button("Start Simulation", type="primary"):
+        reset_environment()
         go_to("game")
 
 
 # ---------- SCREEN 3: GAME ----------
 def game_screen():
-    r = st.session_state.round
-    is_drought = r == DROUGHT_ROUND
-    scenario_label = "⚠️ Drought — water is scarce this round" if is_drought else "Normal round"
+    if "env" not in st.session_state or st.session_state.env is None:
+        reset_environment()
 
-    st.title(f"Round {r} / {TOTAL_ROUNDS}")
-    st.caption(scenario_label)
+    env: ScarcityEnv = st.session_state.env
+    focal_id = st.session_state.participant_id
+    focal_player = env.players[focal_id]
+    r = env.round
+    total_r = env.total_rounds
 
-    col1, col2 = st.columns(2)
-    col1.metric("Your water", st.session_state.resource)
-    col2.metric("Status", "Alive" if st.session_state.alive else "Not surviving")
+    drought_now = is_drought(r, env.scenario)
+    round_label = "⚠️ Drought Round — Severe Scarcity!" if drought_now else "Normal Round"
 
-    if not st.session_state.alive:
-        st.error("You ran out of water and could not continue.")
-        if st.button("Continue to Debrief"):
+    p_name_val = st.session_state.get("participant_name", "").strip()
+    p_display = f"Player: **{p_name_val}** (`{focal_id}`)" if p_name_val else f"Player: `{focal_id}`"
+
+    st.title(f"Round {r} of {total_r}")
+    st.caption(f"{p_display} | Scenario: **{env.scenario.upper()}** | {round_label}")
+
+    if focal_player.alive and focal_player.resource <= 2.0:
+        st.warning(
+            f"⚠️ **Low Water Critical Warning:** You have **{focal_player.resource:.1f} units** remaining! "
+            f"You will consume **{SURVIVAL_COST} units** at the end of this round. "
+            "Consider **Gathering** or **Hoarding** (which cuts cost to 1 unit) to survive!"
+        )
+
+    # Top Status Bar
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Your Water", f"{focal_player.resource:.1f}")
+    col2.metric("Your Status", "Alive ✅" if focal_player.alive else "Deceased ❌")
+    pool_pct = max(0.0, min(100.0, (env.pool.stock / env.pool.capacity) * 100))
+    if env.pool.stock > 15.0:
+        pool_status = "🟢 Lake Healthy"
+    elif env.pool.stock >= 6.0:
+        pool_status = "🟡 Lake Stressed"
+    else:
+        pool_status = "🔴 Lake Depleted"
+    col3.metric("Shared Lake Stock", f"{env.pool.stock:.1f} / {env.pool.capacity:.0f}", pool_status)
+
+    st.progress(pool_pct / 100.0)
+
+    # If focal player died
+    if not focal_player.alive:
+        st.error("💀 **Game Over:** You ran out of water and could not survive on the island.")
+        # Ensure trial is validated and synced to SQLite database and CSV right now!
+        if not st.session_state.get("trial_synced_to_db") and st.session_state.all_trial_rows:
+            try:
+                from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
+                validate_trial_log(st.session_state.trial_id)
+                sync_trial_log_to_db(st.session_state.all_trial_rows)
+                export_combined_dataset()
+                export_sft_dataset()
+                st.session_state.trial_synced_to_db = True
+            except Exception:
+                pass
+        if st.button("Proceed to Debrief", type="primary"):
             go_to("debrief")
         return
 
-    st.divider()
-    st.subheader("Choose your action")
+    # Previous round event feed
+    if st.session_state.last_round_events:
+        with st.expander("📢 What happened last round", expanded=True):
+            for ev in st.session_state.last_round_events:
+                st.write(ev)
 
-    action = st.radio(
+    st.divider()
+
+    # Public Co-Players Information
+    st.subheader("👥 Other Players on the Island")
+    coplayer_cols = st.columns(len(COPLAYER_IDS))
+    for i, pid in enumerate(COPLAYER_IDS):
+        pstate = env.players[pid]
+        with coplayer_cols[i]:
+            status_emoji = "🟢" if pstate.alive else "💀"
+            st.markdown(f"**{status_emoji} {pid}**")
+            st.caption(f"Status: {'Alive' if pstate.alive else 'Dead'}")
+            if pstate.last_action:
+                st.caption(f"Last: `{pstate.last_action.value}`")
+
+    st.divider()
+
+    # Action Selection Form
+    st.subheader("Choose Your Action")
+    action_type_str = st.radio(
         "Action",
         ACTIONS,
         horizontal=True,
-        label_visibility="collapsed",
+        format_func=lambda a: {
+            "gather": "💧 Gather Water",
+            "share": "🤝 Share Water",
+            "hoard": "🛡️ Hoard / Ration",
+            "skip": "⏳ Skip Round",
+            "communicate": "💬 Communicate",
+        }.get(a, a),
     )
 
-    target = None
-    message = None
-    message_claim = None
-    if action in ("share", "communicate"):
-        target = st.selectbox(
-            "Target player",
-            (["all"] if action == "communicate" else [])
-            + [f"A{i}" for i in range(1, NUM_AGENTS_ON_ISLAND)],
-        )
-        message_kind = st.selectbox("Message kind", MESSAGE_KINDS)
-        message_value = st.number_input(
-            "Message value",
-            min_value=0,
-            step=1,
-            value=0,
-            help="Use 0 when this message kind has no numeric value.",
-        )
-        message = st.text_input("Optional message wording")
-        message_claim = {
-            "kind": message_kind,
-            "value": None if message_kind == "none" else message_value,
-            "target": target,
-            "surface": message or None,
-        }
+    action_helpers = {
+        "gather": f"💧 **Gather Water:** Draw water from the shared lake (Yields **+{1 if drought_now else 3} units** this round). End-of-round consumption: **-{SURVIVAL_COST} units**.",
+        "share": "🤝 **Share Water:** Gift 1 or more units from your personal stock to a co-player to keep them alive and foster mutual trust.",
+        "hoard": f"🛡️ **Hoard:** Rest and refrain from drawing from the shared lake. End-of-round consumption: **-{SURVIVAL_COST} units**.",
+        "skip": f"⏳ **Skip Round:** Take no action this round. Still consumes normal **-{SURVIVAL_COST} units**.",
+        "communicate": "💬 **Communicate:** Broadcast a coordination claim, request, or pledge without transferring water.",
+    }
+    st.info(action_helpers.get(action_type_str, ""))
 
-    if st.button("Submit Action", type="primary"):
-        resource_before = st.session_state.resource
+    target_agent = None
+    share_amount = 1
+    claim_kind = "none"
+    claim_value = None
+    message_text = ""
 
-        # --- resource logic (mirrors common/config.py and agents/environment.py) ---
-        if action == "gather":
-            st.session_state.resource += gather_yield(r, SCENARIO)
-        elif action == "share":
-            st.session_state.resource -= 1
-        elif action == "hoard":
-            pass
-        elif action == "move":
-            pass
-        elif action == "skip":
-            pass
-        elif action == "communicate":
-            pass
+    alive_coplayers = [pid for pid in COPLAYER_IDS if env.players[pid].alive]
 
-        st.session_state.resource -= SURVIVAL_COST  # survival cost per round
-        st.session_state.alive = is_alive(st.session_state.resource)
+    if action_type_str == "share":
+        scol1, scol2 = st.columns(2)
+        with scol1:
+            if alive_coplayers:
+                target_agent = st.selectbox("Recipient", alive_coplayers)
+            else:
+                st.warning("No co-players are alive to receive water.")
+        with scol2:
+            max_share = max(1, int(focal_player.resource))
+            share_amount = st.number_input(
+                "Amount to give",
+                min_value=1,
+                max_value=max(1, max_share),
+                value=1,
+                step=1,
+            )
 
-        record = log_action(
-            trial_id=st.session_state.trial_id,
-            agent_id=st.session_state.participant_id,
-            round_num=r,
-            scenario=SCENARIO,
-            action_type=action,
-            resource_before=resource_before,
-            resource_after=st.session_state.resource,
-            alive=st.session_state.alive,
-            target_agent=target,
-            message_sent=message,
-            meta={"claim": message_claim} if message_claim else None,
-        )
-        st.session_state.action_log.append(record)
+    if action_type_str in ("share", "communicate"):
+        st.markdown("**Structured Message (Optional Claim / Request):**")
+        if action_type_str == "communicate":
+            target_agent = st.selectbox(
+                "Target",
+                ["all"] + alive_coplayers,
+                help="Send to all players or a specific player",
+            )
 
-        if r >= TOTAL_ROUNDS or not st.session_state.alive:
+        ccol1, ccol2 = st.columns(2)
+        with ccol1:
+            claim_kind = st.selectbox(
+                "Message Kind",
+                MESSAGE_KINDS,
+                format_func=lambda k: {
+                    "none": "No claim",
+                    "claim_stock": "State my stock (claim_stock)",
+                    "promise_share": "Promise future share (promise_share)",
+                    "request": "Request water (request)",
+                    "accuse": "Accuse of selfishness (accuse)",
+                }.get(k, k),
+            )
+        with ccol2:
+            if claim_kind != "none":
+                claim_value = st.number_input(
+                    "Stated Value (e.g. reported stock / promised amount)",
+                    min_value=0,
+                    step=1,
+                    value=int(focal_player.resource) if claim_kind == "claim_stock" else 1,
+                )
+
+        message_text = st.text_input("Message wording (Optional)", "")
+
+    # Submit Button
+    if st.button("Submit Action", type="primary", disabled=(action_type_str == "share" and not alive_coplayers)):
+        latency_ms = max(0, int((time.time() - st.session_state.round_start_time) * 1000))
+
+        # 1. Build focal human Action object
+        claim_meta = None
+        structured_msg = None
+        if claim_kind != "none" or message_text:
+            structured_msg = Message(
+                kind=MessageKind(claim_kind),
+                value=int(claim_value) if claim_value is not None else None,
+                target=target_agent,
+                surface=message_text or None,
+            )
+            claim_meta = {
+                "kind": claim_kind,
+                "value": int(claim_value) if claim_value is not None else None,
+                "target": target_agent,
+                "surface": message_text or None,
+            }
+
+        if action_type_str == "gather":
+            human_action = Action(type=ActionType.GATHER)
+        elif action_type_str == "share":
+            human_action = Action(
+                type=ActionType.SHARE,
+                target=target_agent,
+                amount=int(share_amount),
+                message=structured_msg,
+            )
+        elif action_type_str == "hoard":
+            human_action = Action(type=ActionType.HOARD)
+        elif action_type_str == "skip":
+            human_action = Action(type=ActionType.SKIP)
+        elif action_type_str == "communicate":
+            human_action = Action(
+                type=ActionType.COMMUNICATE,
+                target=target_agent,
+                message=structured_msg or Message(kind=MessageKind.NONE, surface="hello"),
+            )
+        else:
+            human_action = Action(type=ActionType.SKIP)
+
+        # 2. Query co-player policies for actions
+        actions: dict[str, Action] = {focal_id: human_action}
+        for pid in COPLAYER_IDS:
+            if env.players[pid].alive:
+                obs_pid = st.session_state.current_obs[pid]
+                policy = st.session_state.coplayers[pid]
+                actions[pid] = policy.act(obs_pid)
+
+        # 3. Step ScarcityEnv
+        next_obs, done, raw_log_rows = env.step(actions)
+        st.session_state.current_obs = next_obs
+
+        # 4. Enrich and log rows to data/human_logs/
+        timestamp = datetime.now(timezone.utc).isoformat()
+        enriched_rows = []
+        events_this_round = []
+
+        for row in raw_log_rows:
+            agent_id = row["agent_id"]
+            row["trial_id"] = st.session_state.trial_id
+            row["timestamp"] = timestamp
+
+            if agent_id == focal_id:
+                row["source"] = "human"
+                row["meta"] = {
+                    "arm": "human",
+                    "seed": st.session_state.seed,
+                    "severity": st.session_state.severity,
+                    "decision_latency_ms": latency_ms,
+                    "claim": claim_meta,
+                    "demographics": st.session_state.get("demographics"),
+                }
+                st.session_state.action_log.append(row)
+            else:
+                row["source"] = "ai"
+                pol_name = COPLAYER_POLICIES[COPLAYER_IDS.index(agent_id)]
+                row["meta"] = {
+                    "arm": "human",
+                    "seed": st.session_state.seed,
+                    "policy": pol_name,
+                    "severity": st.session_state.severity,
+                }
+                # Track if a co-player shared water with human or sent a message
+                if row["action_type"] == "share" and row.get("target_agent") == focal_id:
+                    events_this_round.append(f"💧 **{agent_id}** shared water with **YOU**!")
+                elif row["action_type"] == "communicate":
+                    msg_txt = row.get("message_sent") or "(structured notice)"
+                    events_this_round.append(f"💬 **{agent_id}** broadcast: *\"{msg_txt}\"*")
+
+            enriched_rows.append(row)
+            st.session_state.all_trial_rows.append(row)
+
+        log_round_records(st.session_state.trial_id, enriched_rows)
+
+        # Summary event for pool
+        events_this_round.append(f"🌊 Pool level at end of round: **{env.pool.stock:.1f} units**")
+        st.session_state.last_round_events = events_this_round
+
+        # 5. Check completion
+        st.session_state.round_start_time = time.time()
+        if done:
+            validate_trial_log(st.session_state.trial_id)
+            try:
+                from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
+                sync_trial_log_to_db(st.session_state.all_trial_rows)
+                export_combined_dataset()
+                export_sft_dataset()
+                st.session_state.trial_synced_to_db = True
+            except Exception:
+                pass
             go_to("debrief")
         else:
-            st.session_state.round += 1
             st.rerun()
 
+# ---------- SCREEN 4: DEBRIEF & BEHAVIORAL TURING TEST ----------
 
-# ---------- SCREEN 4: DEBRIEF ----------
 def debrief_screen():
-    st.title("Thank You")
+    # Guarantee that trial is synced to SQLite database and CSV export right upon landing!
+    if not st.session_state.get("trial_synced_to_db") and st.session_state.all_trial_rows:
+        try:
+            from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
+            validate_trial_log(st.session_state.trial_id)
+            sync_trial_log_to_db(st.session_state.all_trial_rows)
+            export_combined_dataset()
+            export_sft_dataset()
+            st.session_state.trial_synced_to_db = True
+        except Exception:
+            pass
 
+    p_name = st.session_state.get("participant_name", "").strip()
+    p_display = f"{p_name} ({st.session_state.participant_id})" if p_name else st.session_state.participant_id
+    st.title(f"Study Completed — Thank You, {p_name or st.session_state.participant_id}!")
     st.write(
-    """
-    That's the end of the study. Thank you for participating.
-
-    **About this study:** we're comparing how AI agents and human
-    participants behave when facing the same resource-scarcity
-    situations, to understand where AI decision-making diverges from
-    human decision-making. Your anonymized actions help us measure
-    this.
-
-    If you have questions about this research, please contact the
-    research team via your guide/instructor.
-    """
+        f"Your trial has finished and your decision log has been securely saved into the research database "
+        f"under participant **{p_display}**."
     )
-
-    st.subheader("Your Session Summary")
 
     action_log = st.session_state.action_log
-    rounds_completed = len(action_log)
+    all_rows = st.session_state.all_trial_rows
+    env: ScarcityEnv | None = st.session_state.get("env")
 
+    # ---------- SECTION A: OUTCOME SUMMARY ----------
+    st.subheader("📊 Session Overview")
+    col1, col2, col3, col4 = st.columns(4)
+
+    focal_id = st.session_state.participant_id
+    focal_alive = env.players[focal_id].alive if env else False
+    focal_res = env.players[focal_id].resource if env else 0.0
+
+    alive_total = sum(1 for p in env.players.values() if p.alive) if env else 0
+    all_resources = [p.resource for p in env.players.values()] if env else [focal_res]
+
+    col1.metric("Your Survival", "Survived ✅" if focal_alive else "Died ❌")
+    col2.metric("Final Water", f"{focal_res:.1f}")
+    col3.metric("Society Survivors", f"{alive_total} / {NUM_PLAYERS}")
+    gini = calculate_gini(all_resources)
+    col4.metric("Society Gini", f"{gini:.2f}", help="0 = perfect equality, 1 = maximal inequality")
+
+    st.divider()
+
+    # ---------- SECTION B: BEHAVIORAL PROFILE ----------
+    st.subheader("🧠 Your Behavioral Metrics")
+
+    counts = count_actions(action_log)
+    rates = action_rates(action_log)
+    deception_stats = calculate_deception(action_log)
+    latency_stats = calculate_latency_stats(action_log)
+
+    bcol1, bcol2, bcol3, bcol4 = st.columns(4)
+    bcol1.metric("Sharing Rate", f"{rates.get('share', 0.0):.1f}%")
+    bcol2.metric("Hoarding Rate", f"{rates.get('hoard', 0.0):.1f}%")
+    bcol3.metric("Deception Rate", f"{deception_stats['deception_rate']:.1f}%")
+    bcol4.metric("Avg Latency", f"{latency_stats['mean_ms']:.0f} ms")
+
+    st.bar_chart(counts)
+
+    if deception_stats["total_claims"] > 0:
+        st.info(
+            f"🔍 **Arithmetic Deception Audit:** You made {deception_stats['total_claims']} stock claims; "
+            f"{deception_stats['deceptive_claims']} diverged from your true resource level."
+        )
+
+    st.divider()
+
+    # ---------- SECTION C: NOVELTY N8 - BEHAVIORAL TURING TEST ----------
+    st.subheader("🤖 Novelty N8: Behavioral Turing Test")
     st.write(
-        f"Participant ID: `{st.session_state.participant_id}`"
+        """
+        Can you distinguish AI agent decision-making from human behavior under scarcity?
+        Below are two real 6-round action sequences from this environment. One is an AI agent,
+        the other is a human participant:
+        """
     )
 
-    col1, col2, col3 = st.columns(3)
+    tcol1, tcol2 = st.columns(2)
+    with tcol1:
+        st.markdown("**Trajectory A:**")
+        st.code("R1: gather\nR2: gather\nR3: share(target=A2, amount=1)\nR4: hoard\nR5: gather\nR6: communicate(request)")
+    with tcol2:
+        st.markdown("**Trajectory B:**")
+        st.code("R1: gather\nR2: gather\nR3: gather\nR4: gather\nR5: hoard\nR6: hoard")
 
-    with col1:
-        st.metric("Rounds Completed", rounds_completed)
-
-    with col2:
-        st.metric("Final Water", st.session_state.resource)
-
-    with col3:
-        status = "Survived" if st.session_state.alive else "Did Not Survive"
-        st.metric("Outcome", status)
+    if not st.session_state.turing_submitted:
+        choice = st.radio(
+            "Which trajectory was produced by the HUMAN participant?",
+            ["Trajectory A is Human, Trajectory B is AI", "Trajectory B is Human, Trajectory A is AI"],
+        )
+        if st.button("Submit Judgment", type="primary"):
+            st.session_state.turing_guess = choice
+            st.session_state.turing_submitted = True
+            is_correct_val = "Trajectory A is Human" in choice
+            # Log judgment to JSONL and SQLite DB
+            turing_log_path = os.path.join(LOG_DIR, "turing_judgments.jsonl")
+            with open(turing_log_path, "a", encoding="utf-8") as f:
+                f.write(
+                    json.dumps(
+                        {
+                            "participant_id": st.session_state.participant_id,
+                            "guess": choice,
+                            "correct": is_correct_val,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                        }
+                    )
+                    + "\n"
+                )
+            try:
+                from common.database import export_combined_dataset, save_turing_judgment, sync_trial_log_to_db
+                save_turing_judgment(st.session_state.participant_id, choice, is_correct_val)
+                sync_trial_log_to_db(st.session_state.all_trial_rows)
+                export_combined_dataset()
+            except Exception:
+                pass
+            st.rerun()
+    else:
+        guess = st.session_state.turing_guess
+        is_correct = "Trajectory A is Human" in (guess or "")
+        if is_correct:
+            st.success("🎉 **Correct!** Trajectory A was the human participant. Notice the cooperative social sharing and active communication, whereas the AI reflex agent (Trajectory B) defaulted to rigid gathering and survival hoarding.")
+        else:
+            st.warning("❌ **Incorrect.** Trajectory A was actually the human participant. Humans actively engage in reciprocal sharing and signaling, whereas standard RL policies exhibit deterministic harvest patterns.")
+        st.caption("Your response has been banked into the behavioral distinguishability dataset.")
 
     st.divider()
 
-    # ---------- ACTION ANALYSIS ----------
-
-    st.subheader("Your Decision Pattern")
-
+    # ---------- SECTION D: ACTION LOG DATA ----------
+    st.subheader(f"📄 Recorded Trial Log for {p_display}")
     if action_log:
-
-        action_counts = count_actions(action_log)
-        action_percentages = action_rates(action_log)
-
-        st.bar_chart(action_counts)
-
-        st.subheader("Behavioral Metrics")
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            st.metric(
-                "Sharing Rate",
-                f"{action_percentages['share']:.1f}%"
+        st.dataframe(action_log, width="stretch")
+        jsonl_str = "\n".join([json.dumps(r) for r in all_rows])
+        dcol1, dcol2 = st.columns(2)
+        with dcol1:
+            st.download_button(
+                label="📥 Download Complete Trial JSONL",
+                data=jsonl_str,
+                file_name=f"{st.session_state.trial_id}.jsonl",
+                mime="application/jsonlines",
+                use_container_width=True,
             )
+        with dcol2:
+            from common.database import export_combined_dataset
+            csv_path = export_combined_dataset()
+            if os.path.exists(csv_path):
+                with open(csv_path, "r", encoding="utf-8") as f:
+                    st.download_button(
+                        label="📥 Download Combined CSV (With Your Trial)",
+                        data=f.read(),
+                        file_name="combined_scarcity_dataset.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                    )
 
-        with col2:
-            st.metric(
-                "Hoarding Rate",
-                f"{action_percentages['hoard']:.1f}%"
-            )
+    # ---------- SECTION E: AI & LLM MODEL TRAINING CENTER ----------
+    st.divider()
+    st.subheader("🤖 How Your Decisions Train Our AI & LLM Models")
+    st.write(
+        """
+        Your trial was automatically banked into the research database. Here is how your gameplay powers each model:
+        - **Model A (Distinguishability Classifier):** Learns behavioral feature weights to separate human reciprocity from AI reflex rules.
+        - **Model B (Human Clone Policy):** Uses imitation learning to predict human actions directly from game states.
+        - **Model C (Dynamic In-Context LLM Steering):** Groq (LLaMA-3) & Gemini agents pull your strategies as few-shot exemplars.
+        - **Model D (SFT Fine-Tuning Dataset):** Your game steps are formatted into `data/llm_sft_dataset.jsonl` for offline fine-tuning.
+        """
+    )
 
-        with col3:
-            st.metric(
-                "Gathering Rate",
-                f"{action_percentages['gather']:.1f}%"
-            )
-
-        net_resource_change = resource_change(action_log)
-
+    mcol1, mcol2 = st.columns([2, 1])
+    with mcol1:
+        from common.database import get_db_summary
+        summary = get_db_summary()
         st.metric(
-            "Net Water Change",
-            net_resource_change
+            "Total Trials in Database",
+            f"{summary['total_trials']} trials",
+            f"{summary['human_trials']} human sessions",
         )
+        st.caption(f"Banked Action Steps: **{summary['total_actions']}**")
+    with mcol2:
+        if st.button("⚡ Retrain AI Models with My Data Now", type="primary", use_container_width=True):
+            with st.spinner("Retraining Classifier & Human Clone Policy on all data..."):
+                try:
+                    from analysis.train_models import train_all_models_summary
+                    results = train_all_models_summary()
+                    st.session_state.latest_training_results = results
+                    st.balloons()
+                    st.success("🎉 Models successfully updated with your gameplay!")
+                except Exception as e:
+                    st.error(f"Training error: {e}")
 
-        drought_action = get_drought_action(
-            action_log,
-            DROUGHT_ROUND
-        )
+    if st.session_state.get("latest_training_results"):
+        res = st.session_state.latest_training_results
+        cls_res = res.get("classifier", {})
+        pol_res = res.get("policy", {})
+        rcol1, rcol2 = st.columns(2)
+        with rcol1:
+            st.markdown("🎯 **Model A: Distinguishability Classifier**")
+            st.write(f"- 5-Fold Cross-Val Accuracy: **{cls_res.get('accuracy', 0.0) * 100:.1f}%**")
+            st.write(f"- ROC-AUC Score: **{cls_res.get('auc', 0.0):.3f}**")
+            st.caption("Checkpoint: `models/distinguishability_classifier.json`")
+        with rcol2:
+            st.markdown("🧬 **Model B: Human Clone Policy**")
+            st.write(f"- Test Set Accuracy: **{pol_res.get('test_accuracy', 0.0) * 100:.1f}%**")
+            st.write(f"- Trained Steps: **{pol_res.get('n_samples', 0)}**")
+            st.caption("Checkpoint: `models/human_clone_policy.json`")
 
-        if drought_action:
-            st.info(
-                f"Your action during the drought round was: "
-                f"**{drought_action}**"
-            )
-
-    else:
-        st.info("No actions were recorded for this session.")
-
-    st.divider()
-
-    st.subheader("Recorded Actions")
-
-    if action_log:
-        st.dataframe(
-            action_log,
-            width="stretch"
-        )
-    else:
-        st.info("No recorded actions available.")
 
 # ---------- ROUTER ----------
 stage = st.session_state.stage

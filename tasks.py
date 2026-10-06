@@ -8,6 +8,7 @@ validate`.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 
@@ -91,15 +92,185 @@ def trials() -> int:
     return subprocess.call([sys.executable, "-m", "agents.run_ai_trials", *sys.argv[2:]])
 
 
+def qa_logs() -> int:
+    """Run Quality Assurance and game invariant validation on all trial logs."""
+    return subprocess.call([sys.executable, "-m", "agents.qa_logs", *sys.argv[2:]])
+
+
+
+def features() -> int:
+    """Extract behavioral and societal feature vectors from trial logs."""
+    return subprocess.call([sys.executable, "-m", "analysis.feature_extraction", *sys.argv[2:]])
+
+
+def classify() -> int:
+    """Train and evaluate the distinguishability classifier (Human vs. AI)."""
+    return subprocess.call([sys.executable, "-m", "analysis.classifier", *sys.argv[2:]])
+
+
+def pilot_human() -> int:
+    """Run pilot human-arm trials across matched seeds to test the focal substitution pipeline."""
+    from common.actions import Action, ActionType, Message, MessageKind
+    from common.config import MATCHED_SEEDS, NUM_PLAYERS
+    from agents.environment import ScarcityEnv
+    from agents.coplayers import get_policy
+    from common.schema import validate_trial
+    import json
+    from datetime import datetime, timezone
+
+    scenarios = ["calm", "drought", "repeated_trust"]
+    seeds = [0, 1, 2, 3, 4]
+    os.makedirs(os.path.join("data", "human_logs"), exist_ok=True)
+    coplayer_ids = [f"A{i}" for i in range(2, NUM_PLAYERS + 1)]
+    coplayer_types = ["cooperator", "free_rider", "tit_for_tat", "random"]
+
+    print(f"Generating pilot human trials ({len(scenarios)} scenarios x {len(seeds)} seeds)...")
+    for scenario in scenarios:
+        for seed in seeds:
+            focal_id = f"P{seed:04d}"
+            player_ids = [focal_id] + coplayer_ids
+            env = ScarcityEnv(scenario=scenario, seed=seed, player_ids=player_ids)
+            coplayers = {
+                pid: get_policy(coplayer_types[i], seed=seed + i + 1)
+                for i, pid in enumerate(coplayer_ids)
+            }
+            obs = env.reset()
+            trial_id = f"{scenario}_human_pilot_{seed:03d}"
+            timestamp = datetime.now(timezone.utc).isoformat()
+            trial_rows = []
+            done = False
+
+            while not done:
+                r = env.round
+                # Human proxy strategy: gathers, shares with A2 if surplus, hoards in drought, communicates
+                if scenario == "drought" and r == 6:
+                    human_action = Action(type=ActionType.HOARD)
+                elif r % 3 == 0 and env.players[focal_id].resource > 4:
+                    human_action = Action(
+                        type=ActionType.SHARE,
+                        target="A2",
+                        amount=1,
+                        message=Message(kind=MessageKind.PROMISE_SHARE, value=1, target="A2", surface="Sharing 1 water"),
+                    )
+                elif r == 2:
+                    human_action = Action(
+                        type=ActionType.COMMUNICATE,
+                        target="all",
+                        message=Message(kind=MessageKind.CLAIM_STOCK, value=int(env.players[focal_id].resource), target="all", surface="Reporting current water"),
+                    )
+                else:
+                    human_action = Action(type=ActionType.GATHER)
+
+                actions = {focal_id: human_action}
+                for pid in coplayer_ids:
+                    if env.players[pid].alive:
+                        actions[pid] = coplayers[pid].act(obs[pid])
+
+                obs, done, rows = env.step(actions)
+                for row in rows:
+                    row["trial_id"] = trial_id
+                    row["timestamp"] = timestamp
+                    if row["agent_id"] == focal_id:
+                        row["source"] = "human"
+                        row["meta"] = {
+                            "arm": "human",
+                            "seed": seed,
+                            "severity": 0.7 if scenario == "drought" else 0.0,
+                            "decision_latency_ms": 2450,
+                            "claim": {"kind": "claim_stock", "value": int(row["resource_before"]), "target": "all"} if r == 2 else None,
+                        }
+                    else:
+                        pol = coplayer_types[coplayer_ids.index(row["agent_id"])]
+                        row["source"] = "ai"
+                        row["meta"] = {"arm": "human", "seed": seed, "policy": pol}
+                    trial_rows.append(row)
+
+            validate_trial(trial_rows)
+            out_path = os.path.join("data", "human_logs", f"{trial_id}.jsonl")
+            with open(out_path, "w", encoding="utf-8") as f:
+                for row in trial_rows:
+                    f.write(json.dumps(row) + "\n")
+            print(f"  OK {out_path} ({len(trial_rows)} rows)")
+
+    print("Pilot human trial generation complete! [DONE]")
+    return 0
+
+
+
+def sync_db() -> int:
+    """Sync all JSONL trial logs to SQLite database (data/scarcity_study.db)."""
+    return subprocess.call([sys.executable, "-m", "common.database", *sys.argv[2:]])
+
+
+def train() -> int:
+    """Train ML models (Distinguishability Classifier + Human Behavioral Policy) from database."""
+    return subprocess.call([sys.executable, "-m", "analysis.train_models", *sys.argv[2:]])
+
+
+def export_data() -> int:
+    """Export unified combined dataset (trials, demographics, features) to CSV."""
+    from common.database import export_combined_dataset
+    path = export_combined_dataset()
+    print(f"Combined dataset exported to: {path}")
+    return 0
+
+
+def export_sft() -> int:
+    """Export human trial actions as Supervised Fine-Tuning JSONL dataset (data/llm_sft_dataset.jsonl)."""
+    from common.database import export_sft_dataset
+    path = export_sft_dataset()
+    print(f"LLM SFT dataset exported to: {path}")
+    return 0
+
+
+def test_exemplars() -> int:
+    """Demonstrate dynamic human exemplar retrieval and prompt generation for LLMs."""
+    from agents.environment import Observation, OtherPlayerView
+    from common.actions import ActionType
+    from agents.human_exemplars import query_human_exemplars, format_exemplars_prompt
+
+    obs = Observation(
+        player_id="A1",
+        round=10,
+        total_rounds=20,
+        scenario="drought",
+        is_drought=True,
+        own_resource=3.0,
+        own_alive=True,
+        received_share_last_round=0.0,
+        pool_stock=8.0,
+        pool_capacity=30.0,
+        others=(OtherPlayerView(player_id="A2", alive=True, last_action=ActionType.GATHER, last_action_target=None),),
+    )
+    exemplars = query_human_exemplars(obs, limit=2)
+    prompt = format_exemplars_prompt(exemplars)
+    print("=== DYNAMIC HUMAN IN-CONTEXT LEARNING PROMPT BLOCK ===")
+    print(prompt)
+    print("======================================================")
+    print(f"Retrieved {len(exemplars)} human exemplars successfully [DONE]")
+    return 0
+
+
 TASKS = {
     "validate": validate,
     "validate_logs": validate_logs,
     "smoke": smoke,
     "pilot": pilot,
+    "pilot_human": pilot_human,
     "train_rl": train_rl,
     "gate_d": gate_d,
     "trials": trials,
+    "qa_logs": qa_logs,
+    "features": features,
+    "classify": classify,
+    "sync_db": sync_db,
+    "train": train,
+    "export_data": export_data,
+    "export_sft": export_sft,
+    "test_exemplars": test_exemplars,
 }
+
+
 
 
 def main() -> int:
@@ -111,3 +282,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
