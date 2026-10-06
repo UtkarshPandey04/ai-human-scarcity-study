@@ -81,6 +81,7 @@ DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", "groq")
 # knowledge cutoff. Re-verify with `client.models.list()` (Groq) if this ever 404s again — model
 # names go stale faster than code does; see the module docstring.
 DEFAULT_GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
+GROQ_MAX_RETRIES = int(os.environ.get("GROQ_MAX_RETRIES", "6"))
 DEFAULT_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 
@@ -117,7 +118,10 @@ def _complete_groq(
     if not api_key:
         raise LLMCompletionError("GROQ_API_KEY is not set")
 
-    client = Groq(api_key=api_key)
+    # The SDK backs off and retries 429s itself, honouring retry-after. The free tier's 8k
+    # tokens/minute cap trips often enough that the SDK default (2) records needless
+    # llm_rate_limited rows, so allow more; a daily-cap 429 still surfaces as LLMRateLimitError.
+    client = Groq(api_key=api_key, max_retries=GROQ_MAX_RETRIES)
     payload = _messages_with_schema(messages, schema)
     create_kwargs = {
         "model": model or DEFAULT_GROQ_MODEL,

@@ -54,6 +54,7 @@ MANIFEST_PATH = os.path.join(LOG_DIR, "manifest.json")
 DEFAULT_SEVERITIES = (0.0, 0.3, 0.5, 0.7, 0.9)
 DEFAULT_ABLATION_SEVERITIES = (0.0, 0.7)
 DEFAULT_ABLATION_ARMS = ("rl_only", "llm_only")
+RATE_LIMIT_STOP_AFTER = 3  # consecutive rate-limited trials before the campaign stops submitting
 
 
 class ThreadSafeRLModel:
@@ -255,10 +256,28 @@ def run_campaign(
     if limit is not None:
         pending = pending[:limit]
 
-    counts = {"ok": 0, "failed": 0, "skipped_already_done": skipped, "llm_calls": 0, "parse_failures": 0}
+    counts = {
+        "ok": 0,
+        "failed": 0,
+        "rate_limited": 0,
+        "deferred": 0,
+        "skipped_already_done": skipped,
+        "llm_calls": 0,
+        "parse_failures": 0,
+    }
+    # A provider quota (e.g. Groq free tier: 1,000 requests/day) can run out mid-campaign. Once it
+    # has, every further trial just burns its calls on rate-limit errors, so stop submitting work
+    # after a run of consecutive rate-limited trials and let the next invocation resume.
+    quota_exhausted = threading.Event()
+    consecutive_rate_limited = [0]
+    counts_lock = threading.Lock()
 
     def _run_one(spec: dict) -> None:
         trial_id = build_trial_id(spec["scenario"], spec["arm"], spec["severity"], spec["seed"])
+        if quota_exhausted.is_set():
+            with counts_lock:
+                counts["deferred"] += 1
+            return
         try:
             rows, stats = run_trial(
                 spec["scenario"],
@@ -273,10 +292,20 @@ def run_campaign(
             for row in rows:
                 row["meta"]["matched_seed"] = spec["matched_seed"]
             path = write_trial(rows)
+            # A rate-limited call makes that player `skip` — infrastructure, not behaviour — so the
+            # trial isn't usable data. Record it as not-ok so the next invocation re-runs it.
+            status = "rate_limited" if stats["rate_limited"] else "ok"
+            with counts_lock:
+                if status == "rate_limited":
+                    consecutive_rate_limited[0] += 1
+                    if consecutive_rate_limited[0] >= RATE_LIMIT_STOP_AFTER:
+                        quota_exhausted.set()
+                else:
+                    consecutive_rate_limited[0] = 0
             manifest.record(
                 {
                     "trial_id": trial_id,
-                    "status": "ok",
+                    "status": status,
                     "path": path,
                     "scenario": spec["scenario"],
                     "severity": spec["severity"],
@@ -297,10 +326,12 @@ def run_campaign(
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
-            counts["ok"] += 1
-            counts["llm_calls"] += stats["llm_calls"]
-            counts["parse_failures"] += stats["parse_failures"]
-            print(f"OK   {trial_id} ({len(rows)} rows, {stats['llm_calls']} LLM calls)")
+            with counts_lock:
+                counts["ok" if status == "ok" else "rate_limited"] += 1
+                counts["llm_calls"] += stats["llm_calls"]
+                counts["parse_failures"] += stats["parse_failures"]
+            label = "OK  " if status == "ok" else "RATE"
+            print(f"{label} {trial_id} ({len(rows)} rows, {stats['llm_calls']} LLM calls, {stats['rate_limited']} rate-limited)")
         except Exception as exc:  # noqa: BLE001 - one bad trial must not kill the campaign
             manifest.record(
                 {
@@ -314,7 +345,8 @@ def run_campaign(
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
-            counts["failed"] += 1
+            with counts_lock:
+                counts["failed"] += 1
             print(f"FAIL {trial_id}: {exc}", file=sys.stderr)
 
     if not pending:
@@ -437,10 +469,12 @@ def _main() -> int:
     counts = run_campaign(specs, manifest, rl_model, workers=args.workers, limit=args.limit)
 
     print(
-        f"Done. ok={counts['ok']} failed={counts['failed']} "
-        f"skipped_already_done={counts['skipped_already_done']} "
+        f"Done. ok={counts['ok']} failed={counts['failed']} rate_limited={counts['rate_limited']} "
+        f"deferred={counts['deferred']} skipped_already_done={counts['skipped_already_done']} "
         f"llm_calls={counts['llm_calls']} parse_failures={counts['parse_failures']}"
     )
+    if counts["deferred"]:
+        print("Stopped early: provider quota looks exhausted. Re-run the same command later to resume.")
     return 1 if counts["failed"] else 0
 
 
