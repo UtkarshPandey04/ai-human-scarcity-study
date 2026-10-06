@@ -84,7 +84,11 @@ def train_distinguishability_classifier(db_path: str = DEFAULT_DB_PATH) -> dict[
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
         cols = ", ".join(FEATURE_COLUMNS)
-        cursor.execute(f"SELECT source, {cols} FROM trial_features WHERE source IN ('human', 'ai')")
+        # Filter to human vs unsteered AI trials; llm_human_steered must never be pooled with llm_only
+        cursor.execute(
+            f"SELECT source, {cols} FROM trial_features "
+            f"WHERE source IN ('human', 'ai') AND (arm IS NULL OR arm != 'llm_human_steered')"
+        )
         rows = cursor.fetchall()
 
     if len(rows) < 4:

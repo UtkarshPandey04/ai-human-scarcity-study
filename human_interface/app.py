@@ -33,7 +33,6 @@ if PROJECT_ROOT not in sys.path:
 from common.actions import Action, ActionType, Message, MessageKind
 from common.config import (
     DROUGHT_ROUND,
-    HOARD_SURVIVAL_COST,
     MATCHED_SEEDS,
     NUM_PLAYERS,
     SCENARIOS,
@@ -43,7 +42,6 @@ from common.config import (
     gather_yield,
     is_alive,
     is_drought,
-    survival_cost,
 )
 from agents.coplayers import get_policy
 from agents.environment import ScarcityEnv
@@ -109,9 +107,6 @@ if "severity" not in st.session_state:
 
 if "participant_id" not in st.session_state:
     st.session_state.participant_id = f"P{uuid.uuid4().hex[:4].upper()}"
-
-if "participant_name" not in st.session_state:
-    st.session_state.participant_name = ""
 
 if "demographics" not in st.session_state:
     st.session_state.demographics = {}
@@ -211,9 +206,7 @@ with st.sidebar:
         st.write(f"**Severity:** `{st.session_state.severity}`")
 
     st.divider()
-    p_name_val = st.session_state.get("participant_name", "").strip()
-    p_badge = f"**{p_name_val}** (`{st.session_state.participant_id}`)" if p_name_val else f"`{st.session_state.participant_id}`"
-    st.markdown(f"👤 **Participant:** {p_badge}")
+    st.markdown(f"👤 **Participant ID:** `{st.session_state.participant_id}`")
     st.caption(f"Trial ID: `{st.session_state.trial_id}`")
 
     with st.expander("📥 Researcher Data Export", expanded=False):
@@ -298,21 +291,15 @@ def consent_screen():
     st.caption("Used solely for statistical subgroup analysis in the research paper.")
     dcol1, dcol2 = st.columns(2)
     with dcol1:
-        p_name = st.text_input(
-            "👤 Your Name or Alias (Optional)",
-            value=st.session_state.get("participant_name", ""),
-            placeholder="e.g. Alex, Sam, Utkarsh (or leave blank for Anonymous)",
-            help="If provided, your name will be linked to your trial in the database and CSV export.",
-        )
         age_group = st.selectbox(
             "Age Group",
             ["18-24", "25-34", "35-44", "45-54", "55+", "Prefer not to say"],
         )
-    with dcol2:
         gender = st.selectbox(
             "Gender",
             ["Female", "Male", "Non-binary", "Other", "Prefer not to say"],
         )
+    with dcol2:
         ai_fam = st.selectbox(
             "AI / Tech Familiarity",
             ["Beginner (rarely use)", "Intermediate (regular user)", "Advanced (developer / researcher)"],
@@ -321,10 +308,7 @@ def consent_screen():
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Agree & Continue", disabled=not agree, type="primary"):
-            cleaned_name = p_name.strip() if p_name.strip() else None
-            st.session_state.participant_name = cleaned_name or ""
             st.session_state.demographics = {
-                "name": cleaned_name,
                 "age_group": age_group,
                 "gender": gender,
                 "ai_familiarity": ai_fam,
@@ -476,7 +460,7 @@ def game_screen():
     action_helpers = {
         "gather": f"💧 **Gather Water:** Draw water from the shared lake (Yields **+{1 if drought_now else 3} units** this round). End-of-round consumption: **-{SURVIVAL_COST} units**.",
         "share": "🤝 **Share Water:** Gift 1 or more units from your personal stock to a co-player to keep them alive and foster mutual trust.",
-        "hoard": f"🛡️ **Hoard / Ration:** Rest and conserve personal reserves. **Consumes only -{HOARD_SURVIVAL_COST} unit** (saves 1 water!) and draws **0** from the lake.",
+        "hoard": f"🛡️ **Hoard:** Rest and refrain from drawing from the shared lake. End-of-round consumption: **-{SURVIVAL_COST} units**.",
         "skip": f"⏳ **Skip Round:** Take no action this round. Still consumes normal **-{SURVIVAL_COST} units**.",
         "communicate": "💬 **Communicate:** Broadcast a coordination claim, request, or pledge without transferring water.",
     }

@@ -12,7 +12,7 @@ import unittest
 from agents.coplayers import get_policy
 from agents.environment import ScarcityEnv
 from common.actions import Action, ActionType, Message, MessageKind
-from common.config import HOARD_SURVIVAL_COST, SURVIVAL_COST, START_WATER
+from common.config import SURVIVAL_COST, START_WATER
 from common.schema import validate_trial
 from human_interface.logging_utils import log_action, log_round_records, load_trial_log, validate_trial_log
 from human_interface.session_analysis import (
@@ -140,8 +140,8 @@ class TestFocalPlayerIntegration(unittest.TestCase):
         validate_trial(all_rows)
         self.assertTrue(len(all_rows) > 0)
 
-    def test_hoard_mechanic_conserves_water(self):
-        """Test that hoarding incurs only HOARD_SURVIVAL_COST (1) vs SKIP (2)."""
+    def test_hoard_mechanic_incurs_survival_cost(self):
+        """Test that hoarding incurs standard SURVIVAL_COST (2) matching ACTIONS.md."""
         env = ScarcityEnv(scenario="calm", seed=0, player_ids=["A1"])
         env.reset()
         start_res = env.players["A1"].resource
@@ -150,7 +150,7 @@ class TestFocalPlayerIntegration(unittest.TestCase):
         # Hoard
         env.step({"A1": Action(type=ActionType.HOARD)})
         res_after_hoard = env.players["A1"].resource
-        self.assertEqual(res_after_hoard, start_res - HOARD_SURVIVAL_COST)
+        self.assertEqual(res_after_hoard, start_res - SURVIVAL_COST)
 
         # Skip
         env.step({"A1": Action(type=ActionType.SKIP)})

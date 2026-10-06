@@ -26,8 +26,9 @@ SCENARIOS = {"calm", "drought", "repeated_trust"}
 
 # Values for meta.arm — "human" covers focal-player-substitution human trials; "scripted" is every
 # player on a fixed agents/coplayers.py policy (smoke tests, MSE-1 pilot logs, no real focal
-# player); the AI ablation arms are defined in agents/PHASE_PLAN.md Phase F.
-ARMS = {"rl_only", "llm_only", "hybrid", "human", "scripted"}
+# player); the AI ablation arms are defined in agents/PHASE_PLAN.md Phase F; "llm_human_steered"
+# covers LLM trials conditioned on empirical human exemplars via ICL (kept strictly separate from llm_only).
+ARMS = {"rl_only", "llm_only", "hybrid", "human", "scripted", "llm_human_steered"}
 
 MESSAGE_KINDS = {"claim_stock", "promise_share", "request", "accuse", "none"}
 

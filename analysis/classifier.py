@@ -104,8 +104,13 @@ def evaluate_distinguishability(
     if not features:
         return {"error": "No features provided"}
 
-    # Filter to human vs AI rows
-    valid_rows = [f for f in features if f.get("source") in ("human", "ai")]
+    # Filter to human vs unsteered AI rows.
+    # CRITICAL: llm_human_steered incorporates human trajectories via ICL, so it must NEVER
+    # be pooled with llm_only or baseline AI in distinguishability classification or statistics.
+    valid_rows = [
+        f for f in features
+        if f.get("source") in ("human", "ai") and f.get("arm") != "llm_human_steered"
+    ]
     if len(valid_rows) < 4:
         return {"error": f"Too few samples for classification (N={len(valid_rows)})"}
 

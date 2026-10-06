@@ -28,7 +28,6 @@ from common.config import (
     gather_yield,
     is_alive,
     is_drought,
-    survival_cost,
 )
 
 # Shared-pool dynamics. Capacity and growth are chosen so that if every player gathers every round
@@ -227,9 +226,11 @@ class ScarcityEnv:
                 if action.message is not None:
                     message_sent = action.message.surface
 
-            # HOARD conserves personal supplies: reduced consumption cost (1 instead of 2).
-            # MOVE, SKIP, and GATHER (applied in pass 1) have standard consumption cost (SURVIVAL_COST = 2).
-            state.resource -= survival_cost(action.type)
+            # HOARD, MOVE, SKIP and GATHER (already applied in pass 1) take no further effect here.
+            # HOARD and MOVE are currently no-ops distinct only in label — see ACTIONS.md rows for
+            # both; that's an open call for Phase C, not something to pre-empt here.
+
+            state.resource -= SURVIVAL_COST
             state.alive = is_alive(state.resource)
             state.last_action = action.type
             state.last_action_target = target_agent

@@ -80,6 +80,10 @@ def run_trial(
                 "use_human_exemplars": use_human_exemplars,
                 "exemplars_count": m.get("exemplars_count", 0),
                 "llm_parse_failure": m.get("llm_parse_failure"),
+                # Kept separate from llm_parse_failure — a rate-limited call isn't evidence the
+                # model produced bad output, it's evidence this project ran out of quota. See
+                # agents/llm_reasoning.py::decide()'s docstring. Filter this out before computing
+                # any parse-failure-rate figure for the paper.
                 "llm_rate_limited": m.get("llm_rate_limited", False),
                 "prompt_tokens": m.get("prompt_tokens"),
                 "completion_tokens": m.get("completion_tokens"),

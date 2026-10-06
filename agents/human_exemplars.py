@@ -44,7 +44,7 @@ CANONICAL_HUMAN_EXEMPLARS = [
             "amount": None,
             "message": None,
         },
-        "reasoning": "Human participant hoarded to consume minimal water (1.0 vs 2.0) and prevent pool collapse.",
+        "reasoning": "Human participant hoarded to refrain from drawing from the shared pool and protect personal supply.",
     },
     {
         "context": "Abundant Water, Round 3, Pool Stock (25.0 / 30.0), Own Water: 2.0",

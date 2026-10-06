@@ -173,6 +173,13 @@ def decide(
     parse_attempts (int), and — on any successful provider round-trip, even a rejected one —
     prompt_tokens / completion_tokens / model / provider from agents/llm_client.py's usage
     tracking, so cost is counted even for attempts that failed our own validation.
+
+    On failure, meta also carries `llm_rate_limited` (bool) — kept **separate** from
+    `llm_parse_failure`. Caught live: a Gemini free-tier quota of 20 requests/day produced a batch
+    of failures that, viewed only through `llm_parse_failure`, looked exactly like the model
+    producing bad output 69% of the time. It wasn't a model-quality issue at all — it was this
+    project's quota headroom. Any parse-failure-rate figure that goes in the paper must filter out
+    `llm_rate_limited` rows, or it's reporting infrastructure noise as a finding about the model.
     """
     if use_human_exemplars is None:
         use_human_exemplars = os.environ.get("LLM_USE_HUMAN_EXEMPLARS", "0").lower() in ("1", "true", "yes")

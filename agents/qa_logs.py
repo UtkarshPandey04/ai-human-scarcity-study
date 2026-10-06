@@ -31,7 +31,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from common.schema import SchemaError, validate_trial
-from common.config import HOARD_SURVIVAL_COST, SURVIVAL_COST, gather_yield, is_alive
+from common.config import SURVIVAL_COST, gather_yield, is_alive
 
 
 def qa_check_trial(rows: list[dict[str, Any]], filepath: str = "") -> list[str]:

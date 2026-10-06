@@ -232,3 +232,10 @@ models/
 CLAUDE.md
 .claude/
 skills-lock.json
+
+# SQLite study database & exported datasets (reproducible via tasks.py sync_db / export)
+data/*.db
+data/*.db-journal
+data/combined_scarcity_dataset.csv
+data/trial_features.csv
+data/llm_sft_dataset.jsonl
