@@ -28,6 +28,7 @@ from common.config import (
     gather_yield,
     is_alive,
     is_drought,
+    survival_cost,
 )
 
 # Shared-pool dynamics. Capacity and growth are chosen so that if every player gathers every round
@@ -197,36 +198,38 @@ class ScarcityEnv:
         for state in self.players.values():
             state.received_share_last_round = 0.0
 
-        # Pass 2: everything else (share / hoard / move / skip / communicate), plus survival cost.
-        log_rows: list[dict] = []
+        # Pass 2: transfers (shares) between alive agents.
         for pid, state in self.players.items():
             if not state.alive:
                 continue
             action = actions.get(pid) or Action(type=ActionType.SKIP)
             action.validate()
-
-            target_agent: str | None = None
-            message_sent: str | None = None
-
             if action.type == ActionType.SHARE:
-                target_agent = action.target
                 target_state = self.players.get(action.target)
                 amount = action.amount or 0
                 if target_state is not None and target_state.alive and state.resource >= amount:
                     state.resource -= amount
                     target_state.resource += amount
                     target_state.received_share_last_round += amount
-                if action.message is not None:
-                    message_sent = action.message.surface
-            elif action.type == ActionType.COMMUNICATE:
+
+        # Pass 3: survival cost, state transitions, and log rows.
+        log_rows: list[dict] = []
+        for pid, state in self.players.items():
+            if not state.alive:
+                continue
+            action = actions.get(pid) or Action(type=ActionType.SKIP)
+
+            target_agent: str | None = None
+            message_sent: str | None = None
+
+            if action.type in (ActionType.SHARE, ActionType.COMMUNICATE):
                 target_agent = action.target
                 if action.message is not None:
                     message_sent = action.message.surface
-            # HOARD, MOVE, SKIP and GATHER (already applied in pass 1) take no further effect here.
-            # HOARD and MOVE are currently no-ops distinct only in label — see ACTIONS.md rows for
-            # both; that's an open call for Phase C, not something to pre-empt here.
 
-            state.resource -= SURVIVAL_COST
+            # HOARD conserves personal supplies: reduced consumption cost (1 instead of 2).
+            # MOVE, SKIP, and GATHER (applied in pass 1) have standard consumption cost (SURVIVAL_COST = 2).
+            state.resource -= survival_cost(action.type)
             state.alive = is_alive(state.resource)
             state.last_action = action.type
             state.last_action_target = target_agent
