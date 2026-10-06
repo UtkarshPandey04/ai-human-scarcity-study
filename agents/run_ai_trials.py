@@ -39,6 +39,7 @@ from common.config import (
     DROUGHT_ROUND,
     GATHER_DROUGHT,
     GATHER_NORMAL,
+    MATCHED_SEEDS,
     NUM_PLAYERS,
     SCENARIOS,
     START_WATER,
@@ -151,6 +152,18 @@ def _git_sha() -> str | None:
         ).strip()
     except (subprocess.CalledProcessError, OSError):
         return None
+
+
+def _git_dirty() -> bool | None:
+    """Whether tracked files had uncommitted changes — if so, git_sha alone doesn't identify the
+    code that produced a trial."""
+    try:
+        out = subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"], stderr=subprocess.DEVNULL, text=True
+        )
+    except (subprocess.CalledProcessError, OSError):
+        return None
+    return bool(out.strip())
 
 
 def _prompt_file_hash() -> str | None:
@@ -276,6 +289,11 @@ def run_campaign(
                     "llm_calls": stats["llm_calls"],
                     "parse_failures": stats["parse_failures"],
                     "rate_limited": stats["rate_limited"],
+                    # Per-trial provenance: run_metadata is overwritten by each invocation, and a
+                    # campaign spans many --limit batches (possibly across commits).
+                    "git_sha": manifest.run_metadata.get("git_sha"),
+                    "git_dirty": manifest.run_metadata.get("git_dirty"),
+                    "prompt_file_sha256": manifest.run_metadata.get("prompt_file_sha256"),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             )
@@ -321,9 +339,19 @@ def _parse_str_list(raw: str) -> list[str]:
 
 
 def _parse_int_set(raw: str | None) -> set[int]:
+    """Comma-separated ints and inclusive ranges, e.g. "0-29" or "0,2,5-7"."""
     if not raw:
         return set()
-    return {int(x) for x in raw.split(",") if x.strip()}
+    out: set[int] = set()
+    for part in (x.strip() for x in raw.split(",")):
+        if not part:
+            continue
+        if "-" in part:
+            lo, hi = part.split("-", 1)
+            out.update(range(int(lo), int(hi) + 1))
+        else:
+            out.add(int(part))
+    return out
 
 
 def _main() -> int:
@@ -339,7 +367,11 @@ def _main() -> int:
         "--ablation-severities", default=",".join(str(s) for s in DEFAULT_ABLATION_SEVERITIES)
     )
     parser.add_argument("--ablation-seeds", type=int, default=30)
-    parser.add_argument("--matched-seeds", default=None, help="comma-separated seed ints agreed with Group 1")
+    parser.add_argument(
+        "--matched-seeds",
+        default=None,
+        help='seeds paired with human sessions, e.g. "0-29" (default: common.config.MATCHED_SEEDS)',
+    )
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--rate-limit", type=float, default=2.0, help="max LLM calls/second, 0 = unthrottled")
     parser.add_argument("--rl-model-path", default=None, help="defaults to agents.rl_policy.DEFAULT_MODEL_PATH")
@@ -362,7 +394,7 @@ def _main() -> int:
         ablation_arms=_parse_str_list(args.ablation_arms),
         ablation_severities=_parse_float_list(args.ablation_severities),
         ablation_seeds=args.ablation_seeds,
-        matched_seeds=_parse_int_set(args.matched_seeds),
+        matched_seeds=_parse_int_set(args.matched_seeds) if args.matched_seeds else set(MATCHED_SEEDS),
     )
 
     est_llm_calls = sum(
@@ -394,6 +426,7 @@ def _main() -> int:
 
     run_metadata = {
         "git_sha": _git_sha(),
+        "git_dirty": _git_dirty(),
         "prompt_file_sha256": _prompt_file_hash(),
         "env_config": _env_config_snapshot(),
         "started_at": datetime.now(timezone.utc).isoformat(),

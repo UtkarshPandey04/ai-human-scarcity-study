@@ -98,6 +98,12 @@ def qa_logs() -> int:
 
 
 
+def freeze_ai_logs() -> int:
+    """Phase H: freeze the campaign into data/releases/ai_logs_<version>.{zip,json}, e.g.
+    `python tasks.py freeze_ai_logs --version v1`. Refuses unless every trial passes QA."""
+    return subprocess.call([sys.executable, "-m", "agents.freeze_logs", *sys.argv[2:]])
+
+
 def features() -> int:
     """Extract behavioral and societal feature vectors from trial logs."""
     return subprocess.call([sys.executable, "-m", "analysis.feature_extraction", *sys.argv[2:]])
@@ -261,6 +267,7 @@ TASKS = {
     "gate_d": gate_d,
     "trials": trials,
     "qa_logs": qa_logs,
+    "freeze_ai_logs": freeze_ai_logs,
     "features": features,
     "classify": classify,
     "sync_db": sync_db,
