@@ -237,12 +237,18 @@ class TestStreamlitAppScreens(unittest.TestCase):
 
         # Agree & continue -> instructions
         at.checkbox[0].check().run()
-        at.button[0].click().run()
+        for btn in at.button:
+            if "Agree" in btn.label:
+                btn.click().run()
+                break
         self.assertFalse(at.exception, f"Instructions screen error: {at.exception}")
         self.assertEqual(at.session_state.stage, "instructions")
 
         # Start simulation -> game
-        at.button[0].click().run()
+        for btn in at.button:
+            if "Start" in btn.label:
+                btn.click().run()
+                break
         self.assertFalse(at.exception, f"Game screen error: {at.exception}")
         self.assertEqual(at.session_state.stage, "game")
 

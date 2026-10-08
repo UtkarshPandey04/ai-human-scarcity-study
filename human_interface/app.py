@@ -314,6 +314,15 @@ with st.sidebar:
 
 # ---------- SCREEN 1: CONSENT ----------
 def consent_screen():
+    # Top Hero Bar: Institutional Header + Researcher Portal Access
+    tcol_left, tcol_right = st.columns([3, 1])
+    with tcol_left:
+        st.caption("🏛️ Behavioral AI & Human Scarcity Study | KIET Deemed to be University")
+    with tcol_right:
+        if st.button("🔐 Researcher Portal", key="hero_researcher_btn", help="Restricted access for investigators & faculty", use_container_width=True):
+            st.session_state.portal_active = True
+            st.rerun()
+
     st.title("Research Study: Resource Decisions Under Scarcity")
     st.write(
         """
@@ -369,6 +378,15 @@ def consent_screen():
         if st.button("Decline"):
             st.warning("Thank you for your consideration. You may close this window.")
             st.stop()
+
+    st.divider()
+    bcol_left, bcol_right = st.columns([3, 1])
+    with bcol_left:
+        st.caption("Dept. of Computer Science & Engineering (AI & ML) | Mentor: Ms. Laxmi")
+    with bcol_right:
+        if st.button("🔑 Admin Login", key="footer_admin_btn", use_container_width=True):
+            st.session_state.portal_active = True
+            st.rerun()
 
 
 
