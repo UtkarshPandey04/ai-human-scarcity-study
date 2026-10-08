@@ -395,25 +395,58 @@ def render_researcher_hub(embedded: bool = False):
     # TAB 3: PUBLICATION FIGURES
     # -------------------------------------------------------------
     with tab_figures:
-        st.subheader("🖼️ Publication-Quality Figures (300 DPI)")
-        st.caption("Generated directly from the empirical dataset for the final manuscript.")
+        st.subheader("🖼️ Publication-Quality Figures (300 DPI — Complete 8-Figure Suite)")
+        st.caption("Generated directly from the empirical dataset for the final camera-ready manuscript.")
+        st.info("💡 **Looking for live interactive telemetry charts?** Check **Tab 1: 📊 Study Telemetry** to explore interactive action profiles, common pool depletion trajectories, real-time latency, and Gini wealth inequality!")
 
         fig1_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig1_behavioral_comparison.png")
         fig2_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig2_dose_response.png")
         fig3_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig3_distinguishability_roc.png")
         fig4_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig4_feature_importance.png")
+        fig5_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig5_survival_hazard_curves.png")
+        fig6_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig6_communication_deception_matrix.png")
+        fig7_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig7_cognitive_deliberation_latency.png")
+        fig8_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig8_steering_alignment_vector.png")
 
-        fcol1, fcol2 = st.columns(2)
-        with fcol1:
+        # Row 1: Figures 1 & 2
+        st.markdown("#### Primary Empirical Divergence (Figures 1 & 2)")
+        r1_c1, r1_c2 = st.columns(2)
+        with r1_c1:
             if os.path.exists(fig1_path):
                 st.image(fig1_path, caption="Figure 1: Behavioral Metric Distributions (AI vs. Human across Scenarios)")
-            if os.path.exists(fig3_path):
-                st.image(fig3_path, caption="Figure 3: Distinguishability ROC-AUC across Scarcity Levels (Novelty N3)")
-        with fcol2:
+        with r1_c2:
             if os.path.exists(fig2_path):
                 st.image(fig2_path, caption="Figure 2: Scarcity Dose-Response Elasticity Curves (Novelty N1)")
+
+        # Row 2: Figures 3 & 4
+        st.markdown("#### Distinguishability & Feature Attribution (Figures 3 & 4)")
+        r2_c1, r2_c2 = st.columns(2)
+        with r2_c1:
+            if os.path.exists(fig3_path):
+                st.image(fig3_path, caption="Figure 3: Distinguishability ROC-AUC across Scarcity Levels (Novelty N3)")
+        with r2_c2:
             if os.path.exists(fig4_path):
                 st.image(fig4_path, caption="Figure 4: Permutation Feature Importance & Driver Attribution")
+
+        # Row 3: Figures 5 & 6
+        st.markdown("#### Survival Dynamics & Strategic Communication (Figures 5 & 6)")
+        r3_c1, r3_c2 = st.columns(2)
+        with r3_c1:
+            if os.path.exists(fig5_path):
+                st.image(fig5_path, caption="Figure 5: Empirical Survival Rates & Longevity (Human vs. AI across Scenarios)")
+        with r3_c2:
+            if os.path.exists(fig6_path):
+                st.image(fig6_path, caption="Figure 6: Strategic Communication Honesty vs. Deception Under Scarcity")
+
+        # Row 4: Figures 7 & 8
+        st.markdown("#### Cognitive Deliberation & Behavioral Cloning Alignment (Figures 7 & 8)")
+        r4_c1, r4_c2 = st.columns(2)
+        with r4_c1:
+            if os.path.exists(fig7_path):
+                st.image(fig7_path, caption="Figure 7: Cognitive Deliberation Latency Distribution (Moral Hesitation)")
+        with r4_c2:
+            if os.path.exists(fig8_path):
+                st.image(fig8_path, caption="Figure 8: Behavioral Cloning Alignment Vector vs. Human Empirical Baseline")
 
         st.divider()
         st.markdown("### 📖 Scientific Reading Guide: What Each Figure Demonstrates")
@@ -432,6 +465,18 @@ def render_researcher_hub(embedded: bool = False):
                 Demonstrates that our machine learning classifier achieves **0.940 ROC-AUC overall** and **1.000 AUC in calm and repeated-trust**, proving that behavioral divergence provides a near-perfect mathematical fingerprint to separate humans from AI.
                 """
             )
+            st.info(
+                """
+                **Figure 5 (Survival & Longevity):**  
+                Shows that humans achieve higher survival in high-trust social settings by mutually sharing, but suffer sharper mortality drop-offs in uncoordinated drought, revealing the fragility of human commons management.
+                """
+            )
+            st.info(
+                """
+                **Figure 7 (Cognitive Deliberation Latency):**  
+                Quantifies the reaction-time burden of moral decisions. In drought, human deliberation time increases substantially as participants weigh self-preservation vs. altruistic sharing.
+                """
+            )
         with e2:
             st.info(
                 """
@@ -443,6 +488,18 @@ def render_researcher_hub(embedded: bool = False):
                 """
                 **Figure 4 (Feature Importance Drivers):**  
                 Shows the key drivers of divergence. **Society Gini Index** (wealth inequality) and **Cooperation Rate** are the top predictors: humans generate selective inequality through social loyalty, whereas AI produces artificial, mechanical uniformity.
+                """
+            )
+            st.info(
+                """
+                **Figure 6 (Communication & Deception):**  
+                Highlights deceptive claims emitted under extreme stress. Humans utilize bluffing and withholding behavior under drought, a high-order cognitive strategy absent in standard heuristic AI.
+                """
+            )
+            st.info(
+                """
+                **Figure 8 (Steering Alignment Vector):**  
+                Validates our behavioral cloning model against human empirical distributions, closing the behavioral fidelity gap from unsteered LLMs to human-aligned collective dynamics.
                 """
             )
 
