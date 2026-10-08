@@ -382,7 +382,8 @@ def consent_screen():
     st.divider()
     bcol_left, bcol_right = st.columns([3, 1])
     with bcol_left:
-        st.caption("Dept. of Computer Science & Engineering (AI & ML) | Mentor: Ms. Laxmi")
+        st.caption("Dept. of Computer Science & Engineering (AI & ML) | **Mentor:** Ms. Laxmi")
+        st.caption("👥 **Researchers:** Utkarsh Pandey, Sujal Kumar, Saksham Singh, Yashash Tyagi")
     with bcol_right:
         if st.button("🔑 Admin Login", key="footer_admin_btn", use_container_width=True):
             st.session_state.portal_active = True
