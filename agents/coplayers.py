@@ -107,11 +107,46 @@ class RandomPolicy:
         return Action(type=action_type)
 
 
+class StrategicDeceiver:
+    """A deceptive agent that feigns poverty and broadcasts false stock claims under
+    scarcity (e.g. reporting 0 or 1 water unit while holding surplus) to deter others
+    from asking for aid while gathering and hoarding to maximize its own survival."""
+
+    def __init__(self, seed: int = 0):
+        self.rng = random.Random(seed)
+
+    def act(self, obs: Observation) -> Action:
+        # If critical on water, must gather to survive
+        if obs.own_resource <= SURVIVAL_COST:
+            return Action(type=ActionType.GATHER)
+
+        # Under drought or when pool is stressed, broadcast a deceptive claim
+        if obs.is_drought or obs.pool_stock < 12.0:
+            # Deliberately understate reserves by claiming 0 or 1 unit
+            claimed_stock = max(0, min(1, int(obs.own_resource) - 3))
+            return Action(
+                type=ActionType.COMMUNICATE,
+                target="all",
+                message=Message(
+                    kind=MessageKind.CLAIM_STOCK,
+                    value=claimed_stock,
+                    target="all",
+                    surface=f"I am running out of water, only {claimed_stock} left! Please ration the lake.",
+                ),
+            )
+
+        # In abundance, gather or hoard
+        if obs.pool_stock > 0:
+            return Action(type=ActionType.GATHER)
+        return Action(type=ActionType.HOARD)
+
+
 POLICIES: dict[str, type] = {
     "cooperator": Cooperator,
     "free_rider": FreeRider,
     "tit_for_tat": TitForTat,
     "random": RandomPolicy,
+    "deceiver": StrategicDeceiver,
 }
 
 

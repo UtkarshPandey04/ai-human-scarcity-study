@@ -137,6 +137,9 @@ if "trial_synced_to_db" not in st.session_state:
 if "trial_id" not in st.session_state:
     st.session_state.trial_id = f"{st.session_state.scenario}_human_{st.session_state.seed:03d}_{uuid.uuid4().hex[:6]}"
 
+if "coplayer_mode" not in st.session_state:
+    st.session_state.coplayer_mode = "Standard"
+
 if "action_log" not in st.session_state:
     st.session_state.action_log = []
 
@@ -156,6 +159,12 @@ if "turing_submitted" not in st.session_state:
     st.session_state.turing_submitted = False
 
 
+def get_active_coplayer_policies() -> list[str]:
+    if st.session_state.get("coplayer_mode") == "Deceptive (Strategic Deceiver)":
+        return ["cooperator", "free_rider", "tit_for_tat", "deceiver"]
+    return COPLAYER_POLICIES
+
+
 def reset_environment():
     """Instantiate ScarcityEnv with focal-player substitution and co-players."""
     focal_id = st.session_state.participant_id
@@ -166,8 +175,9 @@ def reset_environment():
         player_ids=player_ids,
     )
     # Instantiate co-player policies with matched deterministic seeds
+    active_policies = get_active_coplayer_policies()
     coplayers = {
-        pid: get_policy(COPLAYER_POLICIES[i], seed=st.session_state.seed + i + 1)
+        pid: get_policy(active_policies[i], seed=st.session_state.seed + i + 1)
         for i, pid in enumerate(COPLAYER_IDS)
     }
     obs = env.reset()
@@ -210,20 +220,29 @@ with st.sidebar:
             step=0.1,
             help="Novelty N1: dose-response parameter",
         )
+        coplayer_opt = st.selectbox(
+            "Opponent Ecology",
+            options=["Standard", "Deceptive (Strategic Deceiver)"],
+            index=0 if st.session_state.coplayer_mode == "Standard" else 1,
+            help="Standard: Cooperator, Free-Rider, Tit-for-Tat, Random. Deceptive: Swaps Random with Strategic Deceiver which actively bluffs under scarcity.",
+        )
         if (
             selected_scenario != st.session_state.scenario
             or selected_seed != st.session_state.seed
             or severity_val != st.session_state.severity
+            or coplayer_opt != st.session_state.coplayer_mode
         ):
             st.session_state.scenario = selected_scenario
             st.session_state.seed = selected_seed
             st.session_state.severity = severity_val
+            st.session_state.coplayer_mode = coplayer_opt
             st.session_state.trial_id = f"{selected_scenario}_human_{selected_seed:03d}_{uuid.uuid4().hex[:6]}"
             st.rerun()
     else:
         st.write(f"**Scenario:** `{st.session_state.scenario}`")
         st.write(f"**Matched Seed:** `{st.session_state.seed}`")
         st.write(f"**Severity:** `{st.session_state.severity}`")
+        st.write(f"**Ecology:** `{st.session_state.coplayer_mode}`")
 
     st.divider()
     st.markdown(f"👤 **Participant ID:** `{st.session_state.participant_id}`")
@@ -629,7 +648,8 @@ def game_screen():
                 st.session_state.action_log.append(row)
             else:
                 row["source"] = "ai"
-                pol_name = COPLAYER_POLICIES[COPLAYER_IDS.index(agent_id)]
+                active_policies = get_active_coplayer_policies()
+                pol_name = active_policies[COPLAYER_IDS.index(agent_id)]
                 row["meta"] = {
                     "arm": "human",
                     "seed": st.session_state.seed,
