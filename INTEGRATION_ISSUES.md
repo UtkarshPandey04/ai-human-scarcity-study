@@ -255,6 +255,39 @@ milestone in `agents/PHASE_PLAN.md` rather than a side effect of Phase G.
 
 ---
 
+## 🔁 Round 2 — raised after merging `group1-human-study` @ `6327014` (2026-10-07)
+
+The step-order change in `agents/environment.py` (shares all land before anyone pays survival cost)
+is a real fix, not just a refactor: under the old interleaved loop a player's `resource_after` was
+logged before later players' shares reached them. `agents/qa_logs.py` caught it — 48/64 old AI logs
+failed stock continuity; all regenerated logs pass. Gate D is unchanged (100% vs 10% survival). Thanks.
+
+### 12. 🔴 `llm_human_steered` silently uses hand-written exemplars when the DB is empty
+`agents/human_exemplars.query_human_exemplars()` falls back to `CANONICAL_HUMAN_EXEMPLARS` — examples
+hand-written in the source, not played by participants — whenever `data/scarcity_study.db` has no matching human
+data (it currently has 0 trials). Nothing in the log row says which source was used, so a
+`llm_human_steered` trial run today would be reported as "steered by human play" when it wasn't.
+**Ask:** record the source in `meta` (e.g. `exemplar_source: "db" | "canonical"`) and have
+`run_trial(..., use_human_exemplars=True)` refuse to run — or the analysis exclude — `canonical`
+trials. Until then the agents track will not run this arm.
+
+### 13. 🟠 Exact versions for `streamlit` (and anything else the study app needs)
+`requirements.txt` is back to exact pins (the AI trials are only reproducible with them). `streamlit`
+is still `>=1.35.0` because it isn't installed on the agents machine — please pin the version the
+study app actually runs on.
+
+### 14. 🟠 Test that needs the untracked DB
+`test_model_training_pipeline_and_policy` trains on the real `data/scarcity_study.db`, which is now
+gitignored, so it failed on every fresh checkout. It now skips when the DB has no human trials; once
+sessions exist, run `python tasks.py sync_db` and it runs again.
+
+### 15. 🟡 `repeated_trust` has no drought — needs a joint decision
+`common/config.is_drought()` only fires for `scenario == "drought"`, so `repeated_trust` varies only by
+`severity` on the AI side. Adding e.g. a drought in round 6 of each block changes what human
+participants experience too, so it's a shared change, not one for either branch alone.
+
+---
+
 ## Suggested agenda for the next team meeting
 
 1. Blocker 1 — agree focal-player substitution, and **make the ethics call on disclosure**. (Critical

@@ -196,6 +196,12 @@ class TestDatabaseAndModelTraining(unittest.TestCase):
         self.assertEqual(stats["turing_accuracy"], 100.0)
 
     def test_model_training_pipeline_and_policy(self):
+        # Trains on the real study DB, which is untracked (.gitignore) — on a fresh checkout it's
+        # missing or empty until `python tasks.py sync_db` has run on real session logs.
+        from common.database import DEFAULT_DB_PATH, get_db_summary
+        if not os.path.exists(DEFAULT_DB_PATH) or get_db_summary(DEFAULT_DB_PATH).get("human_trials", 0) == 0:
+            self.skipTest("no human trials in data/scarcity_study.db yet (run `python tasks.py sync_db`)")
+
         from analysis.train_models import (
             train_distinguishability_classifier,
             train_human_behavior_policy,

@@ -86,15 +86,22 @@ def gate_d() -> int:
 
 
 def trials() -> int:
-    """Phase G: run the full AI trial campaign."""
-    print("agents.run_ai_trials not implemented yet — see agents/PHASE_PLAN.md Phase G")
-    return 1
+    """Phase G: run the AI trial campaign. Extra CLI args are passed straight through, e.g.
+    `python tasks.py trials --dry-run` or `python tasks.py trials --primary-seeds 5 --limit 20`.
+    """
+    return subprocess.call([sys.executable, "-m", "agents.run_ai_trials", *sys.argv[2:]])
 
 
 def qa_logs() -> int:
     """Run Quality Assurance and game invariant validation on all trial logs."""
     return subprocess.call([sys.executable, "-m", "agents.qa_logs", *sys.argv[2:]])
 
+
+
+def freeze_ai_logs() -> int:
+    """Phase H: freeze the campaign into data/releases/ai_logs_<version>.{zip,json}, e.g.
+    `python tasks.py freeze_ai_logs --version v1`. Refuses unless every trial passes QA."""
+    return subprocess.call([sys.executable, "-m", "agents.freeze_logs", *sys.argv[2:]])
 
 
 def features() -> int:
@@ -295,6 +302,7 @@ TASKS = {
     "gate_d": gate_d,
     "trials": trials,
     "qa_logs": qa_logs,
+    "freeze_ai_logs": freeze_ai_logs,
     "features": features,
     "classify": classify,
     "stats": stats,
