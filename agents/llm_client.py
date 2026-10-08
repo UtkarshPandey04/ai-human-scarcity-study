@@ -38,7 +38,9 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from common.env import load_dotenv
 
@@ -358,6 +360,161 @@ def set_rate_limiter(fn) -> None:
     _rate_limiter = fn
 
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TELEMETRY_PATH = os.path.join(PROJECT_ROOT, "data", "api_telemetry.json")
+
+
+def _load_telemetry() -> dict:
+    if os.path.exists(TELEMETRY_PATH):
+        try:
+            with open(TELEMETRY_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {
+        "groq": {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "rate_limited_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_latency_ms": 0.0,
+            "avg_latency_ms": 0.0,
+            "last_latency_ms": 0.0,
+            "last_status": "Idle",
+            "last_call_at": None,
+        },
+        "gemini": {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "rate_limited_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_latency_ms": 0.0,
+            "avg_latency_ms": 0.0,
+            "last_latency_ms": 0.0,
+            "last_status": "Idle",
+            "last_call_at": None,
+        },
+        "openrouter": {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "rate_limited_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_latency_ms": 0.0,
+            "avg_latency_ms": 0.0,
+            "last_latency_ms": 0.0,
+            "last_status": "Idle",
+            "last_call_at": None,
+        },
+        "ollama": {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "rate_limited_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_latency_ms": 0.0,
+            "avg_latency_ms": 0.0,
+            "last_latency_ms": 0.0,
+            "last_status": "Idle",
+            "last_call_at": None,
+        },
+    }
+
+
+def _save_telemetry(data: dict) -> None:
+    try:
+        os.makedirs(os.path.dirname(TELEMETRY_PATH), exist_ok=True)
+        with open(TELEMETRY_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+def record_api_call(
+    provider: str,
+    success: bool,
+    latency_ms: float,
+    is_rate_limit: bool = False,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+) -> None:
+    data = _load_telemetry()
+    if provider not in data:
+        data[provider] = {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "rate_limited_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_latency_ms": 0.0,
+            "avg_latency_ms": 0.0,
+            "last_latency_ms": 0.0,
+            "last_status": "Idle",
+            "last_call_at": None,
+        }
+    stat = data[provider]
+    stat["total_calls"] += 1
+    if success:
+        stat["successful_calls"] += 1
+        stat["last_status"] = "Healthy"
+    elif is_rate_limit:
+        stat["rate_limited_calls"] += 1
+        stat["last_status"] = "Rate Limited (429)"
+    else:
+        stat["failed_calls"] += 1
+        stat["last_status"] = "Error"
+    stat["total_prompt_tokens"] += prompt_tokens
+    stat["total_completion_tokens"] += completion_tokens
+    stat["total_latency_ms"] += latency_ms
+    stat["last_latency_ms"] = round(latency_ms, 1)
+    stat["avg_latency_ms"] = round(stat["total_latency_ms"] / max(1, stat["total_calls"]), 1)
+    stat["last_call_at"] = datetime.now(timezone.utc).isoformat()
+    _save_telemetry(data)
+
+
+def get_api_telemetry() -> dict:
+    """Retrieve aggregate telemetry dictionary across all providers."""
+    return _load_telemetry()
+
+
+def ping_provider(provider: str) -> dict:
+    """Run a live round-trip test against a specific provider to measure latency and status."""
+    start = time.time()
+    try:
+        test_msg = [ChatMessage(role="user", content="Respond with valid JSON: {\"ping\": \"pong\"}")]
+        res = complete(test_msg, provider=provider)
+        duration_ms = round((time.time() - start) * 1000, 1)
+        return {
+            "status": "ok",
+            "latency_ms": duration_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "response": res,
+        }
+    except LLMRateLimitError as exc:
+        duration_ms = round((time.time() - start) * 1000, 1)
+        return {
+            "status": "rate_limited",
+            "latency_ms": duration_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(exc),
+        }
+    except Exception as exc:
+        duration_ms = round((time.time() - start) * 1000, 1)
+        return {
+            "status": "error",
+            "latency_ms": duration_ms,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": str(exc),
+        }
+
+
 def complete(
     messages: list[ChatMessage],
     schema: dict | None = None,
@@ -384,16 +541,43 @@ def complete(
     if _rate_limiter is not None:
         _rate_limiter()
 
+    start_time = time.time()
+    call_usage = usage if usage is not None else {}
     try:
-        return PROVIDERS[target_provider](messages, schema, model, temperature, usage)
+        res = PROVIDERS[target_provider](messages, schema, model, temperature, call_usage)
+        duration_ms = (time.time() - start_time) * 1000.0
+        record_api_call(
+            target_provider,
+            success=True,
+            latency_ms=duration_ms,
+            prompt_tokens=call_usage.get("prompt_tokens", 0),
+            completion_tokens=call_usage.get("completion_tokens", 0),
+        )
+        return res
     except LLMRateLimitError:
+        duration_ms = (time.time() - start_time) * 1000.0
+        record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=True)
         # Dual-provider fallback: if primary provider encounters free-tier rate limit (429),
         # automatically fail over to secondary provider if configured.
         fallback = "gemini" if target_provider == "groq" else "groq"
         fallback_key = os.environ.get(f"{fallback.upper()}_API_KEY")
         if fallback_key and fallback in PROVIDERS:
+            fb_start = time.time()
             try:
-                return PROVIDERS[fallback](messages, schema, None, temperature, usage)
+                res = PROVIDERS[fallback](messages, schema, None, temperature, call_usage)
+                fb_duration = (time.time() - fb_start) * 1000.0
+                record_api_call(
+                    fallback,
+                    success=True,
+                    latency_ms=fb_duration,
+                    prompt_tokens=call_usage.get("prompt_tokens", 0),
+                    completion_tokens=call_usage.get("completion_tokens", 0),
+                )
+                return res
             except Exception:
                 pass
+        raise
+    except Exception:
+        duration_ms = (time.time() - start_time) * 1000.0
+        record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=False)
         raise

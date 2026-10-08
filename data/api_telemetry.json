@@ -1,0 +1,54 @@
+{
+  "groq": {
+    "total_calls": 0,
+    "successful_calls": 0,
+    "rate_limited_calls": 0,
+    "failed_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_latency_ms": 0.0,
+    "avg_latency_ms": 0.0,
+    "last_latency_ms": 0.0,
+    "last_status": "Idle",
+    "last_call_at": null
+  },
+  "gemini": {
+    "total_calls": 0,
+    "successful_calls": 0,
+    "rate_limited_calls": 0,
+    "failed_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_latency_ms": 0.0,
+    "avg_latency_ms": 0.0,
+    "last_latency_ms": 0.0,
+    "last_status": "Idle",
+    "last_call_at": null
+  },
+  "openrouter": {
+    "total_calls": 0,
+    "successful_calls": 0,
+    "rate_limited_calls": 0,
+    "failed_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_latency_ms": 0.0,
+    "avg_latency_ms": 0.0,
+    "last_latency_ms": 0.0,
+    "last_status": "Idle",
+    "last_call_at": null
+  },
+  "ollama": {
+    "total_calls": 0,
+    "successful_calls": 0,
+    "rate_limited_calls": 0,
+    "failed_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_latency_ms": 0.0,
+    "avg_latency_ms": 0.0,
+    "last_latency_ms": 0.0,
+    "last_status": "Idle",
+    "last_call_at": null
+  }
+}
