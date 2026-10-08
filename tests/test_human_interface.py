@@ -224,6 +224,42 @@ class TestDatabaseAndModelTraining(unittest.TestCase):
         self.assertIn(act.type, [ActionType.GATHER, ActionType.SHARE, ActionType.HOARD, ActionType.SKIP, ActionType.COMMUNICATE])
 
 
+class TestStreamlitAppScreens(unittest.TestCase):
+    def test_all_screens_render_without_errors(self):
+        """Test all 4 screens (consent, instructions, game, debrief) end-to-end using AppTest."""
+        from streamlit.testing.v1 import AppTest
+
+        app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "human_interface", "app.py"))
+        at = AppTest.from_file(app_path, default_timeout=15)
+        at.run()
+        self.assertFalse(at.exception, f"Consent screen error: {at.exception}")
+        self.assertEqual(at.session_state.stage, "consent")
+
+        # Agree & continue -> instructions
+        at.checkbox[0].check().run()
+        at.button[0].click().run()
+        self.assertFalse(at.exception, f"Instructions screen error: {at.exception}")
+        self.assertEqual(at.session_state.stage, "instructions")
+
+        # Start simulation -> game
+        at.button[0].click().run()
+        self.assertFalse(at.exception, f"Game screen error: {at.exception}")
+        self.assertEqual(at.session_state.stage, "game")
+
+        # Execute game action
+        for btn in at.button:
+            if "Submit" in btn.label:
+                btn.click().run()
+                break
+        self.assertFalse(at.exception, f"Game step error: {at.exception}")
+
+        # Debrief screen
+        at.session_state.stage = "debrief"
+        at.run()
+        self.assertFalse(at.exception, f"Debrief screen error: {at.exception}")
+        self.assertEqual(at.session_state.stage, "debrief")
+
+
 if __name__ == "__main__":
     unittest.main()
 

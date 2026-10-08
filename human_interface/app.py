@@ -212,14 +212,21 @@ with st.sidebar:
     with st.expander("📥 Researcher Data Export", expanded=False):
         from common.database import DEFAULT_DB_PATH, export_combined_dataset, export_sft_dataset, get_db_summary, sync_all_logs_to_db
         try:
-            sync_all_logs_to_db()
-            csv_path = export_combined_dataset()
-            export_sft_dataset()
             db_summary = get_db_summary()
             st.caption(f"💾 Total Trials: **{db_summary['total_trials']}** ({db_summary['human_trials']} Human)")
             st.caption(f"📊 Action Steps: **{db_summary['total_actions']}**")
         except Exception:
-            csv_path = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+            pass
+
+        if st.button("🔄 Sync & Refresh Database", use_container_width=True):
+            with st.spinner("Syncing latest logs..."):
+                sync_all_logs_to_db()
+                export_combined_dataset()
+                export_sft_dataset()
+                st.success("Synced!")
+                st.rerun()
+
+        csv_path = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
 
         if os.path.exists(csv_path):
             with open(csv_path, "r", encoding="utf-8") as f:
@@ -341,7 +348,7 @@ def instructions_screen():
         | 💧 **Survival Need** | You automatically consume **{SURVIVAL_COST} units of water** every round. | If your water drops below 0, you die. |
         | 🌊 **Shared Lake** | All players harvest from this central commons. | If over-harvested, the lake empties to 0! |
         | 💧 **Gather** | Draws water from the lake (**+3 units** normal, **+1 unit** in drought). | Recharges your stock, but drains lake. |
-        | 🛡️ **Hoard / Ration** | Rest and ration reserves. Consumes only **{HOARD_SURVIVAL_COST} unit** (saves 1 unit!). | Conserves your water & protects lake! |
+        | 🛡️ **Hoard / Ration** | Rest and protect personal reserves without drawing from lake. Consumes {SURVIVAL_COST} units. | Conserves shared lake pool! |
         | 🤝 **Share** | Gift 1+ water units to a struggling co-player. | Saves teammates and builds mutual trust. |
         | 💬 **Communicate** | Broadcast statements, promises, or requests. | Coordinates team actions. |
         | ⏳ **Skip** | Take no action (still consumes {SURVIVAL_COST} units). | Inactive turn. |
@@ -384,7 +391,7 @@ def game_screen():
         st.warning(
             f"⚠️ **Low Water Critical Warning:** You have **{focal_player.resource:.1f} units** remaining! "
             f"You will consume **{SURVIVAL_COST} units** at the end of this round. "
-            "Consider **Gathering** or **Hoarding** (which cuts cost to 1 unit) to survive!"
+            "Consider **Gathering** water or requesting a **Share** from teammates to survive!"
         )
 
     # Top Status Bar
