@@ -6,7 +6,7 @@ human_interface/app.py's per-player mechanics when the shared pool isn't under s
 import unittest
 
 from agents.coplayers import get_policy
-from agents.environment import ScarcityEnv
+from agents.environment import DEFAULT_SEVERITY, ResourcePool, ScarcityEnv
 from common.actions import Action, ActionType
 from common.config import START_WATER, SURVIVAL_COST, gather_yield, is_alive
 from common.schema import validate_trial
@@ -92,6 +92,57 @@ class TestParityWithHumanApp(unittest.TestCase):
 
     def test_solo_always_gather_matches_app_formula_drought(self):
         self._check("drought")
+
+
+class TestSeverity(unittest.TestCase):
+    """Phase G (PHASE_PLAN.md N1): `severity` is an ambient scarcity dial, orthogonal to the
+    scripted drought-round shock, applied every round in every scenario. See the comment above
+    `DEFAULT_SEVERITY` in agents/environment.py for why it isn't scoped to drought only.
+    """
+
+    def test_default_severity_matches_pre_phase_g_behaviour(self):
+        pool_a = ResourcePool()
+        pool_b = ResourcePool()
+        pool_a.draw_and_regenerate({}, round_num=1, scenario="calm")
+        pool_b.draw_and_regenerate({}, round_num=1, scenario="calm", severity=DEFAULT_SEVERITY)
+        self.assertEqual(pool_a.stock, pool_b.stock)
+
+    def test_higher_severity_regenerates_less_in_calm_scenario(self):
+        # calm has no scripted drought round, so any difference here is purely `severity`'s doing.
+        low = ResourcePool()
+        low.stock = 50.0
+        high = ResourcePool()
+        high.stock = 50.0
+        low.draw_and_regenerate({}, round_num=1, scenario="calm", severity=0.0)
+        high.draw_and_regenerate({}, round_num=1, scenario="calm", severity=0.9)
+        self.assertGreater(low.stock, high.stock)
+
+    def test_severity_stacks_with_scripted_drought_shock(self):
+        no_drought = ResourcePool()
+        no_drought.stock = 50.0
+        drought_round = ResourcePool()
+        drought_round.stock = 50.0
+        no_drought.draw_and_regenerate({}, round_num=1, scenario="drought", severity=0.5)
+        drought_round.draw_and_regenerate({}, round_num=6, scenario="drought", severity=0.5)
+        self.assertGreater(no_drought.stock, drought_round.stock)
+
+    def test_scarcity_env_rejects_out_of_range_severity(self):
+        with self.assertRaises(ValueError):
+            ScarcityEnv(scenario="calm", seed=0, severity=1.5)
+
+    def test_severity_flows_through_env_step(self):
+        # Growth is applied *after* this round's draw is granted, so its effect only shows up in
+        # the pool's stock for next round's grants — not in this round's resource_after. Start
+        # below capacity (not fully drained) so the draw doesn't swallow the whole regen delta.
+        env_low = ScarcityEnv(scenario="calm", seed=0, severity=0.0)
+        env_high = ScarcityEnv(scenario="calm", seed=0, severity=0.9)
+        for env in (env_low, env_high):
+            env.reset()
+            env.pool.stock = 50.0
+        actions = {pid: Action(type=ActionType.GATHER) for pid in env_low.player_ids}
+        env_low.step(dict(actions))
+        env_high.step(dict(actions))
+        self.assertGreater(env_low.pool.stock, env_high.pool.stock)
 
 
 if __name__ == "__main__":

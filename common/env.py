@@ -29,3 +29,14 @@ def load_dotenv(path: str = ".env") -> None:
             # .env silently broke both providers by sending model="" instead of falling back.
             if key and value:
                 os.environ.setdefault(key, value)
+
+    # Also pull from Streamlit secrets if running inside Streamlit Cloud
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            for sec_key, sec_val in st.secrets.items():
+                if isinstance(sec_val, str) and sec_val:
+                    os.environ.setdefault(sec_key, sec_val)
+    except Exception:
+        pass
+

@@ -221,8 +221,9 @@ __marimo__/
 data/human_logs/
 
 # AI trial logs (regeneratable via `python tasks.py pilot` / `trials`) — see
-# agents/PHASE_PLAN.md Phase B; only the derived summary is committed, not raw logs
-data/ai_logs/
+# agents/PHASE_PLAN.md Phase B; only the derived summary and the dataset README are committed
+data/ai_logs/*
+!data/ai_logs/README.md
 
 # Trained RL checkpoints (regeneratable via `python -m agents.rl_policy train`) — see
 # agents/PHASE_PLAN.md Phase D
@@ -232,3 +233,19 @@ models/
 CLAUDE.md
 .claude/
 skills-lock.json
+
+# SQLite study database & exported datasets (reproducible via tasks.py sync_db / export)
+data/*.db
+data/*.db-journal
+data/combined_scarcity_dataset.csv
+data/trial_features.csv
+data/llm_sft_dataset.jsonl
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local
+
+# Frozen AI-log archives (agents/freeze_logs.py) — the .json checksum file next to each is tracked
+data/releases/*.zip
+

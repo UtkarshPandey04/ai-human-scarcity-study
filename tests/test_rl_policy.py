@@ -90,10 +90,13 @@ class TestEnvStructural(unittest.TestCase):
     """Structural correctness only — no training. See module docstring."""
 
     def test_check_env_passes(self):
-        from stable_baselines3.common.env_checker import check_env
+        try:
+            from stable_baselines3.common.env_checker import check_env
+        except ImportError:
+            from gymnasium.utils.env_checker import check_env
 
         env = ScarcitySingleAgentEnv(scenario="calm", seed=0)
-        check_env(env, warn=True)  # raises on structural violations
+        check_env(env, warn=True)
 
     def test_reset_returns_obs_and_info(self):
         env = ScarcitySingleAgentEnv(scenario="calm", seed=0)

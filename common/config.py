@@ -24,9 +24,13 @@ SURVIVAL_COST = 2  # water consumed per round, regardless of action taken
 GATHER_NORMAL = 3  # water gained by `gather` outside a drought round
 GATHER_DROUGHT = 1  # water gained by `gather` during a drought round
 
+# Matched-seed list agreed between human sessions and AI trials (seeds 0-29)
+MATCHED_SEEDS = tuple(range(30))
+
 # Scenario enum shared by the schema validator. "asymmetric" (unequal starting stock) is proposed
 # in agents/PHASE_PLAN.md but not yet agreed with Group 1 — add it here only once it is.
 SCENARIOS = ("calm", "drought", "repeated_trust")
+
 
 
 def is_drought(round_num: int, scenario: str) -> bool:
