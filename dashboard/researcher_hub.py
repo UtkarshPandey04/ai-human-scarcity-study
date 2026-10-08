@@ -81,7 +81,7 @@ def check_researcher_auth() -> bool:
         )
 
         with st.form("researcher_login_form"):
-            username_input = st.text_input("Username", value="admin", placeholder="Enter username")
+            username_input = st.text_input("Username", value="", placeholder="Enter username")
             password_input = st.text_input("Password", type="password", placeholder="Enter password")
             submit = st.form_submit_button("Authenticate & Enter Portal", type="primary", use_container_width=True)
 
@@ -92,8 +92,6 @@ def check_researcher_auth() -> bool:
                     st.rerun()
                 else:
                     st.error("❌ Invalid credentials. Please check your username and password.")
-
-        st.caption("💡 Default researcher login: `admin` / `scarcity2026` (configurable in `.env` or Streamlit Secrets).")
 
     return False
 
