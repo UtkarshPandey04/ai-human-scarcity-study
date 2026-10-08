@@ -18,6 +18,9 @@ st.set_page_config(
     layout="wide",
 )
 
+import importlib
+import dashboard.researcher_hub
+importlib.reload(dashboard.researcher_hub)
 from dashboard.researcher_hub import render_researcher_hub
 
 render_researcher_hub(embedded=False)

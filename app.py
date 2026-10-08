@@ -18,6 +18,11 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+# Force clean module cache on every reload so deployed updates take effect immediately
+for mod_name in list(sys.modules.keys()):
+    if mod_name.startswith("dashboard") or mod_name.startswith("human_interface"):
+        sys.modules.pop(mod_name, None)
+
 # Check query parameter for mode selection (?mode=researcher or ?mode=study)
 query_mode = st.query_params.get("mode", "").lower()
 

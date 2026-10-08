@@ -923,6 +923,9 @@ def debrief_screen():
 
 # ---------- ROUTER ----------
 if query_params.get("mode") == "researcher" or st.session_state.get("portal_active", False):
+    import importlib
+    import dashboard.researcher_hub
+    importlib.reload(dashboard.researcher_hub)
     from dashboard.researcher_hub import render_researcher_hub
     render_researcher_hub(embedded=True)
 else:
