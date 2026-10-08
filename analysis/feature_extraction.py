@@ -54,7 +54,8 @@ def extract_trial_features(rows: list[dict[str, Any]], focal_id: str | None = No
     meta = rows[0].get("meta") or {}
     arm = meta.get("arm", "human" if source == "human" else "ai")
     seed = meta.get("seed", 0)
-    severity = meta.get("severity", 0.7 if scenario == "drought" else 0.0)
+    raw_sev = meta.get("severity")
+    severity = float(raw_sev) if raw_sev is not None else (0.7 if scenario == "drought" else 0.0)
 
     # Determine focal agent
     if focal_id is None:
@@ -141,6 +142,27 @@ def extract_trial_features(rows: list[dict[str, Any]], focal_id: str | None = No
             alliances += 1
             checked_pairs.add((a, b))
 
+    # Calculate total received from other agents
+    total_received = 0.0
+    total_gathered = 0.0
+    initial_resource = focal_rows[0].get("resource_before", 5.0)
+
+    for r in focal_rows:
+        act = r.get("action_type")
+        if act == "gather":
+            # Gained resources before survival cost: (resource_after + survival_cost - resource_before)
+            gain = max(0.0, r.get("resource_after", 0.0) + 1.0 - r.get("resource_before", 0.0))
+            total_gathered += gain
+
+    for r in rows:
+        if r.get("action_type") == "share" and r.get("target_agent") == focal_id:
+            # Estimate received water
+            total_received += max(1.0, float(r.get("resource_before", 0) - r.get("resource_after", 0) - 1.0))
+
+    total_available = max(1.0, initial_resource + total_gathered + total_received)
+    hoarding_index = max(0.0, min(1.0, final_resource / total_available))
+    cooperation_rate = (action_counts["share"] + action_counts["communicate"]) / max(1, total_rounds)
+
     return {
         "trial_id": trial_id,
         "source": source,
@@ -155,9 +177,12 @@ def extract_trial_features(rows: list[dict[str, Any]], focal_id: str | None = No
         "gather_rate": action_counts["gather"] / max(1, total_rounds),
         "share_rate": action_counts["share"] / max(1, total_rounds),
         "hoard_rate": action_counts["hoard"] / max(1, total_rounds),
+        "hoarding_index": hoarding_index,
+        "cooperation_rate": cooperation_rate,
         "skip_rate": action_counts["skip"] / max(1, total_rounds),
         "communicate_rate": action_counts["communicate"] / max(1, total_rounds),
         "total_shared": total_shared,
+        "total_received": total_received,
         "stock_claims_count": stock_claims,
         "deceptive_claims_count": deceptive_claims,
         "deception_rate": deception_rate,

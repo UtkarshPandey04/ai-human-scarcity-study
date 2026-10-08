@@ -60,8 +60,9 @@ with st.sidebar:
     st.caption(f"Database Path:\n`{DEFAULT_DB_PATH}`")
 
 # Tabs
-tab_overview, tab_train, tab_explore, tab_inference = st.tabs([
+tab_overview, tab_joint, tab_train, tab_explore, tab_inference = st.tabs([
     "📊 Study Overview",
+    "📈 Joint Analysis (Phase 3)",
     "🧠 Model Training Center",
     "🗄️ Database Explorer",
     "🔮 Model Inference & Testing",
@@ -99,6 +100,144 @@ with tab_overview:
             """
             summary_df = pd.read_sql_query(query, conn)
         st.dataframe(summary_df, use_container_width=True)
+
+# -------------------------------------------------------------
+# TAB 2: JOINT ANALYSIS (PHASE 3 RESULTS)
+# -------------------------------------------------------------
+with tab_joint:
+    st.subheader("🔬 Phase 3: Joint Analysis & Behavioral Divergence Findings")
+    st.caption("Empirical statistical hypothesis testing, Scarcity Dose-Response Elasticity, and Distinguishability Modeling.")
+
+    # Action button to trigger pipeline
+    ja_col1, ja_col2 = st.columns([1, 3])
+    with ja_col1:
+        if st.button("⚡ Re-run Full Joint Analysis", type="primary", use_container_width=True):
+            with st.spinner("Executing Feature Extraction, Mann-Whitney U, Classifier, and Figures..."):
+                import subprocess
+                subprocess.call([sys.executable, "tasks.py", "joint_analysis"])
+                st.success("Joint Analysis completed and figures updated!")
+                st.rerun()
+
+    stats_json_path = os.path.join(PROJECT_ROOT, "data", "stats_summary.json")
+    classifier_json_path = os.path.join(PROJECT_ROOT, "models", "distinguishability_classifier.json")
+    qual_json_path = os.path.join(PROJECT_ROOT, "data", "qualitative_excerpts.json")
+
+    # 1. Statistical Hypothesis Testing Sub-Section
+    st.markdown("### 📊 1. Non-Parametric Hypothesis Testing (Mann-Whitney U)")
+    if os.path.exists(stats_json_path):
+        with open(stats_json_path, "r", encoding="utf-8") as f:
+            stats_data = json.load(f)
+
+        subsets = stats_data.get("subsets", {})
+        subset_keys = list(subsets.keys())
+        selected_subset = st.selectbox("Select Scenario Subset:", subset_keys, index=0)
+
+        if selected_subset in subsets:
+            rows = subsets[selected_subset]
+            table_rows = []
+            for r in rows:
+                table_rows.append({
+                    "Metric": r["metric_label"],
+                    "Human Mean (SD)": f"{r['human_mean']:.3f} (±{r['human_std']:.2f})",
+                    "AI Mean (SD)": f"{r['ai_mean']:.3f} (±{r['ai_std']:.2f})",
+                    "Mann-Whitney U": f"{r['u_stat']:.1f}",
+                    "p-value": f"{r['p_value']:.4f} {r['stars']}",
+                    "Cliff's Delta": f"{r['cliffs_delta']:+.3f}",
+                    "Effect Size": r["effect_magnitude"],
+                    "Cohen's d": f"{r['cohens_d']:+.2f}",
+                })
+            st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
+            st.caption("Significance flags: † p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001.")
+
+        # Dose Response summary
+        dr_data = stats_data.get("dose_response", {})
+        slopes = dr_data.get("slopes", {})
+        st.markdown("#### 📈 Novelty N1: Scarcity Dose-Response Elasticity")
+        dcol1, dcol2, dcol3, dcol4 = st.columns(4)
+        dcol1.metric("Human d(Share)/d(Sev)", f"{slopes.get('human_dShare_dSeverity', 0):+.4f}")
+        dcol2.metric("AI d(Share)/d(Sev)", f"{slopes.get('ai_dShare_dSeverity', 0):+.4f}")
+        dcol3.metric("Human d(Hoard)/d(Sev)", f"{slopes.get('human_dHoard_dSeverity', 0):+.4f}")
+        dcol4.metric("AI d(Hoard)/d(Sev)", f"{slopes.get('ai_dHoard_dSeverity', 0):+.4f}")
+    else:
+        st.info("Run `python tasks.py stats` or click the button above to generate statistical findings.")
+
+    st.divider()
+
+    # 2. Classifier & Novelty N3 Sub-Section
+    st.markdown("### 🏆 2. Distinguishability Classifier & Novelty N3 Findings")
+    if os.path.exists(classifier_json_path):
+        with open(classifier_json_path, "r", encoding="utf-8") as f:
+            c_data = json.load(f)
+
+        ccol1, ccol2 = st.columns(2)
+        with ccol1:
+            lr_res = c_data.get("overall_logistic", {})
+            st.markdown("**Logistic Regression (L2 Regularized):**")
+            st.metric("5-Fold CV Accuracy", f"{lr_res.get('accuracy', 0)*100:.1f}%")
+            st.metric("ROC-AUC Score", f"{lr_res.get('roc_auc', 0):.3f}")
+            st.metric("F1-Score", f"{lr_res.get('f1_score', 0):.3f}")
+
+        with ccol2:
+            rf_res = c_data.get("overall_rf", {})
+            st.markdown("**Random Forest Classifier (Ensemble):**")
+            st.metric("5-Fold CV Accuracy", f"{rf_res.get('accuracy', 0)*100:.1f}%")
+            st.metric("ROC-AUC Score", f"{rf_res.get('roc_auc', 0):.3f}")
+            st.metric("F1-Score", f"{rf_res.get('f1_score', 0):.3f}")
+
+        # Distinguishability Across Scarcity
+        st.markdown("#### 🔬 Distinguishability Across Scarcity Conditions (Novelty N3):")
+        sc_dose = c_data.get("scarcity_dose_response", {})
+        sc_table = []
+        for s_name, s_res in sc_dose.items():
+            sc_table.append({
+                "Condition": s_name,
+                "Logistic Regression AUC": f"{s_res['logistic_regression'].get('roc_auc', 0):.3f}",
+                "Logistic Accuracy": f"{s_res['logistic_regression'].get('accuracy', 0)*100:.1f}%",
+                "Random Forest AUC": f"{s_res['random_forest'].get('roc_auc', 0):.3f}",
+                "Random Forest Accuracy": f"{s_res['random_forest'].get('accuracy', 0)*100:.1f}%",
+            })
+        st.dataframe(pd.DataFrame(sc_table), use_container_width=True)
+
+    st.divider()
+
+    # 3. Publication Figures Showcase
+    st.markdown("### 🖼️ 3. Camera-Ready Academic Figures (300 DPI)")
+    fig_col1, fig_col2 = st.columns(2)
+
+    fig1_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig1_behavioral_comparison.png")
+    fig2_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig2_dose_response.png")
+    fig3_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig3_distinguishability_roc.png")
+    fig4_path = os.path.join(PROJECT_ROOT, "paper", "figures", "fig4_feature_importance.png")
+
+    with fig_col1:
+        if os.path.exists(fig1_path):
+            st.image(fig1_path, caption="Figure 1: Behavioral Metric Distributions (AI vs. Human across Scenarios)")
+        if os.path.exists(fig3_path):
+            st.image(fig3_path, caption="Figure 3: Distinguishability ROC-AUC across Scarcity Levels (Novelty N3)")
+
+    with fig_col2:
+        if os.path.exists(fig2_path):
+            st.image(fig2_path, caption="Figure 2: Scarcity Dose-Response Elasticity Curves (Novelty N1)")
+        if os.path.exists(fig4_path):
+            st.image(fig4_path, caption="Figure 4: Feature Importance & Driver Attribution")
+
+    st.divider()
+
+    # 4. Qualitative Behavioral Excerpts Viewer
+    st.markdown("### 📝 4. Qualitative Excerpt Explorer")
+    st.caption("Inspect verifiable arithmetic deception cases, moral appeals, and altruistic sacrifice.")
+    if os.path.exists(qual_json_path):
+        with open(qual_json_path, "r", encoding="utf-8") as f:
+            excerpts_list = json.load(f)
+
+        for idx, ex in enumerate(excerpts_list[:6], 1):
+            with st.expander(f"Excerpt {idx}: {ex['category']} — {ex['trial_id']} (Round {ex['round']})"):
+                st.write(f"**Agent:** `{ex['agent_id']}` ({ex['source'].upper()}) | **Action:** `{ex['action_type'].upper()}`")
+                if ex.get("latency_ms") and ex["latency_ms"] > 0:
+                    st.write(f"**Decision Latency:** `{ex['latency_ms']:,} ms`")
+                if ex.get("claimed_value") is not None:
+                    st.error(f"🚨 Arithmetic Deception: Claimed Stock = {ex['claimed_value']} vs. True Resource = {ex['true_resource_before']:.1f}")
+                st.info(f"💡 Commentary: {ex['commentary']}")
 
 # -------------------------------------------------------------
 # TAB 2: MODEL TRAINING CENTER

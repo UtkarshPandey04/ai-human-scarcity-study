@@ -239,3 +239,8 @@ data/*.db-journal
 data/combined_scarcity_dataset.csv
 data/trial_features.csv
 data/llm_sft_dataset.jsonl
+
+# Environment variables & secrets
+.env
+.env.local
+.env.*.local

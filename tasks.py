@@ -107,6 +107,41 @@ def classify() -> int:
     return subprocess.call([sys.executable, "-m", "analysis.classifier", *sys.argv[2:]])
 
 
+def stats() -> int:
+    """Run non-parametric statistical hypothesis tests (Mann-Whitney U, Cliff's delta, dose-response)."""
+    return subprocess.call([sys.executable, "-m", "analysis.stats_tests", *sys.argv[2:]])
+
+
+def qualitative() -> int:
+    """Extract and analyze qualitative transcript excerpts comparing human and AI behaviors."""
+    return subprocess.call([sys.executable, "-m", "analysis.qualitative_analysis", *sys.argv[2:]])
+
+
+def figures() -> int:
+    """Generate camera-ready publication figures (Fig 1 - Fig 4)."""
+    return subprocess.call([sys.executable, "-m", "analysis.generate_figures", *sys.argv[2:]])
+
+
+def joint_analysis() -> int:
+    """Run complete Phase 3 Joint Analysis pipeline end-to-end."""
+    print("=== RUNNING PHASE 3 JOINT ANALYSIS SUITE ===")
+    steps = [
+        ("Step 1: Feature Extraction", ["-m", "analysis.feature_extraction"]),
+        ("Step 2: Statistical Hypothesis Testing", ["-m", "analysis.stats_tests"]),
+        ("Step 3: Distinguishability Classifier (Novelty N3)", ["-m", "analysis.classifier"]),
+        ("Step 4: Qualitative Excerpts Extraction", ["-m", "analysis.qualitative_analysis"]),
+        ("Step 5: Publication Figures Generation", ["-m", "analysis.generate_figures"]),
+    ]
+    for label, cmd in steps:
+        print(f"\n>>> {label}...")
+        code = subprocess.call([sys.executable, *cmd])
+        if code != 0:
+            print(f"FAILED at {label} with code {code}")
+            return code
+    print("\n[SUCCESS] Phase 3 Joint Analysis pipeline completed successfully!")
+    return 0
+
+
 def pilot_human() -> int:
     """Run pilot human-arm trials across matched seeds to test the focal substitution pipeline."""
     from common.actions import Action, ActionType, Message, MessageKind
@@ -262,6 +297,10 @@ TASKS = {
     "qa_logs": qa_logs,
     "features": features,
     "classify": classify,
+    "stats": stats,
+    "qualitative": qualitative,
+    "figures": figures,
+    "joint_analysis": joint_analysis,
     "sync_db": sync_db,
     "train": train,
     "export_data": export_data,
