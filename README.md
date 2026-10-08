@@ -1,641 +1,840 @@
+# 🧠 AI–Human Behavioral Divergence Under Resource Scarcity
 
+### *Behavioral Divergence Between LLM-Driven Multi-Agent Societies and Humans Under Resource Scarcity*
 
-# 🚀 AI Human Scarcity Study — Git & Branching Workflow
+[![Research](https://img.shields.io/badge/Research-Multi--Agent%20AI-blue)](https://github.com/)
+[![LLM](https://img.shields.io/badge/LLM-Groq%20%7C%20Gemini-purple)](https://github.com/)
+[![Environment](https://img.shields.io/badge/Environment-ScarcityEnv-green)](https://github.com/)
+[![Dataset](https://img.shields.io/badge/Dataset-84%20Trials-orange)](https://github.com/)
+[![License](https://img.shields.io/badge/Status-Research-yellow)](https://github.com/)
 
-This document defines the GitHub workflow for our **4-person student research project**. The goal is to keep collaboration simple, avoid conflicts, and ensure that `main` always contains stable, working code.
+> **Can LLM-driven multi-agent systems reproduce human social behavior when shared resources become scarce?**
+
+This project investigates whether Large Language Model (LLM)-driven agents reproduce human behavioral dynamics under existential resource scarcity, including **cooperation collapse, defensive hoarding, strategic deception, reciprocity, inequality, and altruistic self-sacrifice**.
 
 ---
 
-## 📌 Team Branch Structure
+## 👥 Authors
 
-We will use **3 main branches** throughout the project:
+**Mentor**
+
+- **Ms. Laxmi** — Assistant Professor
+
+**Student Researchers**
+
+- **Utkarsh Pandey**
+- **Sujal Kumar**
+- **Saksham Singh**
+- **Yash Tyagi**
+
+**Department:** Computer Science & Engineering — AI & ML  
+**Institution:** KIET Deemed to be University, Delhi-NCR, Ghaziabad, Uttar Pradesh, India
+
+---
+
+# 🔬 Research Question
+
+> **Do multi-agent systems driven by Large Language Models (LLMs) and Reinforcement Learning (RL) accurately reproduce human social dynamics when essential shared commons undergo severe existential scarcity shocks?**
+
+The study specifically examines whether AI agents reproduce human responses such as:
+
+- 🤝 Cooperation
+- 📉 Cooperation collapse
+- 🛡️ Defensive hoarding
+- 🎭 Strategic deception
+- 🔗 Alliance formation
+- ⚖️ Inequality formation
+- ❤️ Altruistic self-sacrifice
+- 🧠 Scarcity-induced deliberation
+
+---
+
+# 🌍 Why This Matters
+
+Current evaluations of LLM agents often focus on:
+
+- Task completion
+- Reasoning
+- Coding
+- Question answering
+- Tool use
+- Individual decision-making
+
+However, increasingly autonomous AI systems may operate in environments where **multiple agents compete and cooperate over limited shared resources**.
+
+Examples include:
+
+- Water allocation
+- Energy systems
+- Disaster response
+- Food distribution
+- Public infrastructure
+- Economic resource allocation
+- Crisis management
+
+The central hypothesis of this project is:
+
+> **An AI agent that behaves cooperatively under normal conditions may not necessarily reproduce the complex behavioral adaptations humans exhibit when scarcity becomes existential.**
+
+---
+
+# 🏝️ Experimental Environment — `ScarcityEnv`
+
+The study implements a multi-agent **Common Pool Resource (CPR)** environment inspired by research on commons governance, particularly the work of **Elinor Ostrom**.
+
+### Environment
+
+| Parameter | Value |
+|---|---:|
+| Agents | 5 |
+| Resource | Shared freshwater lake |
+| Lake capacity \(K\) | 50 |
+| Regeneration rate \(r\) | 0.35 |
+| Survival cost | 2 water / round |
+| Death condition | Personal water < 0 |
+
+---
+
+## 💧 Resource Dynamics
+
+Lake regeneration follows a discrete logistic growth model:
+
+\[
+G(S)=rS\left(1-\frac{S}{K}\right)
+\]
+
+where:
+
+- \(S\) = current lake stock
+- \(K=50\) = maximum lake capacity
+- \(r=0.35\) = intrinsic regeneration rate
+
+Excessive resource extraction can therefore produce a **Tragedy of the Commons**.
+
+---
+
+# 🎮 Action Space
+
+Agents can perform five primary actions:
+
+| Action | Description |
+|---|---|
+| `gather` | Harvest water from the shared lake |
+| `share(target, amount)` | Transfer personal water to another agent |
+| `hoard` | Preserve personal reserves without harvesting |
+| `skip` | Take no active action while still consuming survival cost |
+| `communicate(target, message)` | Send structured communication |
+
+---
+
+# 💬 Machine-Verifiable Communication
+
+Communication is structured so that claims can be automatically checked against the actual environment state.
+
+### Supported Messages
 
 ```text
-main
-│
-├── group1-human-study
-│   └── Sujal + Utkarsh
-│
-├── group2-agents
-│   └── Yashash + Saksham
-│
-└── joint-analysis
-    └── All 4 members — Phase 3
+claim_stock(value)
+promise_share(amount)
+request(amount)
+accuse
 ```
 
-### Branch Responsibilities
-
-| Branch               | Members           | Purpose                                                | Timeline       |
-| -------------------- | ----------------- | ------------------------------------------------------ | -------------- |
-| `main`               | Everyone          | Stable, reviewed code                                  | Entire project |
-| `group1-human-study` | Sujal + Utkarsh   | Human study / participant-side work                    | Weeks 1–7      |
-| `group2-agents`      | Yashash + Saksham | AI agents / environment / RL work                      | Weeks 1–7      |
-| `joint-analysis`     | Everyone          | Feature extraction, statistics, classifier & dashboard | Weeks 8–10     |
-
-> ⚠️ **Rule:** Never push experimental or broken code directly to `main`.
+This enables objective measurement of strategic communication and deception.
 
 ---
 
-# 1️⃣ Clone the Repository
+# 🧪 Experimental Design
 
-Everyone should first clone the repository to their local machine.
+The experiment uses a **matched-protocol design**.
 
-```bash
-git clone https://github.com/<your-org-or-username>/ai-human-scarcity-study.git
-cd ai-human-scarcity-study
-```
-
-Verify the repository:
-
-```bash
-git remote -v
-```
-
----
-
-# 2️⃣ Sync With `main`
-
-Before creating or switching to your working branch, make sure your local repository is up to date.
-
-```bash
-git checkout main
-git pull origin main
-```
-
-### Why?
-
-This ensures everyone starts their work from the **latest stable version** of the project.
-
----
-
-# 3️⃣ Branching Strategy
-
-We are keeping the branching strategy intentionally simple.
+Four co-players remain fixed while only the focal player changes.
 
 ```text
-main
-│
-├── group1-human-study
-│   ├── Sujal
-│   └── Utkarsh
-│
-└── group2-agents
-    ├── Yashash
-    └── Saksham
+                ┌──────────────────────┐
+                │    ScarcityEnv       │
+                │   Shared Water Pool  │
+                └──────────┬───────────┘
+                           │
+          ┌────────────────┼────────────────┐
+          │                │                │
+       A₂ Coop          A₃ Free         A₄ Tit-for-Tat
+          │                │                │
+          └────────────────┼────────────────┘
+                           │
+                      A₅ Random
+                           │
+                           ▼
+                    ┌────────────┐
+                    │   A₁       │
+                    │ Focal Agent│
+                    └─────┬──────┘
+                          │
+                 ┌────────┴────────┐
+                 │                 │
+              Human               AI
 ```
 
-### `main`
+### Fixed Co-Players
 
-* Always stable
-* Contains reviewed and working code
-* No direct feature development
-
-### `group1-human-study`
-
-Used by **Sujal & Utkarsh** for:
-
-* Human study implementation
-* Participant interaction
-* Consent screens
-* Study logging
-* Streamlit UI
-* Human-trial related functionality
-
-### `group2-agents`
-
-Used by **Yashash & Saksham** for:
-
-* AI agent implementation
-* Environment development
-* RL policies
-* Drought/scarcity events
-* Agent trial logging
+| Agent | Policy | Behavior |
+|---|---|---|
+| \(A_2\) | Cooperator | Shares surplus |
+| \(A_3\) | Free-Rider | Always gathers; never shares |
+| \(A_4\) | Tit-for-Tat | Reciprocates cooperation |
+| \(A_5\) | Random | Stochastic baseline |
+| \(A_1\) | Experimental | Human or AI |
 
 ---
 
-# 4️⃣ Create the Group Branches
+# 🎯 Matched Random Seeds
 
-### ✅ Already completed by the repository owner
-
-The two long-lived group branches have already been created:
-
-```bash
-git checkout -b group1-human-study
-git push origin group1-human-study
-
-git checkout main
-
-git checkout -b group2-agents
-git push origin group2-agents
-```
-
-After this, everyone should be able to see both branches on GitHub.
-
-Check available branches:
-
-```bash
-git branch -a
-```
-
----
-
-# 5️⃣ Daily Workflow
-
-## 👥 Group 1 — Human Study
-
-**Sujal & Utkarsh**
-
-Before starting work:
-
-```bash
-git checkout group1-human-study
-git pull origin group1-human-study
-```
-
-Then work normally.
-
-After completing a logical piece of work:
-
-```bash
-git add .
-git commit -m "Add consent screen to Streamlit app"
-git push origin group1-human-study
-```
-
-### Example
+The experiment uses identical fixed random seeds:
 
 ```text
-Start work
-    ↓
-checkout group1-human-study
-    ↓
-pull latest changes
-    ↓
-write code
-    ↓
-test locally
-    ↓
-git add .
-    ↓
-git commit
-    ↓
-git push
+Seeds = 0 ... 29
 ```
+
+This allows corresponding Human and AI trials to experience matched stochastic conditions.
+
+The primary independent variable is therefore:
+
+\[
+\text{Decision Maker}\in\{\text{Human},\text{AI}\}
+\]
 
 ---
 
-## 🤖 Group 2 — AI Agents
+# 🌡️ Experimental Conditions
 
-**Yashash & Saksham**
+## 1. Calm Baseline
 
-Before starting work:
+**10 rounds**
 
-```bash
-git checkout group2-agents
-git pull origin group2-agents
-```
-
-After completing a logical piece of work:
-
-```bash
-git add .
-git commit -m "Implement drought event in environment.py"
-git push origin group2-agents
-```
+Tests baseline cooperation and spontaneous resource sharing under relatively abundant conditions.
 
 ---
 
-# 6️⃣ Write Good Commit Messages
+## 2. Drought Shock
 
-Keep commit messages **short, specific, and meaningful**.
+**10 rounds**
 
-### ✅ Good
+At **Round 6**, a simulated drought reduces harvest yield by approximately **70%**.
+
+Severity:
+
+\[
+\sigma\in\{0.0,0.5,0.7\}
+\]
+
+Measures:
+
+- Cooperation collapse
+- Hoarding
+- Deception
+- Survival
+- Alliance formation
+
+---
+
+## 3. Repeated Trust
+
+**30 rounds**
+
+Tests long-term:
+
+- Reciprocity
+- Trust
+- Cooperation
+- Alliance formation
+- Inequality
+- Resource retention
+
+---
+
+# 📊 Dataset
+
+The current research dataset contains:
+
+\[
+\boxed{84\text{ trials}}
+\]
+
+| Group | Trials |
+|---|---:|
+| Human | 24 |
+| AI | 60 |
+| **Total** | **84** |
+
+### Total decisions
+
+\[
+\boxed{5,320\text{ action decisions}}
+\]
+
+---
+
+# 📁 Repository Structure
 
 ```text
-Add consent screen to Streamlit app
-Implement drought event in environment
-Fix agent reward calculation
-Add participant logging
-Update scarcity environment
-Add trial data validation
+ai-human-scarcity-study/
+│
+├── data/
+│   ├── combined_scarcity_dataset.csv
+│   ├── trial_features.csv
+│   ├── scarcity_study.db
+│   ├── llm_sft_dataset.jsonl
+│   │
+│   ├── trials/
+│   │   └── *.jsonl
+│   │
+│   └── human_logs/
+│       └── *.jsonl
+│
+├── models/
+│   ├── distinguishability_classifier.json
+│   └── human_clone_policy.json
+│
+├── paper/
+│   ├── QUALITATIVE_FINDINGS.md
+│   │
+│   └── figures/
+│       ├── fig1_behavioral_comparison.png
+│       ├── fig2_dose_response.png
+│       ├── fig3_distinguishability_roc.png
+│       └── fig4_feature_importance.png
+│
+├── app/
+│   └── Streamlit application
+│
+└── README.md
 ```
 
-### ❌ Avoid
+---
+
+# 📈 Key Results
+
+## Human vs. AI — Pooled Results
+
+| Metric | Human | AI | p-value | Effect |
+|---|---:|---:|---:|---:|
+| **Cooperation Rate** | 0.251 | 0.158 | **0.0151** | \(d=0.94\) |
+| **Water Shared** | 8.12 | 5.63 | **0.0306** | \(d=0.35\) |
+| **Society Gini** | 0.266 | 0.108 | **0.0096** | \(d=1.26\) |
+| **Deception Rate** | 0.125 | 0.000 | **0.0058** | \(d=0.52\) |
+| **Decision Latency** | 1,759 ms | 0 ms | **<0.0001** | \(d=2.37\) |
+
+---
+
+# 🌧️ Drought-Shock Results
+
+| Metric | Human | AI | p-value | Cliff's δ |
+|---|---:|---:|---:|---:|
+| **Hoarding Rate** | 0.138 | 0.046 | **0.0037** | **+0.539** |
+| **Deception Rate** | 0.214 | 0.000 | **0.0357** | **+0.214** |
+| **Society Survival** | 0.611 | 1.000 | **0.0006** | **−0.500** |
+| **Alliance Count** | 0.286 | 1.400 | **0.0403** | **−0.375** |
+
+### Key observation
+
+Humans showed substantially stronger **defensive hoarding and deception** during drought, while the tested AI agents maintained higher measured society-level survival.
+
+---
+
+# 🔥 Repeated-Trust Results
+
+| Metric | Human | AI | p-value | Cliff's δ |
+|---|---:|---:|---:|---:|
+| **Society Gini** | 0.453 | 0.053 | **0.0002** | **+1.000** |
+| **Hoarding Index** | 0.075 | 0.017 | **0.0030** | **+0.860** |
+
+Longer interactions amplified the observed difference in resource inequality and defensive retention.
+
+---
+
+# 🧪 Statistical Analysis
+
+The study uses:
+
+- Mann–Whitney \(U\)
+- Cliff's \(\delta\)
+- Cohen's \(d\)
+- Stratified 5-fold cross-validation
+- ROC-AUC
+- F1 score
+- Permutation feature importance
+
+### Significance
 
 ```text
-changes
-update
-final
-test
-working
-done
-asdf
+*   p < 0.05
+**  p < 0.01
+*** p < 0.001
 ```
 
-### Recommended format
+---
+
+# 💡 Research Novelty
+
+## N1 — Scarcity Dose–Response
+
+Scarcity is treated as a continuous variable rather than simply a binary condition.
+
+### Cooperation
+
+\[
+\frac{\partial Share_{Human}}{\partial\sigma}=-0.1559
+\]
+
+\[
+\frac{\partial Share_{AI}}{\partial\sigma}=-0.0072
+\]
+
+### Hoarding
+
+\[
+\frac{\partial Hoard_{Human}}{\partial\sigma}=+0.1942
+\]
+
+\[
+\frac{\partial Hoard_{AI}}{\partial\sigma}=-0.0959
+\]
+
+### Interpretation
+
+Human sharing decreases as scarcity increases, while defensive hoarding increases.
+
+The tested AI agents show substantially weaker adaptation to scarcity along these dimensions.
+
+---
+
+# 🎭 N2 — Machine-Verifiable Deception
+
+Deception is defined mathematically as:
+
+\[
+Deception=
+\mathbb{I}
+(\text{Claimed Stock}\neq\text{Ground Truth})
+\]
+
+During drought:
 
 ```text
-<action> <what was changed>
+Human deception: 21.4%
+AI deception:     0.0%
 ```
 
-Examples:
+This allows deception to be detected automatically rather than through subjective human interpretation.
+
+---
+
+# 🤖 N3 — Behavioral Distinguishability
+
+A classifier was trained to determine whether behavioral trajectories originated from humans or AI agents.
+
+## Random Forest
+
+| Metric | Score |
+|---|---:|
+| Accuracy | **91.7%** |
+| ROC-AUC | **0.940** |
+| F1 | **0.837** |
+
+## Logistic Regression
+
+| Metric | Score |
+|---|---:|
+| Accuracy | **86.9%** |
+| ROC-AUC | **0.897** |
+| F1 | **0.783** |
+
+### Top Behavioral Features
+
+1. **Society Gini Index** — 0.1821 permutation importance
+2. **Cooperation Rate** — +1.7307
+3. **Alliance Count** — −1.5690
+4. **Hoarding Index** — +1.5219
+5. **Arithmetic Deception** — +0.8371
+
+---
+
+# 🧠 Behavioral Turing Test
+
+The project includes a human evaluation module where participants receive two blinded trajectories:
 
 ```text
-Add participant consent flow
-Fix resource allocation logic
-Implement RL reward function
-Update trial logging schema
+Trajectory A → Human or AI?
+Trajectory B → Human or AI?
 ```
+
+The objective is to determine whether humans can distinguish AI-generated behavioral trajectories from human trajectories.
 
 ---
 
-# 7️⃣ 🔐 Critical Shared File — `LOGGING_SCHEMA.md`
+# ❤️ Qualitative Behavioral Finding
 
-`LOGGING_SCHEMA.md` is a **shared dependency between both groups**.
+## The Altruistic Martyr
 
-Both sides must produce logs using the **same schema**.
-
-Therefore, this file needs special handling.
-
-### Step 1 — Finalize it together
-
-During the **Week 1 team meeting**, all 4 members should agree on:
-
-* Required fields
-* Data types
-* Naming conventions
-* Trial IDs
-* Participant IDs
-* Agent IDs
-* Event formats
-* Timestamps
-* Output structure
-
----
-
-### Step 2 — Commit it to `main`
-
-Once finalized:
-
-```bash
-git checkout main
-git add LOGGING_SCHEMA.md
-git commit -m "Finalize logging schema"
-git push origin main
-```
-
----
-
-### Step 3 — Sync both branches
-
-Group 1:
-
-```bash
-git checkout group1-human-study
-git merge main
-git push origin group1-human-study
-```
-
-Group 2:
-
-```bash
-git checkout group2-agents
-git merge main
-git push origin group2-agents
-```
-
-Now both groups are working with the **exact same schema**.
-
-> ⚠️ **Important:** Never silently change `LOGGING_SCHEMA.md` on only one branch.
-
-If the schema needs to change later, **all 4 members should agree first**.
-
----
-
-# 8️⃣ 🔄 Keep Your Branch Updated
-
-While working for several days, `main` may receive updates from the other group.
-
-Before starting a new task, sync your branch:
-
-```bash
-git checkout group1-human-study
-git pull origin group1-human-study
-git merge main
-```
-
-For Group 2:
-
-```bash
-git checkout group2-agents
-git pull origin group2-agents
-git merge main
-```
-
-Resolve any conflicts locally, test everything, and then push.
-
----
-
-# 9️⃣ 🔀 Merging Into `main`
-
-**Do not directly merge your branch into `main` without review.**
-
-When your group's feature is stable:
-
-### Example
-
-Group 2 completes:
+One observed human trajectory involved participant:
 
 ```text
-Environment
-      +
-RL Policy
-      +
-AI Trial Logging
-      ↓
-Working End-to-End
+PAB87
 ```
 
-Create a Pull Request on GitHub:
+Trial:
 
 ```text
-group2-agents → main
+drought_human_003_e49479
 ```
 
----
+The participant repeatedly gave away personal water during rounds 3–5 to keep other agents alive, ultimately dying in Round 5.
 
-## 👀 Cross-Review System
-
-To make sure everyone understands the complete project:
-
-| PR Author | Reviewers         |
-| --------- | ----------------- |
-| Group 1   | Yashash + Saksham |
-| Group 2   | Sujal + Utkarsh   |
-
-This isn't just for code quality — it also means everyone gets familiar with the **other half of the project**, which is extremely useful during the **viva, demo, and research defense**.
-
-### PR workflow
+This behavior illustrates an important distinction between:
 
 ```text
-Complete feature
-      ↓
-Test locally
-      ↓
-Push branch
-      ↓
-Create Pull Request
-      ↓
-Other group reviews
-      ↓
-Changes requested? ── Yes → Fix → Push again
-      ↓ No
-PR approved
-      ↓
-Merge into main
+Individual survival maximization
+            vs.
+Social / moral objectives
 ```
+
+The result should be interpreted as a qualitative behavioral example rather than a universal characterization of human behavior.
 
 ---
 
-# 🔟 After a PR Is Merged
+# ⏱️ Decision Latency
 
-Everyone should synchronize their local repository.
+Human decision latency increased sharply during scarcity:
 
-```bash
-git checkout main
-git pull origin main
-```
+| Condition | Latency |
+|---|---:|
+| Calm | **2,450 ms** |
+| Drought onset | **9,119 ms** |
 
-Then update your working branch.
+Possible interpretations include:
 
-### Group 1
+- Increased deliberation
+- Risk assessment
+- Social conflict
+- Moral uncertainty
+- Strategic reasoning
 
-```bash
-git checkout group1-human-study
-git merge main
-git push origin group1-human-study
-```
-
-### Group 2
-
-```bash
-git checkout group2-agents
-git merge main
-git push origin group2-agents
-```
+These interpretations should be treated as hypotheses rather than direct measurements of internal psychological states.
 
 ---
 
-# 1️⃣1️⃣ Phase 3 — Joint Analysis
+# 🖼️ Research Figures
 
-Starting around **Week 8**, both groups will begin working on the same research pipeline.
+### Figure 1 — Behavioral Comparison
 
-At this point, create a dedicated shared branch:
+![Behavioral Comparison](paper/figures/fig1_behavioral_comparison.png)
+
+Multi-panel comparison of cooperation, hoarding, inequality, and survival.
+
+---
+
+### Figure 2 — Scarcity Dose Response
+
+![Dose Response](paper/figures/fig2_dose_response.png)
+
+Behavioral response to increasing scarcity severity.
+
+---
+
+### Figure 3 — Behavioral Distinguishability
+
+![ROC Curves](paper/figures/fig3_distinguishability_roc.png)
+
+ROC-AUC curves from stratified cross-validation.
+
+---
+
+### Figure 4 — Feature Importance
+
+![Feature Importance](paper/figures/fig4_feature_importance.png)
+
+Permutation importance and logistic regression feature weights.
+
+---
+
+# 🌐 Live Research Application
+
+The human experimental interface is deployed through Streamlit:
+
+**Live Study Application**
+
+https://ai-human-scarcity-study.streamlit.app/
+
+The application provides the interactive environment through which human participants can perform experimental trials.
+
+---
+
+# 🗃️ Research Artifacts
+
+### Dataset
 
 ```text
-joint-analysis
+data/combined_scarcity_dataset.csv
 ```
 
-Create it from the latest `main`:
-
-```bash
-git checkout main
-git pull origin main
-
-git checkout -b joint-analysis
-git push origin joint-analysis
-```
-
----
-
-## 🧠 What Goes Into `joint-analysis`?
-
-All 4 members collaborate on:
+### Trial Features
 
 ```text
-Human Study Data
-       +
-AI Agent Data
-       ↓
-Data Cleaning
-       ↓
-Feature Extraction
-       ↓
-Statistical Analysis
-       ↓
-ML Classifier
-       ↓
-Visualization
-       ↓
-Dashboard
-       ↓
-Research Findings
+data/trial_features.csv
 ```
 
-Typical work includes:
-
-* Feature extraction
-* Statistical testing
-* Human vs AI comparison
-* Classification
-* Behavioral analysis
-* Visualization
-* Dashboard development
-* Final research analysis
-
----
-
-# 📅 Full Project Timeline
+### Research Database
 
 ```text
-WEEK 1
-│
-├── Finalize LOGGING_SCHEMA.md
-├── Set up repository
-├── Create branches
-└── Begin development
-│
-│
-WEEKS 1–7
-│
-├── Group 1 → Human Study
-│
-└── Group 2 → AI Agents
-│
-│
-WEEK 7
-│
-├── Validate human-study logging
-├── Validate AI-agent logging
-└── Merge stable features into main
-│
-│
-WEEK 8
-│
-└── Create joint-analysis branch
-│
-│
-WEEKS 8–10
-│
-├── Feature Extraction
-├── Statistical Analysis
-├── ML Classifier
-├── Dashboard
-└── Final Research Analysis
-│
-│
-FINAL
-│
-└── PR → main
+data/scarcity_study.db
 ```
 
----
-
-# ⚡ Quick Reference
-
-### 🧑‍💻 Group 1
-
-```bash
-git checkout group1-human-study
-git pull origin group1-human-study
-
-# Work...
-
-git add .
-git commit -m "Describe your change"
-git push origin group1-human-study
-```
-
-### 🤖 Group 2
-
-```bash
-git checkout group2-agents
-git pull origin group2-agents
-
-# Work...
-
-git add .
-git commit -m "Describe your change"
-git push origin group2-agents
-```
-
-### 🔀 After PR Merge
-
-```bash
-git checkout main
-git pull origin main
-```
-
-### 🧪 Phase 3
-
-```bash
-git checkout main
-git pull origin main
-
-git checkout -b joint-analysis
-git push origin joint-analysis
-```
-
----
-
-# 🛑 Golden Rules
-
-> **1. Never push directly to `main` for normal feature development.**
-
-> **2. Always `pull` before starting work.**
-
-> **3. Commit small, logical changes.**
-
-> **4. Write meaningful commit messages.**
-
-> **5. Test before pushing.**
-
-> **6. Review the other group's Pull Requests.**
-
-> **7. Never silently modify `LOGGING_SCHEMA.md`.**
-
-> **8. Keep `main` stable at all times.**
-
-> **9. Resolve merge conflicts carefully — don't blindly accept changes.**
-
-> **10. If you're unsure about a Git operation, ask before force-pushing.**
-
----
-
-## 🌳 Final Branch Lifecycle
+### AI Trial Logs
 
 ```text
-                         ┌──────────────────────────┐
-                         │           main           │
-                         │     Stable Code Only     │
-                         └────────────┬─────────────┘
-                                      │
-                    ┌─────────────────┴─────────────────┐
-                    │                                   │
-                    ▼                                   ▼
-        ┌─────────────────────┐             ┌─────────────────────┐
-        │ group1-human-study  │             │    group2-agents    │
-        │                     │             │                     │
-        │ Sujal + Utkarsh     │             │ Yashash + Saksham   │
-        │                     │             │                     │
-        │      Weeks 1–7      │             │      Weeks 1–7      │
-        └──────────┬──────────┘             └──────────┬──────────┘
-                   │                                   │
-                   └──────────────┬────────────────────┘
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │    joint-analysis   │
-                       │                     │
-                       │      All 4          │
-                       │                     │
-                       │      Weeks 8–10     │
-                       └──────────┬──────────┘
-                                  │
-                                  ▼
-                       ┌─────────────────────┐
-                       │        main         │
-                       │   Final Stable Code │
-                       └─────────────────────┘
+data/trials/
 ```
 
+### Human Trial Logs
+
+```text
+data/human_logs/
+```
+
+### LLM Fine-Tuning Dataset
+
+```text
+data/llm_sft_dataset.jsonl
+```
+
+### Models
+
+```text
+models/distinguishability_classifier.json
+models/human_clone_policy.json
+```
+
+---
+
+# 🧩 Research Pipeline
+
+```text
+                 ┌─────────────────────┐
+                 │  Scarcity Environment│
+                 │     ScarcityEnv      │
+                 └──────────┬──────────┘
+                            │
+                            ▼
+                 ┌─────────────────────┐
+                 │ Shared Water Commons│
+                 └──────────┬──────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+              ▼                           ▼
+       ┌──────────────┐           ┌──────────────┐
+       │ Human Agent  │           │   LLM Agent  │
+       │     A₁       │           │      A₁      │
+       └──────┬───────┘           └──────┬───────┘
+              │                           │
+              └─────────────┬─────────────┘
+                            ▼
+                  ┌──────────────────┐
+                  │ Behavioral Logs  │
+                  └────────┬─────────┘
+                           ▼
+                  ┌──────────────────┐
+                  │ Feature Extraction│
+                  └────────┬─────────┘
+                           ▼
+              ┌────────────┴────────────┐
+              │                         │
+              ▼                         ▼
+       Statistical Tests         ML Classifiers
+              │                         │
+              └────────────┬────────────┘
+                           ▼
+                  ┌──────────────────┐
+                  │ Human–AI         │
+                  │ Divergence       │
+                  └──────────────────┘
+```
+
+---
+
+# 📚 Planned Research Paper Structure
+
+The final manuscript will contain:
+
+1. **Abstract**
+2. **Introduction**
+3. **Related Work**
+4. **Experimental Framework**
+5. **Empirical Methodology**
+6. **Results**
+7. **Discussion**
+8. **Ethical Implications**
+9. **Limitations**
+10. **Future Work**
+11. **Conclusion**
+12. **References**
+13. **Appendix / Supplementary Material**
+
+---
+
+# ⚠️ Limitations
+
+This study should **not** be interpreted as demonstrating that all AI systems or all humans behave in a particular way.
+
+Key limitations include:
+
+- Limited sample size
+- Limited participant diversity
+- Artificial experimental environment
+- Dependence on specific LLM configurations
+- Potential effects of prompting and agent architecture
+- Trial-level statistical independence considerations
+- Limited generalizability to real-world commons
+
+The appropriate scientific claim is:
+
+> **The evaluated LLM-driven agents exhibited statistically distinguishable behavioral patterns from the tested human participants under the specified scarcity conditions.**
+
+---
+
+# 🚀 Future Work
+
+### Larger Human Cohorts
+
+Increase sample size and demographic diversity.
+
+### Cross-Cultural Replication
+
+Evaluate whether behavioral patterns generalize across populations.
+
+### More LLM Families
+
+Compare additional foundation models under identical protocols.
+
+### Embodied Agents
+
+Introduce persistent:
+
+- Energy
+- Fatigue
+- Memory
+- Mortality
+- Resource needs
+
+### Human-Trajectory Fine-Tuning
+
+Train models using human scarcity trajectories.
+
+### Fully Autonomous Societies
+
+Replace frozen benchmark agents with agents capable of learning simultaneously.
+
+### Long-Horizon Experiments
+
+Extend simulations from 30 rounds to hundreds or thousands of interactions.
+
+### Real-World Commons
+
+Explore applications to:
+
+- Water allocation
+- Energy management
+- Disaster response
+- Food distribution
+- Public resources
+
+---
+
+# 🧑‍🔬 Reproducibility
+
+The project is designed around reproducible experimental protocols.
+
+Key reproducibility mechanisms include:
+
+- Fixed random seeds
+- Deterministic benchmark agents
+- Matched human/AI environments
+- Machine-verifiable communication
+- Structured JSONL logs
+- SQLite research database
+- Explicit behavioral metrics
+- Saved ML model artifacts
+- Publication-ready figures
+
+---
+
+# 📌 Scientific Integrity
+
+This repository distinguishes between:
+
+### Measured Results
+
+Directly observed experimental outcomes.
+
+### Statistical Findings
+
+Results produced by the defined statistical analysis pipeline.
+
+### Interpretations
+
+Potential explanations for observed behavioral patterns.
+
+### Hypotheses
+
+Ideas requiring additional experimentation.
+
+### Future Work
+
+Experiments not yet performed.
+
+**No missing experimental information should be fabricated.**
+
+---
+
+# 📖 Citation
+
+A formal citation will be added once the manuscript has been submitted or published.
+
+```bibtex
+@article{pandey2026behavioral,
+  title   = {Behavioral Divergence Between LLM-Driven Multi-Agent Societies and Humans Under Resource Scarcity},
+  author  = {Pandey, Utkarsh and Kumar, Sujal and Singh, Saksham and Tyagi, Yash},
+  year    = {2026},
+  note    = {Research manuscript}
+}
+```
+
+---
+
+# 📬 Contact
+
+### Research Team
+
+**KIET Deemed to be University**  
+Department of Computer Science & Engineering — AI & ML  
+Delhi-NCR, Ghaziabad, Uttar Pradesh, India
+
+---
+
+# ⭐ Project Summary
+
+> **This project asks a deceptively simple question:**
+>
+> **When the water runs out, do AI agents behave like humans?**
+>
+> Our controlled experiments compare human and LLM-driven agents inside a shared-resource environment where cooperation, competition, deception, trust, and survival collide.
+>
+> The observed trajectories reveal substantial behavioral divergence—particularly in scarcity adaptation, defensive hoarding, inequality formation, strategic deception, and decision latency.
+>
+> The broader goal is to develop better benchmarks for evaluating whether autonomous AI systems genuinely reproduce human social dynamics—or merely simulate them under favorable conditions.
+
+---
+
+**Status:** 🟡 Active Research  
+**Domain:** Multi-Agent AI · LLMs · Computational Social Science · AI Safety  
+**Institution:** KIET Deemed to be University
