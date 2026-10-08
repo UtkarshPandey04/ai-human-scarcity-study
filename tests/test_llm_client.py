@@ -71,6 +71,13 @@ class TestCompleteDispatch(unittest.TestCase):
         self.assertEqual(result, {"ok": True})
         mock_gemini.assert_called_once()
 
+    def test_dispatches_to_ollama_backend(self):
+        mock_ollama = MagicMock(return_value={"ok": True})
+        with patch.dict("agents.llm_client.PROVIDERS", {"ollama": mock_ollama}):
+            result = complete([ChatMessage(role="user", content="hi")], provider="ollama")
+        self.assertEqual(result, {"ok": True})
+        mock_ollama.assert_called_once()
+
     def test_missing_groq_key_raises_completion_error(self):
         with patch.dict("os.environ", {}, clear=True):  # snapshot restored automatically on exit
             with self.assertRaises(LLMCompletionError):

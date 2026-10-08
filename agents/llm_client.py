@@ -83,6 +83,24 @@ DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", "groq")
 DEFAULT_GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_MAX_RETRIES = int(os.environ.get("GROQ_MAX_RETRIES", "6"))
 DEFAULT_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+DEFAULT_OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+DEFAULT_OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+DEFAULT_MISTRAL_MODEL = os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
+DEFAULT_OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
+
+_groq_key_idx = 0
+_gemini_key_idx = 0
+_mistral_key_idx = 0
+
+
+def get_groq_api_keys() -> list[str]:
+    raw = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY") or ""
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def get_gemini_api_keys() -> list[str]:
+    raw = os.environ.get("GEMINI_API_KEYS") or os.environ.get("GEMINI_API_KEY") or ""
+    return [k.strip() for k in raw.split(",") if k.strip()]
 
 
 def _schema_instruction(schema: dict | None) -> str | None:
@@ -103,8 +121,16 @@ def _messages_with_schema(messages: list[ChatMessage], schema: dict | None) -> l
 
 
 def _parse_json(text: str, provider: str) -> dict:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        cleaned = "\n".join(lines).strip()
     try:
-        return json.loads(text)
+        return json.loads(cleaned)
     except json.JSONDecodeError as exc:
         raise LLMCompletionError(f"{provider} did not return valid JSON: {exc}\n---\n{text}") from exc
 
@@ -114,14 +140,11 @@ def _complete_groq(
 ) -> dict:
     from groq import Groq, RateLimitError
 
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    keys = get_groq_api_keys()
+    if not keys:
         raise LLMCompletionError("GROQ_API_KEY is not set")
 
-    # The SDK backs off and retries 429s itself, honouring retry-after. The free tier's 8k
-    # tokens/minute cap trips often enough that the SDK default (2) records needless
-    # llm_rate_limited rows, so allow more; a daily-cap 429 still surfaces as LLMRateLimitError.
-    client = Groq(api_key=api_key, max_retries=GROQ_MAX_RETRIES)
+    global _groq_key_idx
     payload = _messages_with_schema(messages, schema)
     create_kwargs = {
         "model": model or DEFAULT_GROQ_MODEL,
@@ -129,27 +152,31 @@ def _complete_groq(
         "temperature": temperature,
     }
     if schema is not None:
-        # Groq requires the word "json" somewhere in the messages to use this mode — guaranteed
-        # here since `schema` being non-None means `_messages_with_schema` appended an instruction
-        # that says "JSON object". Only request it when a schema was actually asked for: forcing
-        # JSON mode unconditionally would break plain-text completions, and did — caught live,
-        # `complete()` with no schema 400'd with "'messages' must contain the word 'json'".
         create_kwargs["response_format"] = {"type": "json_object"}
-    try:
-        response = client.chat.completions.create(**create_kwargs)
-    except RateLimitError as exc:
-        raise LLMRateLimitError(f"groq rate limit: {exc}") from exc
-    except Exception as exc:  # other groq.APIError subclasses — normalize to one exception type
-        raise LLMCompletionError(f"groq request failed: {exc}") from exc
 
-    if usage is not None and response.usage is not None:
-        usage["prompt_tokens"] = response.usage.prompt_tokens
-        usage["completion_tokens"] = response.usage.completion_tokens
-        usage["model"] = model or DEFAULT_GROQ_MODEL
-        usage["provider"] = "groq"
+    last_rate_limit = None
+    for attempt in range(len(keys)):
+        curr_key = keys[(_groq_key_idx + attempt) % len(keys)]
+        client = Groq(api_key=curr_key, max_retries=GROQ_MAX_RETRIES)
+        try:
+            response = client.chat.completions.create(**create_kwargs)
+            _groq_key_idx = (_groq_key_idx + attempt + 1) % len(keys)
+            if usage is not None and response.usage is not None:
+                usage["prompt_tokens"] = response.usage.prompt_tokens
+                usage["completion_tokens"] = response.usage.completion_tokens
+                usage["model"] = model or DEFAULT_GROQ_MODEL
+                usage["provider"] = "groq"
+            text = response.choices[0].message.content
+            return _parse_json(text, "groq")
+        except RateLimitError as exc:
+            last_rate_limit = exc
+            continue
+        except Exception as exc:
+            raise LLMCompletionError(f"groq request failed: {exc}") from exc
 
-    text = response.choices[0].message.content
-    return _parse_json(text, "groq")
+    if last_rate_limit:
+        raise LLMRateLimitError(f"groq rate limit across all {len(keys)} key(s): {last_rate_limit}") from last_rate_limit
+    raise LLMCompletionError("groq request failed on all configured keys")
 
 
 def _complete_gemini(
@@ -158,50 +185,163 @@ def _complete_gemini(
     from google import genai
     from google.genai import errors, types
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
+    keys = get_gemini_api_keys()
+    if not keys:
         raise LLMCompletionError("GEMINI_API_KEY is not set")
 
-    client = genai.Client(api_key=api_key)
+    global _gemini_key_idx
     payload = _messages_with_schema(messages, schema)
-
-    # Gemini has no "system" role in `contents`; system messages become system_instruction, and
-    # "assistant" becomes "model" (contents accepts only "user"/"model").
     system_parts = [m.content for m in payload if m.role == "system"]
     contents = [
         types.Content(role=("model" if m.role == "assistant" else "user"), parts=[types.Part(text=m.content)])
         for m in payload
         if m.role != "system"
     ]
-
     config = types.GenerateContentConfig(
         temperature=temperature,
         response_mime_type="application/json" if schema is not None else None,
         system_instruction="\n\n".join(system_parts) or None,
     )
+
+    last_rate_limit = None
+    for attempt in range(len(keys)):
+        curr_key = keys[(_gemini_key_idx + attempt) % len(keys)]
+        client = genai.Client(api_key=curr_key)
+        try:
+            response = client.models.generate_content(
+                model=model or DEFAULT_GEMINI_MODEL, contents=contents, config=config
+            )
+            _gemini_key_idx = (_gemini_key_idx + attempt + 1) % len(keys)
+            if usage is not None and response.usage_metadata is not None:
+                usage["prompt_tokens"] = response.usage_metadata.prompt_token_count
+                usage["completion_tokens"] = response.usage_metadata.candidates_token_count
+                usage["model"] = model or DEFAULT_GEMINI_MODEL
+                usage["provider"] = "gemini"
+            return _parse_json(response.text, "gemini")
+        except errors.APIError as exc:
+            if exc.code == 429:
+                last_rate_limit = exc
+                continue
+            raise LLMCompletionError(f"gemini request failed: {exc}") from exc
+        except Exception as exc:
+            raise LLMCompletionError(f"gemini request failed: {exc}") from exc
+
+    if last_rate_limit:
+        raise LLMRateLimitError(f"gemini rate limit across all {len(keys)} key(s): {last_rate_limit}") from last_rate_limit
+    raise LLMCompletionError("gemini request failed on all configured keys")
+
+
+def _complete_openai_compatible(
+    messages: list[ChatMessage],
+    schema: dict | None,
+    model: str | None,
+    temperature: float,
+    usage: dict | None,
+    *,
+    api_key: str,
+    base_url: str,
+    default_model: str,
+    provider_name: str,
+) -> dict:
+    import httpx
+
+    payload = _messages_with_schema(messages, schema)
+    req_body = {
+        "model": model or default_model,
+        "messages": [{"role": m.role, "content": m.content} for m in payload],
+        "temperature": temperature,
+    }
+    if schema is not None:
+        req_body["response_format"] = {"type": "json_object"}
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
     try:
-        response = client.models.generate_content(
-            model=model or DEFAULT_GEMINI_MODEL, contents=contents, config=config
-        )
-    except errors.APIError as exc:
-        if exc.code == 429:
-            raise LLMRateLimitError(f"gemini rate limit: {exc}") from exc
-        raise LLMCompletionError(f"gemini request failed: {exc}") from exc
-    except Exception as exc:  # anything else — normalize to one exception type
-        raise LLMCompletionError(f"gemini request failed: {exc}") from exc
+        resp = httpx.post(f"{base_url.rstrip('/')}/chat/completions", json=req_body, headers=headers, timeout=30.0)
+        if resp.status_code == 429:
+            raise LLMRateLimitError(f"{provider_name} rate limit: {resp.text}")
+        if resp.status_code != 200:
+            raise LLMCompletionError(f"{provider_name} request failed ({resp.status_code}): {resp.text}")
+        data = resp.json()
+        if usage is not None and "usage" in data:
+            usage["prompt_tokens"] = data["usage"].get("prompt_tokens", 0)
+            usage["completion_tokens"] = data["usage"].get("completion_tokens", 0)
+            usage["model"] = model or default_model
+            usage["provider"] = provider_name
+        text = data["choices"][0]["message"]["content"]
+        return _parse_json(text, provider_name)
+    except (LLMRateLimitError, LLMCompletionError):
+        raise
+    except Exception as exc:
+        raise LLMCompletionError(f"{provider_name} call failed: {exc}") from exc
 
-    if usage is not None and response.usage_metadata is not None:
-        usage["prompt_tokens"] = response.usage_metadata.prompt_token_count
-        usage["completion_tokens"] = response.usage_metadata.candidates_token_count
-        usage["model"] = model or DEFAULT_GEMINI_MODEL
-        usage["provider"] = "gemini"
 
-    return _parse_json(response.text, "gemini")
+def _complete_ollama(
+    messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
+) -> dict:
+    base_url = os.environ.get("OLLAMA_BASE_URL") or DEFAULT_OLLAMA_BASE_URL
+    return _complete_openai_compatible(
+        messages,
+        schema,
+        model,
+        temperature,
+        usage,
+        api_key=os.environ.get("OLLAMA_API_KEY", "ollama"),
+        base_url=base_url,
+        default_model=DEFAULT_OLLAMA_MODEL,
+        provider_name="ollama",
+    )
+
+
+def _complete_mistral(
+    messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
+) -> dict:
+    raw = os.environ.get("MISTRAL_API_KEYS") or os.environ.get("MISTRAL_API_KEY") or ""
+    keys = [k.strip() for k in raw.split(",") if k.strip()]
+    if not keys:
+        raise LLMCompletionError("MISTRAL_API_KEY is not set")
+    global _mistral_key_idx
+    key = keys[_mistral_key_idx % len(keys)]
+    _mistral_key_idx = (_mistral_key_idx + 1) % len(keys)
+    return _complete_openai_compatible(
+        messages,
+        schema,
+        model,
+        temperature,
+        usage,
+        api_key=key,
+        base_url="https://api.mistral.ai/v1",
+        default_model=DEFAULT_MISTRAL_MODEL,
+        provider_name="mistral",
+    )
+
+
+def _complete_openrouter(
+    messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
+) -> dict:
+    key = os.environ.get("OPENROUTER_API_KEY")
+    if not key:
+        raise LLMCompletionError("OPENROUTER_API_KEY is not set")
+    return _complete_openai_compatible(
+        messages,
+        schema,
+        model,
+        temperature,
+        usage,
+        api_key=key,
+        base_url="https://openrouter.ai/api/v1",
+        default_model=DEFAULT_OPENROUTER_MODEL,
+        provider_name="openrouter",
+    )
 
 
 PROVIDERS = {
     "groq": _complete_groq,
     "gemini": _complete_gemini,
+    "ollama": _complete_ollama,
+    "mistral": _complete_mistral,
+    "openrouter": _complete_openrouter,
 }
 
 # Optional throttle hook for a trial campaign (agents/run_ai_trials.py, Phase G) making many calls
@@ -238,9 +378,22 @@ def complete(
     and cost per trial into meta" requirement, without complicating the return type for callers
     that don't care.
     """
-    provider = provider or DEFAULT_PROVIDER
-    if provider not in PROVIDERS:
-        raise ValueError(f"unknown provider {provider!r}, must be one of {sorted(PROVIDERS)}")
+    target_provider = provider or DEFAULT_PROVIDER
+    if target_provider not in PROVIDERS:
+        raise ValueError(f"unknown provider {target_provider!r}, must be one of {sorted(PROVIDERS)}")
     if _rate_limiter is not None:
         _rate_limiter()
-    return PROVIDERS[provider](messages, schema, model, temperature, usage)
+
+    try:
+        return PROVIDERS[target_provider](messages, schema, model, temperature, usage)
+    except LLMRateLimitError:
+        # Dual-provider fallback: if primary provider encounters free-tier rate limit (429),
+        # automatically fail over to secondary provider if configured.
+        fallback = "gemini" if target_provider == "groq" else "groq"
+        fallback_key = os.environ.get(f"{fallback.upper()}_API_KEY")
+        if fallback_key and fallback in PROVIDERS:
+            try:
+                return PROVIDERS[fallback](messages, schema, None, temperature, usage)
+            except Exception:
+                pass
+        raise

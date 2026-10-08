@@ -259,6 +259,20 @@ class TestStreamlitAppScreens(unittest.TestCase):
                 break
         self.assertFalse(at.exception, f"Game step error: {at.exception}")
 
+        # Post-round transition screen stating for next round
+        self.assertTrue(at.session_state.round_transition_active)
+        self.assertEqual(at.session_state.round_transition_data["completed_round"], 1)
+        self.assertEqual(at.session_state.round_transition_data["next_round"], 2)
+
+        # Proceed to Round 2 via the transition UI
+        for btn in at.button:
+            if "Proceed to Round 2" in btn.label:
+                btn.click().run()
+                break
+        self.assertFalse(at.exception, f"Round 2 transition error: {at.exception}")
+        self.assertFalse(at.session_state.round_transition_active)
+        self.assertEqual(at.session_state.env.round, 2)
+
         # Debrief screen
         at.session_state.stage = "debrief"
         at.run()

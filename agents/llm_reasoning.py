@@ -157,6 +157,54 @@ def _parse_action(data: dict) -> Action:
 from agents.human_exemplars import format_exemplars_prompt, query_human_exemplars
 
 
+def get_agent_provider(player_id: str | None = None, requested: str | None = None) -> str | None:
+    """Resolve which provider should serve an agent to balance load and prevent free-tier 429s.
+    If requested is explicitly specified (e.g. 'groq' or 'gemini'), respects it.
+    If requested is None, 'auto', or 'heterogeneous':
+      - Detects available providers from environment variables.
+      - If multiple providers are available, distributes players across them:
+        e.g. A1 -> groq, A2 -> gemini, A3 -> groq, A4 -> gemini, A5 -> groq.
+    """
+    if requested and requested not in ("auto", "heterogeneous"):
+        return requested
+
+    has_groq = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEYS"))
+    has_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEYS"))
+    has_ollama = bool(os.environ.get("OLLAMA_MODEL") or os.environ.get("OLLAMA_BASE_URL") or os.environ.get("USE_OLLAMA"))
+    has_mistral = bool(os.environ.get("MISTRAL_API_KEY") or os.environ.get("MISTRAL_API_KEYS"))
+    has_openrouter = bool(os.environ.get("OPENROUTER_API_KEY"))
+
+    available = []
+    if has_groq:
+        available.append("groq")
+    if has_gemini:
+        available.append("gemini")
+    if has_ollama:
+        available.append("ollama")
+    elif has_mistral:
+        available.append("mistral")
+    if has_openrouter:
+        available.append("openrouter")
+
+    if not available:
+        return requested or os.environ.get("LLM_PROVIDER", "groq")
+
+    env_prov = os.environ.get("LLM_PROVIDER", "").lower()
+    # If environment explicitly pinned a single provider (and not heterogeneous/auto)
+    if requested is None and env_prov and env_prov not in ("heterogeneous", "auto") and env_prov in available:
+        return env_prov
+
+    # Distribute by player ID (A1, A2, A3, etc.)
+    if player_id:
+        import re
+        match = re.search(r"\d+", player_id)
+        if match:
+            idx = int(match.group()) - 1
+            return available[idx % len(available)]
+
+    return available[0]
+
+
 def decide(
     obs: Observation,
     *,
@@ -188,6 +236,7 @@ def decide(
     if use_human_exemplars is None:
         use_human_exemplars = os.environ.get("LLM_USE_HUMAN_EXEMPLARS", "0").lower() in ("1", "true", "yes")
 
+    target_provider = get_agent_provider(getattr(obs, "player_id", None), provider)
     obs_prompt = render_observation(obs)
     exemplars_count = 0
     if use_human_exemplars:
@@ -215,7 +264,7 @@ def decide(
                 ),
             ]
         try:
-            data = complete(messages, schema=ACTION_SCHEMA, provider=provider, model=model, usage=usage)
+            data = complete(messages, schema=ACTION_SCHEMA, provider=target_provider, model=model, usage=usage)
             action = _parse_action(data)
             return action, {
                 "llm_parse_failure": False,

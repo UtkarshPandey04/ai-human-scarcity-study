@@ -141,6 +141,21 @@ class StrategicDeceiver:
         return Action(type=ActionType.HOARD)
 
 
+class LLMCoPlayer:
+    """An island co-player whose decisions are driven by live LLM reasoning."""
+
+    def __init__(self, provider: str = "groq", model: str | None = None, seed: int = 0):
+        self.provider = provider
+        self.model = model
+        self.seed = seed
+
+    def act(self, obs: Observation) -> Action:
+        from agents.llm_reasoning import decide
+
+        action, _ = decide(obs, provider=self.provider, model=self.model)
+        return action
+
+
 POLICIES: dict[str, type] = {
     "cooperator": Cooperator,
     "free_rider": FreeRider,
@@ -151,6 +166,12 @@ POLICIES: dict[str, type] = {
 
 
 def get_policy(name: str, seed: int = 0) -> CoPlayerPolicy:
-    if name not in POLICIES:
-        raise ValueError(f"unknown co-player policy {name!r}, must be one of {sorted(POLICIES)}")
-    return POLICIES[name](seed=seed)
+    if name in POLICIES:
+        return POLICIES[name](seed=seed)
+    if name == "llm_groq":
+        return LLMCoPlayer(provider="groq", seed=seed)
+    if name == "llm_gemini":
+        return LLMCoPlayer(provider="gemini", seed=seed)
+    if name in ("llm_auto", "llm_heterogeneous"):
+        return LLMCoPlayer(provider="heterogeneous", seed=seed)
+    raise ValueError(f"unknown co-player policy {name!r}, must be one of {sorted(POLICIES)}")

@@ -149,6 +149,12 @@ if "all_trial_rows" not in st.session_state:
 if "round_start_time" not in st.session_state:
     st.session_state.round_start_time = time.time()
 
+if "round_transition_active" not in st.session_state:
+    st.session_state.round_transition_active = False
+
+if "round_transition_data" not in st.session_state:
+    st.session_state.round_transition_data = {}
+
 if "last_round_events" not in st.session_state:
     st.session_state.last_round_events = []
 
@@ -162,6 +168,8 @@ if "turing_submitted" not in st.session_state:
 def get_active_coplayer_policies() -> list[str]:
     if st.session_state.get("coplayer_mode") == "Deceptive (Strategic Deceiver)":
         return ["cooperator", "free_rider", "tit_for_tat", "deceiver"]
+    if st.session_state.get("coplayer_mode") == "Live LLM Ecology (Groq + Gemini)":
+        return ["llm_groq", "llm_gemini", "tit_for_tat", "llm_auto"]
     return COPLAYER_POLICIES
 
 
@@ -187,6 +195,8 @@ def reset_environment():
     st.session_state.action_log = []
     st.session_state.all_trial_rows = []
     st.session_state.last_round_events = []
+    st.session_state.round_transition_active = False
+    st.session_state.round_transition_data = {}
     st.session_state.round_start_time = time.time()
     st.session_state.trial_synced_to_db = False
 
@@ -220,11 +230,13 @@ with st.sidebar:
             step=0.1,
             help="Novelty N1: dose-response parameter",
         )
+        ecology_opts = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
+        default_eco_idx = ecology_opts.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in ecology_opts else 0
         coplayer_opt = st.selectbox(
             "Opponent Ecology",
-            options=["Standard", "Deceptive (Strategic Deceiver)"],
-            index=0 if st.session_state.coplayer_mode == "Standard" else 1,
-            help="Standard: Cooperator, Free-Rider, Tit-for-Tat, Random. Deceptive: Swaps Random with Strategic Deceiver which actively bluffs under scarcity.",
+            options=ecology_opts,
+            index=default_eco_idx,
+            help="Standard: Cooperator, Free-Rider, Tit-for-Tat, Random. Deceptive: Adds Strategic Deceiver. Live LLM Ecology: Co-players run live Groq and Gemini LLM reasoning across separate quotas.",
         )
         if (
             selected_scenario != st.session_state.scenario
@@ -430,10 +442,231 @@ def instructions_screen():
         go_to("game")
 
 
+# ---------- POST-ROUND TRANSITION & NEXT ROUND BRIEFING ----------
+def render_round_transition_screen():
+    """Renders a dedicated status briefing after each round stating parameters and conditions for the next round."""
+    env: ScarcityEnv = st.session_state.get("env")
+    data = st.session_state.get("round_transition_data", {})
+    completed_round = data.get("completed_round", 1)
+    next_round = data.get("next_round", completed_round + 1)
+    total_rounds = data.get("total_rounds", TOTAL_ROUNDS)
+    scenario = data.get("scenario", "drought")
+    done = data.get("done", False)
+    focal_id = data.get("focal_id", st.session_state.participant_id)
+    focal_alive = data.get("focal_alive", True)
+    focal_res_before = data.get("focal_res_before", 0.0)
+    focal_res_after = data.get("focal_res_after", 0.0)
+    pool_before = data.get("pool_before", 0.0)
+    pool_after = data.get("pool_after", 0.0)
+    pool_capacity = data.get("pool_capacity", 20.0)
+    events = data.get("events_this_round", [])
+    coplayer_summaries = data.get("coplayer_summaries", [])
+    focal_summary = data.get("focal_summary", {})
+
+    p_name_val = st.session_state.get("participant_name", "").strip()
+    p_display = f"Player: **{p_name_val}** (`{focal_id}`)" if p_name_val else f"Player: `{focal_id}`"
+
+    # CASE 1: Focal player died this round
+    if not focal_alive:
+        st.error(f"💀 **Game Over — Round {completed_round} Fatal Depletion**")
+        st.markdown(
+            f"Your personal water reserve fell to **{focal_res_after:.1f} units** (below 0) "
+            f"after survival consumption at the end of Round {completed_round}. You could not survive on the island."
+        )
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Your Final Water", f"{focal_res_after:.1f}", f"{focal_res_after - focal_res_before:+.1f}")
+        col2.metric("Survival Cost", f"-{SURVIVAL_COST:.1f}")
+        col3.metric("Lake Commons Stock", f"{pool_after:.1f} / {pool_capacity:.0f}")
+
+        if events:
+            with st.expander("📢 Round Events Feed", expanded=True):
+                for ev in events:
+                    st.write(ev)
+
+        st.divider()
+        if st.button("Proceed to Debrief & Study Results ➡️", type="primary", use_container_width=True):
+            st.session_state.round_transition_active = False
+            go_to("debrief")
+        return
+
+    # CASE 2: All rounds finished (Final round concluded)
+    if done:
+        st.success(f"🏆 **Study Complete — Final Round {completed_round} of {total_rounds} Concluded!**")
+        st.markdown(
+            f"Congratulations! You survived all **{total_rounds} rounds** of the **{scenario.upper()}** condition. "
+            f"Your final personal water reserve is **{focal_res_after:.1f} units**."
+        )
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Final Water", f"{focal_res_after:.1f}", f"{focal_res_after - focal_res_before:+.1f}")
+        col2.metric("Your Status", "Alive ✅")
+        col3.metric("Ending Lake Stock", f"{pool_after:.1f} / {pool_capacity:.0f}")
+        alive_total = sum(1 for p in env.players.values() if p.alive) if env else 1
+        col4.metric("Island Survivors", f"{alive_total} / {NUM_PLAYERS}")
+
+        if events:
+            with st.expander("📢 Final Round Events Feed", expanded=True):
+                for ev in events:
+                    st.write(ev)
+
+        st.divider()
+        if st.button("Proceed to Behavioral Turing Test & Debrief 🎓", type="primary", use_container_width=True):
+            st.session_state.round_transition_active = False
+            go_to("debrief")
+        return
+
+    # CASE 3: Active Simulation Between Rounds — State Status for Next Round!
+    st.title(f"Round {completed_round} Complete ➔ Briefing for Round {next_round}")
+    progress_val = min(1.0, max(0.0, completed_round / total_rounds))
+    st.progress(progress_val)
+    st.caption(
+        f"{p_display} | Progress: Round {completed_round} of {total_rounds} finished "
+        f"({int(progress_val * 100)}%) | Scenario: **{scenario.upper()}**"
+    )
+
+    # --- PART A: RECAP OF COMPLETED ROUND ---
+    st.markdown(f"### 📋 Round {completed_round} Outcomes")
+    mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+
+    act_type = focal_summary.get("action_type", "skip")
+    action_labels = {
+        "gather": "💧 Gather Water",
+        "share": "🤝 Share Water",
+        "hoard": "🛡️ Hoard / Ration",
+        "skip": "⏳ Skip Round",
+        "communicate": "💬 Communicate",
+    }
+    act_display = action_labels.get(act_type, act_type.capitalize())
+    if act_type == "share" and focal_summary.get("target_agent"):
+        act_display = f"🤝 Shared {focal_summary.get('share_amount', 1)} ➔ {focal_summary.get('target_agent')}"
+
+    mcol1.metric("Your Action", act_display)
+    mcol2.metric(
+        "Your Water",
+        f"{focal_res_after:.1f}",
+        f"{focal_res_after - focal_res_before:+.1f} units",
+    )
+    if pool_after > 15.0:
+        pool_status_str = "🟢 Healthy"
+    elif pool_after >= 6.0:
+        pool_status_str = "🟡 Stressed"
+    else:
+        pool_status_str = "🔴 Depleted"
+    mcol3.metric(
+        "Lake Commons",
+        f"{pool_after:.1f} / {pool_capacity:.0f}",
+        f"{pool_after - pool_before:+.1f} ({pool_status_str})",
+    )
+    alive_count = sum(1 for p in env.players.values() if p.alive) if env else 5
+    mcol4.metric("Island Survivors", f"{alive_count} / {NUM_PLAYERS} Alive")
+
+    # Co-player activity recap
+    with st.expander(f"👥 Co-Player Activity in Round {completed_round}", expanded=True):
+        if events:
+            for ev in events:
+                st.write(ev)
+        if coplayer_summaries:
+            c_cols = st.columns(len(coplayer_summaries))
+            for idx, cinfo in enumerate(coplayer_summaries):
+                with c_cols[idx]:
+                    c_status = "🟢" if cinfo.get("alive") else "💀"
+                    st.markdown(f"**{c_status} {cinfo['agent_id']}**")
+                    c_act = cinfo.get("action_type", "skip")
+                    st.caption(f"Action: `{c_act}`")
+                    if c_act == "share" and cinfo.get("target_agent"):
+                        st.caption(f"Target: `{cinfo['target_agent']}`")
+                    if cinfo.get("message_sent"):
+                        st.caption(f"*\"{cinfo['message_sent'][:25]}\"*")
+
+    st.divider()
+
+    # --- PART B: STATING FOR NEXT ROUND ---
+    st.markdown(f"### 🎯 Stating for Next Round: Strategic Briefing for Round {next_round}")
+
+    drought_next = is_drought(next_round, scenario)
+    drought_in_two = is_drought(next_round + 1, scenario) if (next_round + 1 <= total_rounds) else False
+
+    # Weather & Environmental Alert for Next Round
+    if drought_next:
+        st.error(
+            f"🚨 **CRITICAL WEATHER WARNING: DROUGHT ROUND {next_round}!**\n\n"
+            f"• **Yield Collapse:** Gather yield drops sharply from 3 units to **1 unit**.\n"
+            f"• **Natural Replenishment Throttled:** The lake regenerates at a fraction of normal rate.\n"
+            f"• **Mandatory Consumption:** You will still consume **{SURVIVAL_COST} units** of water at the end of Round {next_round}.\n"
+            f"• **Risk:** If players over-gather, the lake may permanently collapse to 0!"
+        )
+    elif drought_in_two:
+        st.warning(
+            f"⚠️ **WEATHER WATCH: Approaching Drought in Round {next_round + 1}!**\n\n"
+            f"Round {next_round} is your **last normal round** before severe scarcity begins. "
+            f"Ensure you build a safety cushion of at least 3 to 4 water units before the drought strikes."
+        )
+    else:
+        st.info(
+            f"☀️ **Environmental Forecast: Calm & Stable Island Conditions**\n\n"
+            f"• **Gather Yield:** Standard **+{gather_yield(next_round, scenario)} units** from the lake.\n"
+            f"• **Lake Commons:** Logistic replenishment is active.\n"
+            f"• **Survival Cost:** Standard **-{SURVIVAL_COST} units** will be deducted at the end of Round {next_round}."
+        )
+
+    # Readiness & Survival Math for Round {next_round}
+    bcol1, bcol2, bcol3 = st.columns(3)
+    bcol1.metric("Your Starting Water", f"{focal_res_after:.1f} units")
+    bcol2.metric("Survival Cost (Round End)", f"-{SURVIVAL_COST:.1f} units")
+    projected_balance = focal_res_after - SURVIVAL_COST
+    bcol3.metric(
+        "Projected Water (Without Gather)",
+        f"{projected_balance:.1f} units",
+        "Safe" if projected_balance > 0 else "Danger",
+        delta_color="normal" if projected_balance > 0 else "inverse",
+    )
+
+    if focal_res_after <= SURVIVAL_COST:
+        st.error(
+            f"⚠️ **URGENT DEFICIT WARNING FOR ROUND {next_round}:** "
+            f"You have only **{focal_res_after:.1f} units** remaining! "
+            f"If you do not **Gather water** or receive a **Share from a co-player** in Round {next_round}, "
+            f"you will run out of water and die at the end of the round."
+        )
+    elif focal_res_after <= 4.0:
+        st.warning(
+            f"🔔 **Rationing Advisory:** You have **{focal_res_after:.1f} units** — sufficient for 1-2 rounds. "
+            f"Monitor lake health and teammate actions carefully."
+        )
+    else:
+        st.success(
+            f"🛡️ **Reserves Healthy:** You have **{focal_res_after:.1f} units** in reserve, providing a solid safety cushion."
+        )
+
+    # Teammates entering next round
+    alive_coplayers = [pid for pid in COPLAYER_IDS if env.players[pid].alive] if env else COPLAYER_IDS
+    st.caption(
+        f"🏝️ **Island Status Entering Round {next_round}:** "
+        f"Lake commons at **{pool_after:.1f} / {pool_capacity:.0f} units** ({pool_status_str}) | "
+        f"Active co-players: **{', '.join(alive_coplayers) if alive_coplayers else 'None (all deceased)'}**"
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- PART C: PROCEED BUTTON ---
+    if st.button(
+        f"👉 Proceed to Round {next_round} ➡️",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.session_state.round_transition_active = False
+        st.session_state.round_start_time = time.time()
+        st.rerun()
+
+
 # ---------- SCREEN 3: GAME ----------
 def game_screen():
     if "env" not in st.session_state or st.session_state.env is None:
         reset_environment()
+
+    # Interstitial transition screen between rounds stating for next round
+    if st.session_state.get("round_transition_active", False):
+        render_round_transition_screen()
+        return
 
     env: ScarcityEnv = st.session_state.env
     focal_id = st.session_state.participant_id
@@ -646,8 +879,15 @@ def game_screen():
                 actions[pid] = policy.act(obs_pid)
 
         # 3. Step ScarcityEnv
+        completed_round = env.round
+        pool_before = env.pool.stock
+        focal_res_before = focal_player.resource
+
         next_obs, done, raw_log_rows = env.step(actions)
         st.session_state.current_obs = next_obs
+        pool_after = env.pool.stock
+        focal_res_after = focal_player.resource
+        focal_alive_after = focal_player.alive
 
         # 4. Enrich and log rows to data/human_logs/
         timestamp = datetime.now(timezone.utc).isoformat()
@@ -696,9 +936,54 @@ def game_screen():
         events_this_round.append(f"🌊 Pool level at end of round: **{env.pool.stock:.1f} units**")
         st.session_state.last_round_events = events_this_round
 
-        # 5. Check completion
-        st.session_state.round_start_time = time.time()
-        if done:
+        # 5. Extract round summaries for transition briefing
+        coplayer_summaries = []
+        for row in enriched_rows:
+            if row["agent_id"] != focal_id:
+                coplayer_summaries.append({
+                    "agent_id": row["agent_id"],
+                    "action_type": row["action_type"],
+                    "target_agent": row.get("target_agent"),
+                    "message_sent": row.get("message_sent"),
+                    "resource_before": row.get("resource_before"),
+                    "resource_after": row.get("resource_after"),
+                    "alive": row.get("alive"),
+                })
+
+        focal_summary = {
+            "action_type": action_type_str,
+            "target_agent": target_agent,
+            "share_amount": share_amount if action_type_str == "share" else None,
+            "claim_kind": claim_kind,
+            "claim_value": claim_value,
+            "message_text": message_text,
+            "resource_before": focal_res_before,
+            "resource_after": focal_res_after,
+            "alive": focal_alive_after,
+        }
+
+        # 6. Store transition briefing data & activate transition UI
+        st.session_state.round_transition_data = {
+            "completed_round": completed_round,
+            "next_round": env.round,
+            "total_rounds": env.total_rounds,
+            "scenario": env.scenario,
+            "done": done,
+            "focal_id": focal_id,
+            "focal_alive": focal_alive_after,
+            "focal_res_before": focal_res_before,
+            "focal_res_after": focal_res_after,
+            "pool_before": pool_before,
+            "pool_after": pool_after,
+            "pool_capacity": env.pool.capacity,
+            "events_this_round": events_this_round,
+            "coplayer_summaries": coplayer_summaries,
+            "focal_summary": focal_summary,
+        }
+        st.session_state.round_transition_active = True
+
+        # Sync to DB if simulation finished or focal player died
+        if done or not focal_alive_after:
             validate_trial_log(st.session_state.trial_id)
             try:
                 from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
@@ -708,9 +993,8 @@ def game_screen():
                 st.session_state.trial_synced_to_db = True
             except Exception:
                 pass
-            go_to("debrief")
-        else:
-            st.rerun()
+
+        st.rerun()
 
 # ---------- SCREEN 4: DEBRIEF & BEHAVIORAL TURING TEST ----------
 
