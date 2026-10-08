@@ -103,6 +103,37 @@ def render_researcher_hub(embedded: bool = False):
     if not check_researcher_auth():
         return
 
+    # Expand layout to 95% full-width desktop view (eliminates compact centered container)
+    st.markdown(
+        """
+        <style>
+        .main .block-container {
+            max-width: 95% !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+            padding-top: 1.5rem !important;
+        }
+        /* Style tabs for clean desktop spacing */
+        button[data-baseweb="tab"] {
+            font-size: 0.95rem !important;
+            padding: 8px 14px !important;
+            font-weight: 500 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Auto-sync logs if DB is freshly initialized
+    try:
+        init_db()
+        current_summary = get_db_summary()
+        if current_summary.get("total_trials", 0) < 5:
+            sync_all_logs_to_db()
+            export_combined_dataset()
+    except Exception:
+        pass
+
     # Header with title and Logout button
     hcol1, hcol2 = st.columns([4, 1])
     with hcol1:
