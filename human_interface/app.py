@@ -305,6 +305,11 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Training error: {e}")
 
+    st.divider()
+    if st.button("🔐 Researcher & Admin Portal", use_container_width=True):
+        st.session_state.portal_active = True
+        st.rerun()
+
 
 
 # ---------- SCREEN 1: CONSENT ----------
@@ -898,12 +903,16 @@ def debrief_screen():
 
 
 # ---------- ROUTER ----------
-stage = st.session_state.stage
-if stage == "consent":
-    consent_screen()
-elif stage == "instructions":
-    instructions_screen()
-elif stage == "game":
-    game_screen()
-elif stage == "debrief":
-    debrief_screen()
+if query_params.get("mode") == "researcher" or st.session_state.get("portal_active", False):
+    from dashboard.researcher_hub import render_researcher_hub
+    render_researcher_hub(embedded=True)
+else:
+    stage = st.session_state.stage
+    if stage == "consent":
+        consent_screen()
+    elif stage == "instructions":
+        instructions_screen()
+    elif stage == "game":
+        game_screen()
+    elif stage == "debrief":
+        debrief_screen()
