@@ -79,6 +79,26 @@ st.set_page_config(
     layout="centered",
 )
 
+# Hide Streamlit top-right menu, toolbar, and GitHub repo badge from participants
+st.markdown(
+    """
+    <style>
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    .viewerBadge_link__qRIco {display: none !important;}
+    div[class*="viewerBadge"] {display: none !important;}
+    button[title="View app source"] {display: none !important;}
+    a[href*="github.com"] {display: none !important;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ---------- RESEARCHER CONTROLS & QUERY PARAMS ----------
 query_params = st.query_params
 default_scenario = query_params.get("scenario", "drought")

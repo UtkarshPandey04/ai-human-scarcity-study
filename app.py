@@ -21,6 +21,26 @@ if PROJECT_ROOT not in sys.path:
 # Check query parameter for mode selection (?mode=researcher or ?mode=study)
 query_mode = st.query_params.get("mode", "").lower()
 
+# Hide Streamlit top-right menu, toolbar, and GitHub repo badge from participants
+st.markdown(
+    """
+    <style>
+    #MainMenu {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    [data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stDecoration"] {display: none !important;}
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    .viewerBadge_link__qRIco {display: none !important;}
+    div[class*="viewerBadge"] {display: none !important;}
+    button[title="View app source"] {display: none !important;}
+    a[href*="github.com"] {display: none !important;}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Sidebar mode switcher (collapsible for participants)
 with st.sidebar:
     if query_mode == "researcher":
