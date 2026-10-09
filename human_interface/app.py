@@ -208,35 +208,45 @@ def go_to(stage: str):
 
 # ---------- SIDEBAR: STUDY CONFIG (Editable prior to game start) ----------
 with st.sidebar:
-    st.header("🔬 Session Parameters")
+    st.header("⚙️ Island Setup")
     if st.session_state.stage in ("consent", "instructions"):
         selected_scenario = st.selectbox(
-            "Scenario",
+            "Game Scenario",
             options=list(SCENARIOS),
             index=list(SCENARIOS).index(st.session_state.scenario),
-            help="Experimental condition: calm (baseline), drought (resource shock), repeated_trust (30 rounds)",
+            format_func=lambda s: {
+                "calm": "☀️ Normal Island (10 Rounds - Stable Rain)",
+                "drought": "⚠️ Drought Crisis (10 Rounds - Heatwave in Round 6)",
+                "repeated_trust": "🤝 Extended Society (30 Rounds - Long-Term Trust)",
+            }.get(s, s),
+            help="Choose the island condition: normal weather, severe drought heatwave, or long-term 30-round community.",
         )
         selected_seed = st.selectbox(
-            "Matched Seed",
+            "Island Map # (Layout)",
             options=list(MATCHED_SEEDS),
             index=st.session_state.seed,
-            help="Fixed RNG seed matched against the AI primary arm trials (0-29)",
+            help="Preset island scenario map (0-29). Matched directly against AI computer runs.",
         )
         severity_val = st.slider(
-            "Scarcity Severity",
+            "Drought Hardship Level",
             min_value=0.0,
             max_value=1.0,
             value=0.7 if selected_scenario == "drought" else 0.0,
             step=0.1,
-            help="Novelty N1: dose-response parameter",
+            help="Sets how severe the water scarcity gets during drought (0.0 = Mild, 1.0 = Extreme Scarcity).",
         )
         ecology_opts = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
         default_eco_idx = ecology_opts.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in ecology_opts else 0
         coplayer_opt = st.selectbox(
-            "Opponent Ecology",
+            "Teammate Personalities",
             options=ecology_opts,
             index=default_eco_idx,
-            help="Standard: Cooperator, Free-Rider, Tit-for-Tat, Random. Deceptive: Adds Strategic Deceiver. Live LLM Ecology: Co-players run live Groq and Gemini LLM reasoning across separate quotas.",
+            format_func=lambda e: {
+                "Standard": "Standard Teammates (Cooperative, Selfish & Fair bots)",
+                "Deceptive (Strategic Deceiver)": "Challenging Island (Includes Sneaky/Secretive bot)",
+                "Live LLM Ecology (Groq + Gemini)": "Smart AI Island (Live AI bots with Groq & Gemini)",
+            }.get(e, e),
+            help="Standard: Balanced mix of bots. Deceptive: Adds a secretive player. Live LLM: Smart bots powered by live AI reasoning.",
         )
         if (
             selected_scenario != st.session_state.scenario
@@ -251,10 +261,15 @@ with st.sidebar:
             st.session_state.trial_id = f"{selected_scenario}_human_{selected_seed:03d}_{uuid.uuid4().hex[:6]}"
             st.rerun()
     else:
-        st.write(f"**Scenario:** `{st.session_state.scenario}`")
-        st.write(f"**Matched Seed:** `{st.session_state.seed}`")
-        st.write(f"**Severity:** `{st.session_state.severity}`")
-        st.write(f"**Ecology:** `{st.session_state.coplayer_mode}`")
+        scenario_labels = {
+            "calm": "☀️ Normal Island (10 Rounds)",
+            "drought": "⚠️ Drought Crisis (10 Rounds)",
+            "repeated_trust": "🤝 Extended Society (30 Rounds)",
+        }
+        st.write(f"**Scenario:** {scenario_labels.get(st.session_state.scenario, st.session_state.scenario)}")
+        st.write(f"**Island Map #:** `{st.session_state.seed}`")
+        st.write(f"**Drought Hardship:** `{st.session_state.severity}`")
+        st.write(f"**Teammate Mix:** `{st.session_state.coplayer_mode}`")
 
     st.divider()
     st.markdown(f"👤 **Participant ID:** `{st.session_state.participant_id}`")
@@ -335,32 +350,28 @@ def consent_screen():
             st.session_state.portal_active = True
             st.rerun()
 
-    st.title("Research Study: Resource Decisions Under Scarcity")
+    st.title("🏝️ Island Survival Study: Water Decisions Under Scarcity")
     st.write(
         """
-        You are invited to take part in a research study (10–15 minutes) examining how people
-        make allocation decisions when essential shared resources are scarce.
+        Welcome! You are invited to take part in a short, interactive study (10–15 minutes) examining how people
+        manage shared survival resources when nature gets tough.
 
         **What you will do:**
-        - You will participate in a round-based survival simulation set on an island.
-        - You and four computer-controlled co-players share a common water pool.
-        - Each round you must manage your water to survive while deciding whether to
-          gather, share, hoard, or communicate.
-
-        **Ethics & Co-Player Disclosure:**
-        - **Co-players:** The other four players on the island are automated computer policies.
-          You are not playing with other active human subjects in real time.
-        - **Anonymity:** No personally identifying information is collected. Your decisions
-          are recorded under an anonymous participant ID.
-        - **Voluntary Participation:** You may withdraw at any time by closing this browser tab.
-          All data is collected solely for scientific research and reported in aggregate.
+        - **Survive on an Island:** You and 4 automated computer teammates are stranded on an island.
+        - **Share a Freshwater Lake:** All players share one central freshwater lake to stay alive.
+        - **Manage Your Canteen:** Each round, your body naturally drinks **2 units of water**. You decide each round whether to **collect lake water**, **share water with teammates**, **ration your supply to save the lake**, or **send messages**.
+        
+        **Important Information:**
+        - **Teammates:** Your 4 companions on the island are automated computer bots. You are playing solo with computer companions.
+        - **Anonymity:** No personal identifying information is collected. Your decisions are recorded under an anonymous Player ID.
+        - **Voluntary:** You can withdraw at any time by closing this tab. All data is reported in scientific aggregate.
         """
     )
 
-    agree = st.checkbox("I have read the information above and consent to participate.")
+    agree = st.checkbox("I have read the information above and agree to participate in this study.")
 
-    st.subheader("Demographic Background (Optional)")
-    st.caption("Used solely for statistical subgroup analysis in the research paper.")
+    st.subheader("Background (Optional)")
+    st.caption("Used solely for statistical subgroup analysis in our research paper.")
     dcol1, dcol2 = st.columns(2)
     with dcol1:
         age_group = st.selectbox(
@@ -374,12 +385,12 @@ def consent_screen():
     with dcol2:
         ai_fam = st.selectbox(
             "AI / Tech Familiarity",
-            ["Beginner (rarely use)", "Intermediate (regular user)", "Advanced (developer / researcher)"],
+            ["Beginner (casual user)", "Intermediate (regular user)", "Advanced (developer / researcher)"],
         )
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Agree & Continue", disabled=not agree, type="primary"):
+        if st.button("Agree & Continue ➡️", disabled=not agree, type="primary"):
             st.session_state.demographics = {
                 "age_group": age_group,
                 "gender": gender,
@@ -405,7 +416,7 @@ def consent_screen():
 
 # ---------- SCREEN 2: INSTRUCTIONS ----------
 def instructions_screen():
-    st.title("How the Game Works")
+    st.title("📖 How the Game Works")
 
     rounds_total = (
         TOTAL_ROUNDS * 3
@@ -416,28 +427,28 @@ def instructions_screen():
     st.markdown(
         f"""
         ### 🏝️ Survival Rules at a Glance
-        You are one of **{NUM_PLAYERS} players** (you + co-players A2, A3, A4, A5) surviving on a remote island for **{rounds_total} rounds**.
+        You are one of **{NUM_PLAYERS} islanders** (You + computer teammates A2, A3, A4, A5) surviving for **{rounds_total} rounds**.
 
-        | Rule / Action | How It Works | Strategic Impact |
+        | Rule / Action | What It Does | Why It Matters |
         | :--- | :--- | :--- |
-        | 💧 **Survival Need** | You automatically consume **{SURVIVAL_COST} units of water** every round. | If your water drops below 0, you die. |
-        | 🌊 **Shared Lake** | All players harvest from this central commons. | If over-harvested, the lake empties to 0! |
-        | 💧 **Gather** | Draws water from the lake (**+3 units** normal, **+1 unit** in drought). | Recharges your stock, but drains lake. |
-        | 🛡️ **Hoard / Ration** | Rest and protect personal reserves without drawing from lake. Consumes {SURVIVAL_COST} units. | Conserves shared lake pool! |
-        | 🤝 **Share** | Gift 1+ water units to a struggling co-player. | Saves teammates and builds mutual trust. |
-        | 💬 **Communicate** | Broadcast statements, promises, or requests. | Coordinates team actions. |
-        | ⏳ **Skip** | Take no action (still consumes {SURVIVAL_COST} units). | Inactive turn. |
+        | 💧 **Your Thirst** | You automatically consume **{SURVIVAL_COST} units of water** every round. | If your personal water falls below 0, you dehydrate and are eliminated! |
+        | 🌊 **Shared Lake** | All 5 players share the island's central lake. | The lake naturally replenishes each round—but if everyone over-harvests, it dries to 0! |
+        | 💧 **Collect Water** | Scoop water from the lake (**+3 units** normal, **+1 unit** in drought). | Refills your water canteen, but drains water from the shared lake. |
+        | 🛡️ **Ration / Rest** | Drink from your own canteen without touching the lake! Consumes {SURVIVAL_COST} units. | **Saves the lake!** Gives the lake time to naturally refill and recover. |
+        | 🤝 **Share Water** | Gift 1 or more units from your canteen to another player. | Saves a struggling teammate's life and builds mutual trust. |
+        | 💬 **Send Message** | Send announcements, water reports, or requests for help. | Helps coordinate team action across the island. |
+        | ⏳ **Wait / Skip** | Take no action this turn (you still drink {SURVIVAL_COST} units). | Rest turn. |
 
-        *(Note: Personal water reserves are private. Players only see actions and public broadcast claims.)*
+        *(🎒 **Private Canteen:** Teammates can see what action you took, but they cannot see how much water is inside your canteen unless you choose to tell them!)*
         """
     )
 
     if st.session_state.scenario == "drought":
         st.warning(
-            f"⚠️ **Drought Alert:** In Round {DROUGHT_ROUND}, an environmental shock will drastically reduce water yield and pool regeneration."
+            f"⚠️ **Drought Alert:** In Round {DROUGHT_ROUND}, an extreme heatwave strikes! Water collection drops to **only 1 unit**, and the lake stops refilling quickly. Build a water cushion of 3-4 units beforehand!"
         )
 
-    if st.button("Start Simulation", type="primary"):
+    if st.button("Start Island Simulation 🚀", type="primary"):
         reset_environment()
         go_to("game")
 
@@ -529,11 +540,11 @@ def render_round_transition_screen():
 
     act_type = focal_summary.get("action_type", "skip")
     action_labels = {
-        "gather": "💧 Gather Water",
-        "share": "🤝 Share Water",
-        "hoard": "🛡️ Hoard / Ration",
-        "skip": "⏳ Skip Round",
-        "communicate": "💬 Communicate",
+        "gather": "💧 Collected Water",
+        "share": "🤝 Shared Water",
+        "hoard": "🛡️ Rationed / Rested (Saved Lake)",
+        "skip": "⏳ Skipped Turn",
+        "communicate": "💬 Sent Message",
     }
     act_display = action_labels.get(act_type, act_type.capitalize())
     if act_type == "share" and focal_summary.get("target_agent"):
@@ -546,13 +557,13 @@ def render_round_transition_screen():
         f"{focal_res_after - focal_res_before:+.1f} units",
     )
     if pool_after > 15.0:
-        pool_status_str = "🟢 Healthy"
+        pool_status_str = "🟢 Lake Healthy"
     elif pool_after >= 6.0:
-        pool_status_str = "🟡 Stressed"
+        pool_status_str = "🟡 Lake Stressed"
     else:
-        pool_status_str = "🔴 Depleted"
+        pool_status_str = "🔴 Lake Low"
     mcol3.metric(
-        "Lake Commons",
+        "Shared Lake Level",
         f"{pool_after:.1f} / {pool_capacity:.0f}",
         f"{pool_after - pool_before:+.1f} ({pool_status_str})",
     )
@@ -560,7 +571,7 @@ def render_round_transition_screen():
     mcol4.metric("Island Survivors", f"{alive_count} / {NUM_PLAYERS} Alive")
 
     # Co-player activity recap
-    with st.expander(f"👥 Co-Player Activity in Round {completed_round}", expanded=True):
+    with st.expander(f"👥 Teammate Actions in Round {completed_round}", expanded=True):
         if events:
             for ev in events:
                 st.write(ev)
@@ -571,7 +582,8 @@ def render_round_transition_screen():
                     c_status = "🟢" if cinfo.get("alive") else "💀"
                     st.markdown(f"**{c_status} {cinfo['agent_id']}**")
                     c_act = cinfo.get("action_type", "skip")
-                    st.caption(f"Action: `{c_act}`")
+                    friendly_c_act = action_labels.get(c_act, c_act)
+                    st.caption(f"Action: {friendly_c_act}")
                     if c_act == "share" and cinfo.get("target_agent"):
                         st.caption(f"Target: `{cinfo['target_agent']}`")
                     if cinfo.get("message_sent"):
@@ -580,7 +592,7 @@ def render_round_transition_screen():
     st.divider()
 
     # --- PART B: STATING FOR NEXT ROUND ---
-    st.markdown(f"### 🎯 Stating for Next Round: Strategic Briefing for Round {next_round}")
+    st.markdown(f"### 🎯 Next Round Briefing: Island Status for Round {next_round}")
 
     drought_next = is_drought(next_round, scenario)
     drought_in_two = is_drought(next_round + 1, scenario) if (next_round + 1 <= total_rounds) else False
@@ -589,7 +601,7 @@ def render_round_transition_screen():
     if drought_next:
         st.error(
             f"🚨 **CRITICAL WEATHER WARNING: DROUGHT ROUND {next_round}!**\n\n"
-            f"• **Yield Collapse:** Gather yield drops sharply from 3 units to **1 unit**.\n"
+            f"• **Yield Collapse:** Collecting water drops sharply from 3 units to **1 unit**.\n"
             f"• **Natural Replenishment Throttled:** The lake regenerates at a fraction of normal rate.\n"
             f"• **Mandatory Consumption:** You will still consume **{SURVIVAL_COST} units** of water at the end of Round {next_round}.\n"
             f"• **Risk:** If players over-gather, the lake may permanently collapse to 0!"
@@ -604,7 +616,7 @@ def render_round_transition_screen():
         st.info(
             f"☀️ **Environmental Forecast: Calm & Stable Island Conditions**\n\n"
             f"• **Gather Yield:** Standard **+{gather_yield(next_round, scenario)} units** from the lake.\n"
-            f"• **Lake Commons:** Logistic replenishment is active.\n"
+            f"• **Lake Commons:** Natural rainwater refilling is active.\n"
             f"• **Survival Cost:** Standard **-{SURVIVAL_COST} units** will be deducted at the end of Round {next_round}."
         )
 
@@ -614,7 +626,7 @@ def render_round_transition_screen():
     bcol2.metric("Survival Cost (Round End)", f"-{SURVIVAL_COST:.1f} units")
     projected_balance = focal_res_after - SURVIVAL_COST
     bcol3.metric(
-        "Projected Water (Without Gather)",
+        "Projected Water (Without Collecting)",
         f"{projected_balance:.1f} units",
         "Safe" if projected_balance > 0 else "Danger",
         delta_color="normal" if projected_balance > 0 else "inverse",
@@ -622,9 +634,9 @@ def render_round_transition_screen():
 
     if focal_res_after <= SURVIVAL_COST:
         st.error(
-            f"⚠️ **URGENT DEFICIT WARNING FOR ROUND {next_round}:** "
+            f"⚠️ **URGENT WATER DEFICIT FOR ROUND {next_round}:** "
             f"You have only **{focal_res_after:.1f} units** remaining! "
-            f"If you do not **Gather water** or receive a **Share from a co-player** in Round {next_round}, "
+            f"If you do not **Collect water** or receive a **Share from a teammate** in Round {next_round}, "
             f"you will run out of water and die at the end of the round."
         )
     elif focal_res_after <= 4.0:
@@ -692,16 +704,16 @@ def game_screen():
 
     # Top Status Bar
     col1, col2, col3 = st.columns(3)
-    col1.metric("Your Water", f"{focal_player.resource:.1f}")
+    col1.metric("🎒 Your Water Canteen", f"{focal_player.resource:.1f} units")
     col2.metric("Your Status", "Alive ✅" if focal_player.alive else "Deceased ❌")
     pool_pct = max(0.0, min(100.0, (env.pool.stock / env.pool.capacity) * 100))
     if env.pool.stock > 15.0:
         pool_status = "🟢 Lake Healthy"
     elif env.pool.stock >= 6.0:
-        pool_status = "🟡 Lake Stressed"
+        pool_status = "🟡 Lake Stressed (Needs Rest)"
     else:
-        pool_status = "🔴 Lake Depleted"
-    col3.metric("Shared Lake Stock", f"{env.pool.stock:.1f} / {env.pool.capacity:.0f}", pool_status)
+        pool_status = "🔴 Lake Dangerously Low"
+    col3.metric("🌊 Shared Lake Level", f"{env.pool.stock:.1f} / {env.pool.capacity:.0f} units", pool_status)
 
     st.progress(pool_pct / 100.0)
 
@@ -732,40 +744,47 @@ def game_screen():
     st.divider()
 
     # Public Co-Players Information
-    st.subheader("👥 Other Players on the Island")
+    st.subheader("👥 Other Teammates on the Island")
     coplayer_cols = st.columns(len(COPLAYER_IDS))
     for i, pid in enumerate(COPLAYER_IDS):
         pstate = env.players[pid]
         with coplayer_cols[i]:
             status_emoji = "🟢" if pstate.alive else "💀"
             st.markdown(f"**{status_emoji} {pid}**")
-            st.caption(f"Status: {'Alive' if pstate.alive else 'Dead'}")
+            st.caption(f"Status: {'Alive' if pstate.alive else 'Dehydrated'}")
             if pstate.last_action:
-                st.caption(f"Last: `{pstate.last_action.value}`")
+                friendly_last = {
+                    "gather": "💧 Collected water",
+                    "share": "🤝 Shared water",
+                    "hoard": "🛡️ Rationed / Rested",
+                    "communicate": "💬 Sent message",
+                    "skip": "⏳ Skipped turn",
+                }.get(pstate.last_action.value, pstate.last_action.value)
+                st.caption(f"Last: {friendly_last}")
 
     st.divider()
 
     # Action Selection Form
-    st.subheader("Choose Your Action")
+    st.subheader("Choose Your Action for This Round")
     action_type_str = st.radio(
         "Action",
         ACTIONS,
         horizontal=True,
         format_func=lambda a: {
-            "gather": "💧 Gather Water",
-            "share": "🤝 Share Water",
-            "hoard": "🛡️ Hoard / Ration",
-            "skip": "⏳ Skip Round",
-            "communicate": "💬 Communicate",
+            "gather": "💧 Collect Water (Take from Lake)",
+            "share": "🤝 Share Water (Gift to Teammate)",
+            "hoard": "🛡️ Ration / Rest (Protect the Lake)",
+            "communicate": "💬 Send Message to Team",
+            "skip": "⏳ Wait / Skip Turn",
         }.get(a, a),
     )
 
     action_helpers = {
-        "gather": f"💧 **Gather Water:** Draw water from the shared lake (Yields **+{1 if drought_now else 3} units** this round). End-of-round consumption: **-{SURVIVAL_COST} units**.",
-        "share": "🤝 **Share Water:** Gift 1 or more units from your personal stock to a co-player to keep them alive and foster mutual trust.",
-        "hoard": f"🛡️ **Hoard:** Rest and refrain from drawing from the shared lake. End-of-round consumption: **-{SURVIVAL_COST} units**.",
-        "skip": f"⏳ **Skip Round:** Take no action this round. Still consumes normal **-{SURVIVAL_COST} units**.",
-        "communicate": "💬 **Communicate:** Broadcast a coordination claim, request, or pledge without transferring water.",
+        "gather": f"💧 **Collect Water:** Scoop water from the shared lake (**+{1 if drought_now else 3} units** this round). Your body drinks **-{SURVIVAL_COST} units** at the end of the round.",
+        "share": "🤝 **Share Water:** Gift water from your canteen to another player to keep them alive and foster trust.",
+        "hoard": f"🛡️ **Ration / Rest:** Rest and drink from your canteen without touching the lake! Consumes your normal **-{SURVIVAL_COST} units**, but allows the shared lake to naturally replenish.",
+        "communicate": "💬 **Send Message:** Broadcast a message, update the team on your water level, or ask for help without transferring water.",
+        "skip": f"⏳ **Wait / Skip:** Take no action this round (still consumes normal **-{SURVIVAL_COST} units**).",
     }
     st.info(action_helpers.get(action_type_str, ""))
 
@@ -781,13 +800,13 @@ def game_screen():
         scol1, scol2 = st.columns(2)
         with scol1:
             if alive_coplayers:
-                target_agent = st.selectbox("Recipient", alive_coplayers)
+                target_agent = st.selectbox("Recipient Teammate", alive_coplayers)
             else:
-                st.warning("No co-players are alive to receive water.")
+                st.warning("No teammates are alive to receive water.")
         with scol2:
             max_share = max(1, int(focal_player.resource))
             share_amount = st.number_input(
-                "Amount to give",
+                "Water amount to give",
                 min_value=1,
                 max_value=max(1, max_share),
                 value=1,
@@ -795,31 +814,32 @@ def game_screen():
             )
 
     if action_type_str in ("share", "communicate"):
-        st.markdown("**Structured Message (Optional Claim / Request):**")
+        st.markdown("**Team Message (Optional Broadcast / Claim):**")
         if action_type_str == "communicate":
             target_agent = st.selectbox(
-                "Target",
+                "Send Message To",
                 ["all"] + alive_coplayers,
+                format_func=lambda t: "Everyone (Public Broadcast)" if t == "all" else f"Teammate {t}",
                 help="Send to all players or a specific player",
             )
 
         ccol1, ccol2 = st.columns(2)
         with ccol1:
             claim_kind = st.selectbox(
-                "Message Kind",
+                "Message Type",
                 MESSAGE_KINDS,
                 format_func=lambda k: {
-                    "none": "No claim",
-                    "claim_stock": "State my stock (claim_stock)",
-                    "promise_share": "Promise future share (promise_share)",
-                    "request": "Request water (request)",
-                    "accuse": "Accuse of selfishness (accuse)",
+                    "none": "💬 Friendly Note / General Chat",
+                    "claim_stock": "📢 Report my current water level",
+                    "promise_share": "🤝 Promise to share water soon",
+                    "request": "🆘 Ask a teammate for water",
+                    "accuse": "⚠️ Warn team about over-gathering",
                 }.get(k, k),
             )
         with ccol2:
             if claim_kind != "none":
                 claim_value = st.number_input(
-                    "Stated Value (e.g. reported stock / promised amount)",
+                    "Reported Water Amount (e.g. your stated water or promised gift):",
                     min_value=0,
                     step=1,
                     value=int(focal_player.resource) if claim_kind == "claim_stock" else 1,
@@ -1035,15 +1055,15 @@ def debrief_screen():
     all_resources = [p.resource for p in env.players.values()] if env else [focal_res]
 
     col1.metric("Your Survival", "Survived ✅" if focal_alive else "Died ❌")
-    col2.metric("Final Water", f"{focal_res:.1f}")
-    col3.metric("Society Survivors", f"{alive_total} / {NUM_PLAYERS}")
+    col2.metric("Final Water", f"{focal_res:.1f} units")
+    col3.metric("Island Survivors", f"{alive_total} / {NUM_PLAYERS}")
     gini = calculate_gini(all_resources)
-    col4.metric("Society Gini", f"{gini:.2f}", help="0 = perfect equality, 1 = maximal inequality")
+    col4.metric("Water Equality (Gini)", f"{gini:.2f}", help="0.00 = Perfect equality across players, 1.00 = Extreme inequality")
 
     st.divider()
 
     # ---------- SECTION B: BEHAVIORAL PROFILE ----------
-    st.subheader("🧠 Your Behavioral Metrics")
+    st.subheader("🧠 Your Playing Style & Decision Metrics")
 
     counts = count_actions(action_log)
     rates = action_rates(action_log)
@@ -1052,47 +1072,46 @@ def debrief_screen():
 
     bcol1, bcol2, bcol3, bcol4 = st.columns(4)
     bcol1.metric("Sharing Rate", f"{rates.get('share', 0.0):.1f}%")
-    bcol2.metric("Hoarding Rate", f"{rates.get('hoard', 0.0):.1f}%")
-    bcol3.metric("Deception Rate", f"{deception_stats['deception_rate']:.1f}%")
-    bcol4.metric("Avg Latency", f"{latency_stats['mean_ms']:.0f} ms")
+    bcol2.metric("Rationing Rate", f"{rates.get('hoard', 0.0):.1f}%")
+    bcol3.metric("Misleading Reports", f"{deception_stats['deception_rate']:.1f}%")
+    bcol4.metric("Decision Speed", f"{latency_stats['mean_ms']:.0f} ms")
 
     st.bar_chart(counts)
 
     if deception_stats["total_claims"] > 0:
         st.info(
-            f"🔍 **Arithmetic Deception Audit:** You made {deception_stats['total_claims']} stock claims; "
-            f"{deception_stats['deceptive_claims']} diverged from your true resource level."
+            f"🔍 **Water Reporting Accuracy:** You shared your water count {deception_stats['total_claims']} times; "
+            f"{deception_stats['deceptive_claims']} times your reported number differed from your true canteen reserve."
         )
 
     st.divider()
 
     # ---------- SECTION C: NOVELTY N8 - BEHAVIORAL TURING TEST ----------
-    st.subheader("🤖 Novelty N8: Behavioral Turing Test")
+    st.subheader("🤖 Challenge: Can You Spot the Real Human Player?")
     st.write(
         """
-        Can you distinguish AI agent decision-making from human behavior under scarcity?
-        Below are two real 6-round action sequences from this environment. One is an AI agent,
-        the other is a human participant:
+        Can you tell the difference between how a human plays versus how an AI computer bot plays under scarcity?
+        Below are two real 6-round action histories from this island simulation. One is an AI bot, the other is a real human participant:
         """
     )
 
     tcol1, tcol2 = st.columns(2)
     with tcol1:
-        st.markdown("**Trajectory A:**")
-        st.code("R1: gather\nR2: gather\nR3: share(target=A2, amount=1)\nR4: hoard\nR5: gather\nR6: communicate(request)")
+        st.markdown("**Player Trajectory A:**")
+        st.code("R1: Collect water\nR2: Collect water\nR3: Share water (1 unit to A2)\nR4: Ration / Rest\nR5: Collect water\nR6: Send message (Ask for water)")
     with tcol2:
-        st.markdown("**Trajectory B:**")
-        st.code("R1: gather\nR2: gather\nR3: gather\nR4: gather\nR5: hoard\nR6: hoard")
+        st.markdown("**Player Trajectory B:**")
+        st.code("R1: Collect water\nR2: Collect water\nR3: Collect water\nR4: Collect water\nR5: Ration / Rest\nR6: Ration / Rest")
 
     if not st.session_state.turing_submitted:
         choice = st.radio(
-            "Which trajectory was produced by the HUMAN participant?",
-            ["Trajectory A is Human, Trajectory B is AI", "Trajectory B is Human, Trajectory A is AI"],
+            "Which trajectory was played by the REAL HUMAN participant?",
+            ["Player A is Human, Player B is AI Bot", "Player B is Human, Player A is AI Bot"],
         )
-        if st.button("Submit Judgment", type="primary"):
+        if st.button("Submit Your Guess 🎯", type="primary"):
             st.session_state.turing_guess = choice
             st.session_state.turing_submitted = True
-            is_correct_val = "Trajectory A is Human" in choice
+            is_correct_val = "Player A is Human" in choice
             # Log judgment to JSONL and SQLite DB
             turing_log_path = os.path.join(LOG_DIR, "turing_judgments.jsonl")
             with open(turing_log_path, "a", encoding="utf-8") as f:
@@ -1117,12 +1136,12 @@ def debrief_screen():
             st.rerun()
     else:
         guess = st.session_state.turing_guess
-        is_correct = "Trajectory A is Human" in (guess or "")
+        is_correct = "Player A is Human" in (guess or "")
         if is_correct:
-            st.success("🎉 **Correct!** Trajectory A was the human participant. Notice the cooperative social sharing and active communication, whereas the AI reflex agent (Trajectory B) defaulted to rigid gathering and survival hoarding.")
+            st.success("🎉 **Correct!** Player A was the real human! Notice the social sharing and team communication, whereas the AI bot (Player B) rigidly collected water and rested purely for its own survival.")
         else:
-            st.warning("❌ **Incorrect.** Trajectory A was actually the human participant. Humans actively engage in reciprocal sharing and signaling, whereas standard RL policies exhibit deterministic harvest patterns.")
-        st.caption("Your response has been banked into the behavioral distinguishability dataset.")
+            st.warning("❌ **Incorrect.** Player A was actually the real human! Humans actively engage in reciprocal sharing and signaling, whereas standard AI bot policies follow rigid harvesting rules.")
+        st.caption("Your guess has been recorded into our scientific Turing-distinguishability dataset.")
 
     st.divider()
 
@@ -1155,14 +1174,14 @@ def debrief_screen():
 
     # ---------- SECTION E: AI & LLM MODEL TRAINING CENTER ----------
     st.divider()
-    st.subheader("🤖 How Your Decisions Train Our AI & LLM Models")
+    st.subheader("🤖 How Your Decisions Directly Power Our AI Models")
     st.write(
         """
-        Your trial was automatically banked into the research database. Here is how your gameplay powers each model:
-        - **Model A (Distinguishability Classifier):** Learns behavioral feature weights to separate human reciprocity from AI reflex rules.
-        - **Model B (Human Clone Policy):** Uses imitation learning to predict human actions directly from game states.
-        - **Model C (Dynamic In-Context LLM Steering):** Groq (LLaMA-3) & Gemini agents pull your strategies as few-shot exemplars.
-        - **Model D (SFT Fine-Tuning Dataset):** Your game steps are formatted into `data/llm_sft_dataset.jsonl` for offline fine-tuning.
+        Your trial was automatically banked into the research database! Here is how your choices help train each AI model:
+        - **1. Spotting Humans vs Bots (Classifier):** Helps the system distinguish human empathy and communication from simple computer scripts.
+        - **2. Learning Human Survival Instincts (Imitation Model):** Teaches bots how real people balance self-preservation with helping teammates.
+        - **3. Teaching Advanced AI (Groq & Gemini LLMs):** Co-player AI agents learn from your decisions as real examples of teamwork and crisis management.
+        - **4. Fine-Tuning Open Source AI:** Your gameplay steps are formatted into training sets (`data/llm_sft_dataset.jsonl`) to train models on social coordination.
         """
     )
 

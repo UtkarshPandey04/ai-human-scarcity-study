@@ -13,6 +13,7 @@ from agents.llm_client import (
     _messages_with_schema,
     _parse_json,
     _schema_instruction,
+    clear_completion_cache,
     complete,
 )
 
@@ -79,6 +80,7 @@ class TestCompleteDispatch(unittest.TestCase):
         mock_ollama.assert_called_once()
 
     def test_missing_groq_key_raises_completion_error(self):
+        clear_completion_cache()
         with patch.dict("os.environ", {}, clear=True):  # snapshot restored automatically on exit
             with self.assertRaises(LLMCompletionError):
                 complete([ChatMessage(role="user", content="hi")], provider="groq")

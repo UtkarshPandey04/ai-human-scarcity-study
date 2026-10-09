@@ -87,12 +87,10 @@ GROQ_MAX_RETRIES = int(os.environ.get("GROQ_MAX_RETRIES", "6"))
 DEFAULT_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 DEFAULT_OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 DEFAULT_OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-DEFAULT_MISTRAL_MODEL = os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
 DEFAULT_OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
 
 _groq_key_idx = 0
 _gemini_key_idx = 0
-_mistral_key_idx = 0
 
 
 def get_groq_api_keys() -> list[str]:
@@ -296,29 +294,6 @@ def _complete_ollama(
     )
 
 
-def _complete_mistral(
-    messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
-) -> dict:
-    raw = os.environ.get("MISTRAL_API_KEYS") or os.environ.get("MISTRAL_API_KEY") or ""
-    keys = [k.strip() for k in raw.split(",") if k.strip()]
-    if not keys:
-        raise LLMCompletionError("MISTRAL_API_KEY is not set")
-    global _mistral_key_idx
-    key = keys[_mistral_key_idx % len(keys)]
-    _mistral_key_idx = (_mistral_key_idx + 1) % len(keys)
-    return _complete_openai_compatible(
-        messages,
-        schema,
-        model,
-        temperature,
-        usage,
-        api_key=key,
-        base_url="https://api.mistral.ai/v1",
-        default_model=DEFAULT_MISTRAL_MODEL,
-        provider_name="mistral",
-    )
-
-
 def _complete_openrouter(
     messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
 ) -> dict:
@@ -342,7 +317,6 @@ PROVIDERS = {
     "groq": _complete_groq,
     "gemini": _complete_gemini,
     "ollama": _complete_ollama,
-    "mistral": _complete_mistral,
     "openrouter": _complete_openrouter,
 }
 
@@ -364,67 +338,39 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TELEMETRY_PATH = os.path.join(PROJECT_ROOT, "data", "api_telemetry.json")
 
 
+def _default_provider_stat() -> dict:
+    return {
+        "total_calls": 0,
+        "successful_calls": 0,
+        "rate_limited_calls": 0,
+        "failed_calls": 0,
+        "total_prompt_tokens": 0,
+        "total_completion_tokens": 0,
+        "total_latency_ms": 0.0,
+        "avg_latency_ms": 0.0,
+        "last_latency_ms": 0.0,
+        "last_status": "Idle",
+        "last_call_at": None,
+    }
+
+
 def _load_telemetry() -> dict:
+    all_providers = ["groq", "gemini", "openrouter", "ollama"]
+    base = {p: _default_provider_stat() for p in all_providers}
     if os.path.exists(TELEMETRY_PATH):
         try:
             with open(TELEMETRY_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
+                loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    for k, v in loaded.items():
+                        if k in base and isinstance(v, dict):
+                            base[k].update(v)
+                        elif isinstance(v, dict) and k in all_providers:
+                            base[k] = v
+                    return base
         except Exception:
             pass
-    return {
-        "groq": {
-            "total_calls": 0,
-            "successful_calls": 0,
-            "rate_limited_calls": 0,
-            "failed_calls": 0,
-            "total_prompt_tokens": 0,
-            "total_completion_tokens": 0,
-            "total_latency_ms": 0.0,
-            "avg_latency_ms": 0.0,
-            "last_latency_ms": 0.0,
-            "last_status": "Idle",
-            "last_call_at": None,
-        },
-        "gemini": {
-            "total_calls": 0,
-            "successful_calls": 0,
-            "rate_limited_calls": 0,
-            "failed_calls": 0,
-            "total_prompt_tokens": 0,
-            "total_completion_tokens": 0,
-            "total_latency_ms": 0.0,
-            "avg_latency_ms": 0.0,
-            "last_latency_ms": 0.0,
-            "last_status": "Idle",
-            "last_call_at": None,
-        },
-        "openrouter": {
-            "total_calls": 0,
-            "successful_calls": 0,
-            "rate_limited_calls": 0,
-            "failed_calls": 0,
-            "total_prompt_tokens": 0,
-            "total_completion_tokens": 0,
-            "total_latency_ms": 0.0,
-            "avg_latency_ms": 0.0,
-            "last_latency_ms": 0.0,
-            "last_status": "Idle",
-            "last_call_at": None,
-        },
-        "ollama": {
-            "total_calls": 0,
-            "successful_calls": 0,
-            "rate_limited_calls": 0,
-            "failed_calls": 0,
-            "total_prompt_tokens": 0,
-            "total_completion_tokens": 0,
-            "total_latency_ms": 0.0,
-            "avg_latency_ms": 0.0,
-            "last_latency_ms": 0.0,
-            "last_status": "Idle",
-            "last_call_at": None,
-        },
-    }
+    return base
 
 
 def _save_telemetry(data: dict) -> None:
@@ -515,6 +461,24 @@ def ping_provider(provider: str) -> dict:
         }
 
 
+# In-memory prompt cache to save rate limits on repetitive rounds
+_COMPLETION_CACHE: dict[str, dict] = {}
+MAX_CACHE_ENTRIES = 500
+
+
+def clear_completion_cache() -> None:
+    """Clear in-memory completion cache."""
+    _COMPLETION_CACHE.clear()
+
+
+FALLBACK_CHAINS = {
+    "groq": ["gemini", "openrouter", "ollama"],
+    "gemini": ["groq", "openrouter", "ollama"],
+    "openrouter": ["groq", "gemini", "ollama"],
+    "ollama": ["groq", "gemini", "openrouter"],
+}
+
+
 def complete(
     messages: list[ChatMessage],
     schema: dict | None = None,
@@ -525,19 +489,27 @@ def complete(
     usage: dict | None = None,
 ) -> dict:
     """The one entry point agents/llm_reasoning.py should ever call.
-
-    Raises LLMCompletionError on any failure: missing API key, network/API error, or text that
-    isn't valid JSON at all. Does NOT validate the returned dict against `schema` beyond that — see
-    the module docstring for why, and agents/llm_reasoning.py for the retry loop that does.
-
-    Pass a mutable `usage` dict to have it filled in-place with `prompt_tokens`,
-    `completion_tokens`, `model`, and `provider` — for agents/PHASE_PLAN.md Phase E's "log tokens
-    and cost per trial into meta" requirement, without complicating the return type for callers
-    that don't care.
+    Includes in-memory cache and resilient multi-tier fallback (Groq -> Gemini -> OpenRouter -> Ollama).
     """
     target_provider = provider or DEFAULT_PROVIDER
     if target_provider not in PROVIDERS:
         raise ValueError(f"unknown provider {target_provider!r}, must be one of {sorted(PROVIDERS)}")
+
+    # Check in-memory cache if caching is active
+    cache_enabled = os.environ.get("LLM_CACHE_ENABLED", "1").lower() in ("1", "true", "yes")
+    cache_key = None
+    if cache_enabled:
+        import copy
+        msg_str = "|".join(f"{m.role}:{m.content}" for m in messages)
+        cache_key = f"{target_provider}:{model or 'default'}:{msg_str}"
+        if cache_key in _COMPLETION_CACHE:
+            cached_data = _COMPLETION_CACHE[cache_key]
+            if usage is not None:
+                usage["cached"] = True
+                usage["provider"] = target_provider
+                usage["model"] = model or "cached"
+            return copy.deepcopy(cached_data)
+
     if _rate_limiter is not None:
         _rate_limiter()
 
@@ -553,29 +525,40 @@ def complete(
             prompt_tokens=call_usage.get("prompt_tokens", 0),
             completion_tokens=call_usage.get("completion_tokens", 0),
         )
+        if cache_enabled and cache_key:
+            import copy
+            if len(_COMPLETION_CACHE) >= MAX_CACHE_ENTRIES:
+                _COMPLETION_CACHE.pop(next(iter(_COMPLETION_CACHE)))
+            _COMPLETION_CACHE[cache_key] = copy.deepcopy(res)
         return res
     except LLMRateLimitError:
         duration_ms = (time.time() - start_time) * 1000.0
         record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=True)
-        # Dual-provider fallback: if primary provider encounters free-tier rate limit (429),
-        # automatically fail over to secondary provider if configured.
-        fallback = "gemini" if target_provider == "groq" else "groq"
-        fallback_key = os.environ.get(f"{fallback.upper()}_API_KEY")
-        if fallback_key and fallback in PROVIDERS:
-            fb_start = time.time()
-            try:
-                res = PROVIDERS[fallback](messages, schema, None, temperature, call_usage)
-                fb_duration = (time.time() - fb_start) * 1000.0
-                record_api_call(
-                    fallback,
-                    success=True,
-                    latency_ms=fb_duration,
-                    prompt_tokens=call_usage.get("prompt_tokens", 0),
-                    completion_tokens=call_usage.get("completion_tokens", 0),
-                )
-                return res
-            except Exception:
-                pass
+        # Multi-tier fallback chain: try alternative providers down to zero-cost Ollama fallback
+        candidates = FALLBACK_CHAINS.get(target_provider, ["gemini", "openrouter", "ollama"])
+        for fallback in candidates:
+            if fallback in PROVIDERS:
+                if fallback == "gemini" and not get_gemini_api_keys():
+                    continue
+                if fallback == "groq" and not get_groq_api_keys():
+                    continue
+                if fallback == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
+                    continue
+                fb_start = time.time()
+                try:
+                    res = PROVIDERS[fallback](messages, schema, None, temperature, call_usage)
+                    fb_duration = (time.time() - fb_start) * 1000.0
+                    call_usage["fallback_from"] = target_provider
+                    record_api_call(
+                        fallback,
+                        success=True,
+                        latency_ms=fb_duration,
+                        prompt_tokens=call_usage.get("prompt_tokens", 0),
+                        completion_tokens=call_usage.get("completion_tokens", 0),
+                    )
+                    return res
+                except Exception:
+                    continue
         raise
     except Exception:
         duration_ms = (time.time() - start_time) * 1000.0

@@ -57,6 +57,10 @@ own goal of surviving as many rounds as possible."""
 ACTION_SCHEMA = {
     "type": "object",
     "properties": {
+        "reasoning": {
+            "type": "string",
+            "description": "1-2 concise sentences explaining your strategic rationale: how you assess water scarcity, lake health, co-players' actions, and why this action was chosen.",
+        },
         "action_type": {
             "type": "string",
             "enum": ["gather", "share", "hoard", "move", "skip", "communicate"],
@@ -171,7 +175,6 @@ def get_agent_provider(player_id: str | None = None, requested: str | None = Non
     has_groq = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEYS"))
     has_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEYS"))
     has_ollama = bool(os.environ.get("OLLAMA_MODEL") or os.environ.get("OLLAMA_BASE_URL") or os.environ.get("USE_OLLAMA"))
-    has_mistral = bool(os.environ.get("MISTRAL_API_KEY") or os.environ.get("MISTRAL_API_KEYS"))
     has_openrouter = bool(os.environ.get("OPENROUTER_API_KEY"))
 
     available = []
@@ -179,12 +182,10 @@ def get_agent_provider(player_id: str | None = None, requested: str | None = Non
         available.append("groq")
     if has_gemini:
         available.append("gemini")
-    if has_ollama:
-        available.append("ollama")
-    elif has_mistral:
-        available.append("mistral")
     if has_openrouter:
         available.append("openrouter")
+    if has_ollama:
+        available.append("ollama")
 
     if not available:
         return requested or os.environ.get("LLM_PROVIDER", "groq")
@@ -266,12 +267,14 @@ def decide(
         try:
             data = complete(messages, schema=ACTION_SCHEMA, provider=target_provider, model=model, usage=usage)
             action = _parse_action(data)
+            reasoning = data.get("reasoning", "")
             return action, {
                 "llm_parse_failure": False,
                 "llm_rate_limited": False,
                 "parse_attempts": attempt,
                 "use_human_exemplars": bool(use_human_exemplars),
                 "exemplars_count": exemplars_count,
+                "reasoning": reasoning,
                 **usage,
             }
         except LLMRateLimitError as exc:
