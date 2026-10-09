@@ -137,13 +137,21 @@ def render_researcher_hub(embedded: bool = False):
     except Exception:
         pass
 
-    # Header with title and Logout button
-    hcol1, hcol2 = st.columns([4, 1])
+    # Header with title and quick-action buttons
+    hcol1, hcol2, hcol3 = st.columns([3, 1.2, 0.8])
     with hcol1:
         st.title("🔬 Scarcity Study: Researcher Hub & Model Analysis")
         st.caption("Unblinded Empirical Analysis, Statistical Divergence, Model Steering, and Camera-Ready Visuals.")
     with hcol2:
-        if st.button("🚪 Logout & Exit", use_container_width=True):
+        if st.button("🔄 Sync All Logs to DB", key="main_header_sync_btn", type="primary", use_container_width=True):
+            with st.spinner("Syncing JSONL logs into SQLite database..."):
+                synced, total = sync_all_logs_to_db()
+                export_combined_dataset()
+                export_sft_dataset()
+                st.success(f"Synced {synced}/{total} trial logs!")
+                st.rerun()
+    with hcol3:
+        if st.button("🚪 Logout", use_container_width=True):
             st.session_state.researcher_authenticated = False
             st.session_state.portal_active = False
             if "mode" in st.query_params:
@@ -1051,6 +1059,19 @@ def render_researcher_hub(embedded: bool = False):
     # -------------------------------------------------------------
     with tab_explore:
         st.subheader("🗄️ Relational Database & Decision Log Explorer")
+        
+        sync_exp_col1, sync_exp_col2 = st.columns([1, 3])
+        with sync_exp_col1:
+            if st.button("🔄 Sync All Logs to DB", key="tab_explore_sync_btn", type="primary", use_container_width=True):
+                with st.spinner("Syncing JSONL logs into SQLite database..."):
+                    synced, total = sync_all_logs_to_db()
+                    export_combined_dataset()
+                    export_sft_dataset()
+                    st.success(f"Synced {synced}/{total} trial logs!")
+                    st.rerun()
+        with sync_exp_col2:
+            st.caption("Scans canonical logs in `data/human_logs/` and `data/ai_logs/`, rebuilds tables, and exports CSV/JSONL.")
+
         with get_connection() as conn:
             trials_df = pd.read_sql_query("SELECT * FROM trials ORDER BY created_at DESC", conn)
             st.markdown(f"**Banked Trials ({len(trials_df)} rows):**")
