@@ -1,840 +1,373 @@
-# 🧠 AI–Human Behavioral Divergence Under Resource Scarcity
+::: {align="center"}
+# Behavioral Divergence Under Scarcity
 
-### *Behavioral Divergence Between LLM-Driven Multi-Agent Societies and Humans Under Resource Scarcity*
+### Do LLM-driven multi-agent societies behave like humans when shared resources run out?
 
-[![Research](https://img.shields.io/badge/Research-Multi--Agent%20AI-blue)](https://github.com/)
-[![LLM](https://img.shields.io/badge/LLM-Groq%20%7C%20Gemini-purple)](https://github.com/)
-[![Environment](https://img.shields.io/badge/Environment-ScarcityEnv-green)](https://github.com/)
-[![Dataset](https://img.shields.io/badge/Dataset-84%20Trials-orange)](https://github.com/)
-[![License](https://img.shields.io/badge/Status-Research-yellow)](https://github.com/)
+**A controlled Common Pool Resource (CPR) simulation comparing human
+decisions with a hybrid PPO + LLM agent under resource scarcity.**
 
-> **Can LLM-driven multi-agent systems reproduce human social behavior when shared resources become scarce?**
+`<br/>`{=html}
 
-This project investigates whether Large Language Model (LLM)-driven agents reproduce human behavioral dynamics under existential resource scarcity, including **cooperation collapse, defensive hoarding, strategic deception, reciprocity, inequality, and altruistic self-sacrifice**.
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Research](https://img.shields.io/badge/Research-Multi--Agent%20Systems-6C5CE7)
+![Focus](https://img.shields.io/badge/Focus-Scarcity%20%7C%20Cooperation%20%7C%20Alignment-00897B)
+![Status](https://img.shields.io/badge/Status-Research%20Prototype-orange)
+:::
 
----
+------------------------------------------------------------------------
 
-## 👥 Authors
+## Overview
 
-**Mentor**
+**Behavioral Divergence Between LLM-Driven Multi-Agent Societies and
+Humans Under Resource Scarcity** investigates whether autonomous AI
+agents reproduce human social behavior when essential shared resources
+become scarce.
 
-- **Ms. Laxmi** — Assistant Professor
+The project models a small society sharing a limited freshwater
+resource. It compares human participants with a hybrid AI agent while
+keeping the other agents' policies and random seeds matched across
+experimental conditions. This *focal-player substitution* design aims to
+make differences in cooperation, hoarding, sharing, deception,
+inequality, and survival easier to attribute to the focal
+decision-maker.
 
-**Student Researchers**
+The central question is:
 
-- **Utkarsh Pandey**
-- **Sujal Kumar**
-- **Saksham Singh**
-- **Yash Tyagi**
+> **When survival is at stake, do AI agents make the same social
+> trade-offs as humans---or do they follow a fundamentally different
+> strategy?**
 
-**Department:** Computer Science & Engineering — AI & ML  
-**Institution:** KIET Deemed to be University, Delhi-NCR, Ghaziabad, Uttar Pradesh, India
+## Why this matters
 
----
+Multi-agent AI systems may eventually support resource allocation,
+emergency logistics, infrastructure coordination, and other settings
+where individual decisions affect a shared pool. Strong performance in
+ordinary tasks does not automatically mean an agent will behave
+appropriately during a crisis.
 
-# 🔬 Research Question
+This project uses a controlled scarcity environment to study the gap
+between **human social decision-making** and **LLM-driven agent
+behavior**, with a focus on measurable actions rather than subjective
+interpretation alone.
 
-> **Do multi-agent systems driven by Large Language Models (LLMs) and Reinforcement Learning (RL) accurately reproduce human social dynamics when essential shared commons undergo severe existential scarcity shocks?**
+## Research questions
 
-The study specifically examines whether AI agents reproduce human responses such as:
+-   **Cooperation:** How does resource sharing change as scarcity
+    intensifies?
+-   **Hoarding:** Do agents preserve resources defensively or continue
+    drawing from the commons?
+-   **Communication integrity:** Can resource claims be checked against
+    the environment's ground truth?
+-   **Fairness:** How do human and AI societies differ in resource
+    inequality?
+-   **Resilience:** Which societies survive a drought shock?
+-   **Behavioral distinguishability:** Can recorded trajectories reveal
+    whether a focal decision-maker was human or AI?
 
-- 🤝 Cooperation
-- 📉 Cooperation collapse
-- 🛡️ Defensive hoarding
-- 🎭 Strategic deception
-- 🔗 Alliance formation
-- ⚖️ Inequality formation
-- ❤️ Altruistic self-sacrifice
-- 🧠 Scarcity-induced deliberation
+## System at a glance
 
----
-
-# 🌍 Why This Matters
-
-Current evaluations of LLM agents often focus on:
-
-- Task completion
-- Reasoning
-- Coding
-- Question answering
-- Tool use
-- Individual decision-making
-
-However, increasingly autonomous AI systems may operate in environments where **multiple agents compete and cooperate over limited shared resources**.
-
-Examples include:
-
-- Water allocation
-- Energy systems
-- Disaster response
-- Food distribution
-- Public infrastructure
-- Economic resource allocation
-- Crisis management
-
-The central hypothesis of this project is:
-
-> **An AI agent that behaves cooperatively under normal conditions may not necessarily reproduce the complex behavioral adaptations humans exhibit when scarcity becomes existential.**
-
----
-
-# 🏝️ Experimental Environment — `ScarcityEnv`
-
-The study implements a multi-agent **Common Pool Resource (CPR)** environment inspired by research on commons governance, particularly the work of **Elinor Ostrom**.
-
-### Environment
-
-| Parameter | Value |
-|---|---:|
-| Agents | 5 |
-| Resource | Shared freshwater lake |
-| Lake capacity \(K\) | 50 |
-| Regeneration rate \(r\) | 0.35 |
-| Survival cost | 2 water / round |
-| Death condition | Personal water < 0 |
-
----
-
-## 💧 Resource Dynamics
-
-Lake regeneration follows a discrete logistic growth model:
-
-\[
-G(S)=rS\left(1-\frac{S}{K}\right)
-\]
-
-where:
-
-- \(S\) = current lake stock
-- \(K=50\) = maximum lake capacity
-- \(r=0.35\) = intrinsic regeneration rate
-
-Excessive resource extraction can therefore produce a **Tragedy of the Commons**.
-
----
-
-# 🎮 Action Space
-
-Agents can perform five primary actions:
-
-| Action | Description |
-|---|---|
-| `gather` | Harvest water from the shared lake |
-| `share(target, amount)` | Transfer personal water to another agent |
-| `hoard` | Preserve personal reserves without harvesting |
-| `skip` | Take no active action while still consuming survival cost |
-| `communicate(target, message)` | Send structured communication |
-
----
-
-# 💬 Machine-Verifiable Communication
-
-Communication is structured so that claims can be automatically checked against the actual environment state.
-
-### Supported Messages
-
-```text
-claim_stock(value)
-promise_share(amount)
-request(amount)
-accuse
+``` mermaid
+flowchart TD
+    A[Common Pool Resource Environment] --> B[Four Fixed Policy Agents]
+    A --> C[Focal Player]
+    C --> D1[Human Participant]
+    C --> D2[Hybrid AI Agent]
+    D2 --> E[PPO Reflex Policy]
+    D2 --> F[LLM Deliberation on High-Stakes Events]
+    B --> G[Matched Experimental Trials]
+    D1 --> G
+    E --> G
+    F --> G
+    G --> H[Action and Resource Logs]
+    H --> I[Statistical Comparison]
+    H --> J[Behavioral Classifier]
+    I --> K[Cooperation, Inequality, Survival and Deception Analysis]
+    J --> K
 ```
 
-This enables objective measurement of strategic communication and deception.
+## Environment and experimental design
 
----
+### Shared-resource dynamics
 
-# 🧪 Experimental Design
+The simulation represents five agents sharing a central freshwater lake.
 
-The experiment uses a **matched-protocol design**.
+  -----------------------------------------------------------------------
+  Parameter                           Specification
+  ----------------------------------- -----------------------------------
+  Agents                              5 per society
 
-Four co-players remain fixed while only the focal player changes.
+  Survival cost                       2 water units per agent per round
 
-```text
-                ┌──────────────────────┐
-                │    ScarcityEnv       │
-                │   Shared Water Pool  │
-                └──────────┬───────────┘
-                           │
-          ┌────────────────┼────────────────┐
-          │                │                │
-       A₂ Coop          A₃ Free         A₄ Tit-for-Tat
-          │                │                │
-          └────────────────┼────────────────┘
-                           │
-                      A₅ Random
-                           │
-                           ▼
-                    ┌────────────┐
-                    │   A₁       │
-                    │ Focal Agent│
-                    └─────┬──────┘
-                          │
-                 ┌────────┴────────┐
-                 │                 │
-              Human               AI
-```
+  Gather action                       +3 water units before
+                                      resource-allocation constraints
 
-### Fixed Co-Players
+  Carrying capacity                   (K = 50.0)
 
-| Agent | Policy | Behavior |
-|---|---|---|
-| \(A_2\) | Cooperator | Shares surplus |
-| \(A_3\) | Free-Rider | Always gathers; never shares |
-| \(A_4\) | Tit-for-Tat | Reciprocates cooperation |
-| \(A_5\) | Random | Stochastic baseline |
-| \(A_1\) | Experimental | Human or AI |
+  Intrinsic growth rate               (r = 0.35)
 
----
+  Resource regeneration               Logistic growth minus aggregate
+                                      demand
 
-# 🎯 Matched Random Seeds
+  Over-demand handling                Harvest is proportionally scaled
+                                      when total demand exceeds available
+                                      stock
+  -----------------------------------------------------------------------
 
-The experiment uses identical fixed random seeds:
-
-```text
-Seeds = 0 ... 29
-```
-
-This allows corresponding Human and AI trials to experience matched stochastic conditions.
-
-The primary independent variable is therefore:
+The resource stock follows:
 
 \[
-\text{Decision Maker}\in\{\text{Human},\text{AI}\}
+S\_{t+1}=S_t+rS_t`\left`{=tex}(1-`\frac{S_t}{K}`{=tex}`\right`{=tex})-D_t
 \]
 
----
+When total demand exceeds available stock, each agent's granted harvest
+is scaled proportionally:
 
-# 🌡️ Experimental Conditions
+\[ Y_i=D_i`\frac{S_t}{D_t}`{=tex} \]
 
-## 1. Calm Baseline
+### Available actions
 
-**10 rounds**
+-   `gather` --- request a harvest from the shared resource.
+-   `share(target, amount)` --- transfer water to another agent.
+-   `hoard` --- preserve or ration personal reserves without drawing
+    from the lake.
+-   `skip` --- take no action.
+-   `communicate(target, message)` --- send a structured message to
+    another agent.
 
-Tests baseline cooperation and spontaneous resource sharing under relatively abundant conditions.
+### Matched focal-player substitution
 
----
+Four non-focal seats use fixed policies: **Cooperator, Free-Rider,
+Tit-for-Tat, and Random**. Across matched trials, the fifth seat is
+substituted between a human participant and the hybrid AI agent, with
+matched random seeds intended to reduce unrelated variation.
 
-## 2. Drought Shock
+### Hybrid AI architecture
 
-**10 rounds**
+-   **Reflex layer:** a Proximal Policy Optimization (PPO) policy for
+    routine action selection.
+-   **Deliberation layer:** an LLM invoked for selected high-stakes
+    social events, such as resource crises, drought shocks, or incoming
+    gifts.
+-   **Fallback chain:** the project dossier describes a provider
+    fallback path through Groq, Gemini, OpenRouter, and local Ollama.
+    Availability and configuration depend on the deployment environment.
 
-At **Round 6**, a simulated drought reduces harvest yield by approximately **70%**.
+## Reported results
 
-Severity:
+The current research dossier reports **84 trials** (24 human and 60 AI)
+and **5,320 recorded action decisions**. The values below are reported
+project results and should be independently revalidated against the raw
+logs and analysis scripts before publication.
 
-\[
-\sigma\in\{0.0,0.5,0.7\}
-\]
+  -------------------------------------------------------------------------------
+  Measure                        Human                   AI Reported test
+  --------------- -------------------- -------------------- ---------------------
+  Pooled                  0.251 ± 0.13         0.158 ± 0.05 (U=963.0, p=0.0151)
+  cooperation                                               
+  rate                                                      
 
-Measures:
+  Pooled water             8.12 ± 9.73          5.63 ± 3.63 (U=936.0, p=0.0306)
+  shared                                                    
 
-- Cooperation collapse
-- Hoarding
-- Deception
-- Survival
-- Alliance formation
+  Society Gini            0.266 ± 0.17         0.108 ± 0.05 (U=972.5, p=0.0096)
+  inequality                                                
 
----
+  Pooled                  0.125 ± 0.34         0.000 ± 0.00 (U=810.0, p=0.0058)
+  deception rate                                            
 
-## 3. Repeated Trust
+  Decision                    1,759 ms                 0 ms (p\<0.0001)
+  latency                                                   
 
-**30 rounds**
+  Drought-shock           0.138 ± 0.10         0.046 ± 0.04 (U=215.5, p=0.0037)
+  hoarding                                                  
 
-Tests long-term:
+  Drought-shock           0.611 ± 0.40         1.000 ± 0.00 (U=70.0, p=0.0006)
+  society                                                   
+  survival                                                  
+  -------------------------------------------------------------------------------
 
-- Reciprocity
-- Trust
-- Cooperation
-- Alliance formation
-- Inequality
-- Resource retention
+The dossier also reports a Random Forest trajectory classifier with
+**91.7% accuracy**, **0.940 ROC-AUC**, and **0.837 F1** using five-fold
+stratified cross-validation. These results are descriptive of the
+reported experiment, not a guarantee of performance on new populations,
+environments, or agent configurations.
 
----
+### Scarcity dose-response
 
-# 📊 Dataset
+The reported analysis describes different responses as scarcity
+increases:
 
-The current research dataset contains:
+-   **Sharing:** human sharing decreases more steeply than AI sharing.
+-   **Hoarding:** human hoarding increases with scarcity, while the AI
+    trend is reported in the opposite direction.
+-   **Communication:** the experiment audits structured resource claims
+    against environment state, allowing a claim to be checked without
+    relying solely on subjective annotation.
 
-\[
-\boxed{84\text{ trials}}
-\]
+These patterns motivate further investigation; they should not be
+interpreted as universal claims about all humans or all AI models.
 
-| Group | Trials |
-|---|---:|
-| Human | 24 |
-| AI | 60 |
-| **Total** | **84** |
+## Technology and methods
 
-### Total decisions
+The project dossier identifies the following methods and components:
 
-\[
-\boxed{5,320\text{ action decisions}}
-\]
+-   **Multi-agent simulation:** shared-resource environment and fixed
+    behavioral policies.
+-   **Reinforcement learning:** PPO reflex policy.
+-   **LLM deliberation:** provider-based reasoning for selected
+    high-stakes events.
+-   **Data logging:** SQLite action-trial records.
+-   **Statistical analysis:** Mann--Whitney U tests, p-values, Cliff's
+    delta, and Cohen's d where reported.
+-   **Behavioral analysis:** Random Forest and Logistic Regression
+    baselines, cross-validation, and feature-importance analysis.
+-   **Reproducibility controls:** matched random seeds and focal-player
+    substitution.
 
----
+> **Implementation note:** Exact package versions, setup commands, API
+> variable names, and entry-point scripts were not specified in the
+> supplied research dossier. Add the repository's verified commands and
+> dependency versions before publishing this README as an executable
+> setup guide.
 
-# 📁 Repository Structure
+## Repository structure
 
-```text
-ai-human-scarcity-study/
-│
+A suggested structure for organizing the research code is shown below.
+Rename or remove entries to match the actual repository.
+
+``` text
+.
+├── README.md
 ├── data/
-│   ├── combined_scarcity_dataset.csv
-│   ├── trial_features.csv
-│   ├── scarcity_study.db
-│   ├── llm_sft_dataset.jsonl
-│   │
-│   ├── trials/
-│   │   └── *.jsonl
-│   │
-│   └── human_logs/
-│       └── *.jsonl
-│
-├── models/
-│   ├── distinguishability_classifier.json
-│   └── human_clone_policy.json
-│
-├── paper/
-│   ├── QUALITATIVE_FINDINGS.md
-│   │
-│   └── figures/
-│       ├── fig1_behavioral_comparison.png
-│       ├── fig2_dose_response.png
-│       ├── fig3_distinguishability_roc.png
-│       └── fig4_feature_importance.png
-│
-├── app/
-│   └── Streamlit application
-│
-└── README.md
+│   └── llm_sft_dataset.jsonl
+├── environment/
+│   └── scarcity_env.py
+├── agents/
+│   ├── ppo_policy.py
+│   └── llm_deliberator.py
+├── experiments/
+│   └── run_trials.py
+├── analysis/
+│   ├── statistical_tests.py
+│   └── behavior_classifier.py
+├── results/
+│   ├── figures/
+│   └── tables/
+└── requirements.txt
 ```
 
----
+## Getting started
 
-# 📈 Key Results
+The supplied project brief does not include a verified repository URL,
+dependency lockfile, or executable entry point. To avoid inventing
+commands that may not work, use the following checklist to complete this
+section for your actual codebase:
 
-## Human vs. AI — Pooled Results
+1.  Install the Python version and dependencies specified by the
+    project.
+2.  Configure any required LLM provider credentials using environment
+    variables; **never commit API keys**.
+3.  Run a small environment smoke test before launching a full
+    experiment.
+4.  Execute the experiment script with a documented random seed.
+5.  Save raw trial logs separately from processed analysis outputs.
+6.  Run the statistical analysis and classifier on the saved logs.
+7.  Record package versions, configuration, seed values, and dataset
+    provenance for each run.
 
-| Metric | Human | AI | p-value | Effect |
-|---|---:|---:|---:|---:|
-| **Cooperation Rate** | 0.251 | 0.158 | **0.0151** | \(d=0.94\) |
-| **Water Shared** | 8.12 | 5.63 | **0.0306** | \(d=0.35\) |
-| **Society Gini** | 0.266 | 0.108 | **0.0096** | \(d=1.26\) |
-| **Deception Rate** | 0.125 | 0.000 | **0.0058** | \(d=0.52\) |
-| **Decision Latency** | 1,759 ms | 0 ms | **<0.0001** | \(d=2.37\) |
+Example `.env` pattern (use only variable names supported by your
+implementation):
 
----
-
-# 🌧️ Drought-Shock Results
-
-| Metric | Human | AI | p-value | Cliff's δ |
-|---|---:|---:|---:|---:|
-| **Hoarding Rate** | 0.138 | 0.046 | **0.0037** | **+0.539** |
-| **Deception Rate** | 0.214 | 0.000 | **0.0357** | **+0.214** |
-| **Society Survival** | 0.611 | 1.000 | **0.0006** | **−0.500** |
-| **Alliance Count** | 0.286 | 1.400 | **0.0403** | **−0.375** |
-
-### Key observation
-
-Humans showed substantially stronger **defensive hoarding and deception** during drought, while the tested AI agents maintained higher measured society-level survival.
-
----
-
-# 🔥 Repeated-Trust Results
-
-| Metric | Human | AI | p-value | Cliff's δ |
-|---|---:|---:|---:|---:|
-| **Society Gini** | 0.453 | 0.053 | **0.0002** | **+1.000** |
-| **Hoarding Index** | 0.075 | 0.017 | **0.0030** | **+0.860** |
-
-Longer interactions amplified the observed difference in resource inequality and defensive retention.
-
----
-
-# 🧪 Statistical Analysis
-
-The study uses:
-
-- Mann–Whitney \(U\)
-- Cliff's \(\delta\)
-- Cohen's \(d\)
-- Stratified 5-fold cross-validation
-- ROC-AUC
-- F1 score
-- Permutation feature importance
-
-### Significance
-
-```text
-*   p < 0.05
-**  p < 0.01
-*** p < 0.001
+``` bash
+# Store real credentials locally; do not commit this file.
+LLM_API_KEY=your_key_here
 ```
 
----
+Add `.env`, secrets, local databases, and private participant data to
+`.gitignore` where appropriate.
 
-# 💡 Research Novelty
+## Reproducibility and responsible reporting
 
-## N1 — Scarcity Dose–Response
+For credible research and reproducible results:
 
-Scarcity is treated as a continuous variable rather than simply a binary condition.
+-   Publish the environment rules and agent policies used in each
+    experiment.
+-   Keep human and AI trial inclusion criteria explicit.
+-   Report the number of independent participants and trials separately
+    from the number of action decisions.
+-   Document exclusions, missing data, random seeds, and model/provider
+    versions.
+-   Include confidence intervals and effect sizes alongside significance
+    tests.
+-   Avoid treating individual trial transcripts as representative of all
+    human or AI behavior.
+-   Protect participant privacy and obtain appropriate consent for
+    human-subject data.
+-   Clearly distinguish measured outcomes, interpretations, and future
+    hypotheses.
 
-### Cooperation
+## Limitations
 
-\[
-\frac{\partial Share_{Human}}{\partial\sigma}=-0.1559
-\]
+-   The reported sample contains 24 human trials and 60 AI trials;
+    broader validation is needed.
+-   A five-agent simulated commons cannot capture every feature of
+    real-world resource allocation.
+-   Results may depend on the chosen LLM, prompts, PPO training, fixed
+    companion policies, and interface.
+-   Zero reported AI deception in this setup does not prove that AI
+    systems cannot deceive in other settings.
+-   Reported classifier performance requires validation on held-out
+    scenarios and independent datasets to assess generalization.
+-   Statistical values should be checked against the underlying raw data
+    and analysis pipeline before submission or external claims.
 
-\[
-\frac{\partial Share_{AI}}{\partial\sigma}=-0.0072
-\]
+## Future work
 
-### Hoarding
+-   Expand human participation and test across multiple demographic and
+    contextual groups.
+-   Evaluate additional LLMs, prompt strategies, and
+    reinforcement-learning policies.
+-   Test different scarcity intensities, resource regeneration rates,
+    and companion-agent mixtures.
+-   Validate trajectory classifiers on unseen seeds and altered
+    environments.
+-   Explore supervised fine-tuning and in-context learning using
+    ethically collected human decision trajectories.
+-   Investigate interventions that improve crisis-time cooperation
+    without sacrificing individual safety.
 
-\[
-\frac{\partial Hoard_{Human}}{\partial\sigma}=+0.1942
-\]
+## Authors and affiliation
 
-\[
-\frac{\partial Hoard_{AI}}{\partial\sigma}=-0.0959
-\]
+**Research mentor:** Ms. Laxmi --- Assistant Professor
 
-### Interpretation
+**Student researchers:** - Utkarsh Pandey - Sujal Kumar - Saksham
+Singh - Yashash Tyagi
 
-Human sharing decreases as scarcity increases, while defensive hoarding increases.
+**Department:** Computer Science and Engineering (AI & ML)\
+**Institution:** KIET Deemed to be University, Ghaziabad, Uttar Pradesh,
+India
 
-The tested AI agents show substantially weaker adaptation to scarcity along these dimensions.
+## Citation
 
----
+If you use this work, cite the research paper once a stable publication
+or preprint is available. Until then, replace the placeholder below with
+the actual DOI, preprint URL, or repository citation:
 
-# 🎭 N2 — Machine-Verifiable Deception
-
-Deception is defined mathematically as:
-
-\[
-Deception=
-\mathbb{I}
-(\text{Claimed Stock}\neq\text{Ground Truth})
-\]
-
-During drought:
-
-```text
-Human deception: 21.4%
-AI deception:     0.0%
+``` text
+Pandey, U., Kumar, S., Singh, S., Tyagi, Y., and Laxmi.
+“Behavioral Divergence Between LLM-Driven Multi-Agent Societies
+and Humans Under Resource Scarcity.” Unpublished manuscript.
 ```
 
-This allows deception to be detected automatically rather than through subjective human interpretation.
+## Acknowledgements
 
----
+The project is developed as an academic research effort within the
+Department of Computer Science and Engineering (AI & ML), KIET Deemed to
+be University.
 
-# 🤖 N3 — Behavioral Distinguishability
+------------------------------------------------------------------------
 
-A classifier was trained to determine whether behavioral trajectories originated from humans or AI agents.
-
-## Random Forest
-
-| Metric | Score |
-|---|---:|
-| Accuracy | **91.7%** |
-| ROC-AUC | **0.940** |
-| F1 | **0.837** |
-
-## Logistic Regression
-
-| Metric | Score |
-|---|---:|
-| Accuracy | **86.9%** |
-| ROC-AUC | **0.897** |
-| F1 | **0.783** |
-
-### Top Behavioral Features
-
-1. **Society Gini Index** — 0.1821 permutation importance
-2. **Cooperation Rate** — +1.7307
-3. **Alliance Count** — −1.5690
-4. **Hoarding Index** — +1.5219
-5. **Arithmetic Deception** — +0.8371
-
----
-
-# 🧠 Behavioral Turing Test
-
-The project includes a human evaluation module where participants receive two blinded trajectories:
-
-```text
-Trajectory A → Human or AI?
-Trajectory B → Human or AI?
-```
-
-The objective is to determine whether humans can distinguish AI-generated behavioral trajectories from human trajectories.
-
----
-
-# ❤️ Qualitative Behavioral Finding
-
-## The Altruistic Martyr
-
-One observed human trajectory involved participant:
-
-```text
-PAB87
-```
-
-Trial:
-
-```text
-drought_human_003_e49479
-```
-
-The participant repeatedly gave away personal water during rounds 3–5 to keep other agents alive, ultimately dying in Round 5.
-
-This behavior illustrates an important distinction between:
-
-```text
-Individual survival maximization
-            vs.
-Social / moral objectives
-```
-
-The result should be interpreted as a qualitative behavioral example rather than a universal characterization of human behavior.
-
----
-
-# ⏱️ Decision Latency
-
-Human decision latency increased sharply during scarcity:
-
-| Condition | Latency |
-|---|---:|
-| Calm | **2,450 ms** |
-| Drought onset | **9,119 ms** |
-
-Possible interpretations include:
-
-- Increased deliberation
-- Risk assessment
-- Social conflict
-- Moral uncertainty
-- Strategic reasoning
-
-These interpretations should be treated as hypotheses rather than direct measurements of internal psychological states.
-
----
-
-# 🖼️ Research Figures
-
-### Figure 1 — Behavioral Comparison
-
-![Behavioral Comparison](paper/figures/fig1_behavioral_comparison.png)
-
-Multi-panel comparison of cooperation, hoarding, inequality, and survival.
-
----
-
-### Figure 2 — Scarcity Dose Response
-
-![Dose Response](paper/figures/fig2_dose_response.png)
-
-Behavioral response to increasing scarcity severity.
-
----
-
-### Figure 3 — Behavioral Distinguishability
-
-![ROC Curves](paper/figures/fig3_distinguishability_roc.png)
-
-ROC-AUC curves from stratified cross-validation.
-
----
-
-### Figure 4 — Feature Importance
-
-![Feature Importance](paper/figures/fig4_feature_importance.png)
-
-Permutation importance and logistic regression feature weights.
-
----
-
-# 🌐 Live Research Application
-
-The human experimental interface is deployed through Streamlit:
-
-**Live Study Application**
-
-https://ai-human-scarcity-study.streamlit.app/
-
-The application provides the interactive environment through which human participants can perform experimental trials.
-
----
-
-# 🗃️ Research Artifacts
-
-### Dataset
-
-```text
-data/combined_scarcity_dataset.csv
-```
-
-### Trial Features
-
-```text
-data/trial_features.csv
-```
-
-### Research Database
-
-```text
-data/scarcity_study.db
-```
-
-### AI Trial Logs
-
-```text
-data/trials/
-```
-
-### Human Trial Logs
-
-```text
-data/human_logs/
-```
-
-### LLM Fine-Tuning Dataset
-
-```text
-data/llm_sft_dataset.jsonl
-```
-
-### Models
-
-```text
-models/distinguishability_classifier.json
-models/human_clone_policy.json
-```
-
----
-
-# 🧩 Research Pipeline
-
-```text
-                 ┌─────────────────────┐
-                 │  Scarcity Environment│
-                 │     ScarcityEnv      │
-                 └──────────┬──────────┘
-                            │
-                            ▼
-                 ┌─────────────────────┐
-                 │ Shared Water Commons│
-                 └──────────┬──────────┘
-                            │
-              ┌─────────────┴─────────────┐
-              │                           │
-              ▼                           ▼
-       ┌──────────────┐           ┌──────────────┐
-       │ Human Agent  │           │   LLM Agent  │
-       │     A₁       │           │      A₁      │
-       └──────┬───────┘           └──────┬───────┘
-              │                           │
-              └─────────────┬─────────────┘
-                            ▼
-                  ┌──────────────────┐
-                  │ Behavioral Logs  │
-                  └────────┬─────────┘
-                           ▼
-                  ┌──────────────────┐
-                  │ Feature Extraction│
-                  └────────┬─────────┘
-                           ▼
-              ┌────────────┴────────────┐
-              │                         │
-              ▼                         ▼
-       Statistical Tests         ML Classifiers
-              │                         │
-              └────────────┬────────────┘
-                           ▼
-                  ┌──────────────────┐
-                  │ Human–AI         │
-                  │ Divergence       │
-                  └──────────────────┘
-```
-
----
-
-# 📚 Planned Research Paper Structure
-
-The final manuscript will contain:
-
-1. **Abstract**
-2. **Introduction**
-3. **Related Work**
-4. **Experimental Framework**
-5. **Empirical Methodology**
-6. **Results**
-7. **Discussion**
-8. **Ethical Implications**
-9. **Limitations**
-10. **Future Work**
-11. **Conclusion**
-12. **References**
-13. **Appendix / Supplementary Material**
-
----
-
-# ⚠️ Limitations
-
-This study should **not** be interpreted as demonstrating that all AI systems or all humans behave in a particular way.
-
-Key limitations include:
-
-- Limited sample size
-- Limited participant diversity
-- Artificial experimental environment
-- Dependence on specific LLM configurations
-- Potential effects of prompting and agent architecture
-- Trial-level statistical independence considerations
-- Limited generalizability to real-world commons
-
-The appropriate scientific claim is:
-
-> **The evaluated LLM-driven agents exhibited statistically distinguishable behavioral patterns from the tested human participants under the specified scarcity conditions.**
-
----
-
-# 🚀 Future Work
-
-### Larger Human Cohorts
-
-Increase sample size and demographic diversity.
-
-### Cross-Cultural Replication
-
-Evaluate whether behavioral patterns generalize across populations.
-
-### More LLM Families
-
-Compare additional foundation models under identical protocols.
-
-### Embodied Agents
-
-Introduce persistent:
-
-- Energy
-- Fatigue
-- Memory
-- Mortality
-- Resource needs
-
-### Human-Trajectory Fine-Tuning
-
-Train models using human scarcity trajectories.
-
-### Fully Autonomous Societies
-
-Replace frozen benchmark agents with agents capable of learning simultaneously.
-
-### Long-Horizon Experiments
-
-Extend simulations from 30 rounds to hundreds or thousands of interactions.
-
-### Real-World Commons
-
-Explore applications to:
-
-- Water allocation
-- Energy management
-- Disaster response
-- Food distribution
-- Public resources
-
----
-
-# 🧑‍🔬 Reproducibility
-
-The project is designed around reproducible experimental protocols.
-
-Key reproducibility mechanisms include:
-
-- Fixed random seeds
-- Deterministic benchmark agents
-- Matched human/AI environments
-- Machine-verifiable communication
-- Structured JSONL logs
-- SQLite research database
-- Explicit behavioral metrics
-- Saved ML model artifacts
-- Publication-ready figures
-
----
-
-# 📌 Scientific Integrity
-
-This repository distinguishes between:
-
-### Measured Results
-
-Directly observed experimental outcomes.
-
-### Statistical Findings
-
-Results produced by the defined statistical analysis pipeline.
-
-### Interpretations
-
-Potential explanations for observed behavioral patterns.
-
-### Hypotheses
-
-Ideas requiring additional experimentation.
-
-### Future Work
-
-Experiments not yet performed.
-
-**No missing experimental information should be fabricated.**
-
----
-
-# 📖 Citation
-
-A formal citation will be added once the manuscript has been submitted or published.
-
-```bibtex
-@article{pandey2026behavioral,
-  title   = {Behavioral Divergence Between LLM-Driven Multi-Agent Societies and Humans Under Resource Scarcity},
-  author  = {Pandey, Utkarsh and Kumar, Sujal and Singh, Saksham and Tyagi, Yash},
-  year    = {2026},
-  note    = {Research manuscript}
-}
-```
-
----
-
-# 📬 Contact
-
-### Research Team
-
-**KIET Deemed to be University**  
-Department of Computer Science & Engineering — AI & ML  
-Delhi-NCR, Ghaziabad, Uttar Pradesh, India
-
----
-
-# ⭐ Project Summary
-
-> **This project asks a deceptively simple question:**
->
-> **When the water runs out, do AI agents behave like humans?**
->
-> Our controlled experiments compare human and LLM-driven agents inside a shared-resource environment where cooperation, competition, deception, trust, and survival collide.
->
-> The observed trajectories reveal substantial behavioral divergence—particularly in scarcity adaptation, defensive hoarding, inequality formation, strategic deception, and decision latency.
->
-> The broader goal is to develop better benchmarks for evaluating whether autonomous AI systems genuinely reproduce human social dynamics—or merely simulate them under favorable conditions.
-
----
-
-**Status:** 🟡 Active Research  
-**Domain:** Multi-Agent AI · LLMs · Computational Social Science · AI Safety  
-**Institution:** KIET Deemed to be University
+::: {align="center"}
+**Studying not only what autonomous agents decide---but how scarcity
+changes the society around them.**
+:::
