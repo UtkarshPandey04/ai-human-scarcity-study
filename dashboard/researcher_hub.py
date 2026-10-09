@@ -37,6 +37,11 @@ from analysis.train_models import (
     train_distinguishability_classifier,
     train_human_behavior_policy,
 )
+try:
+    from agents.llm_client import is_ollama_available
+except Exception:
+    def is_ollama_available() -> bool:
+        return False
 
 
 def get_credentials() -> tuple[str, str]:
@@ -570,7 +575,6 @@ def render_researcher_hub(embedded: bool = False):
         sc_info_col4.metric("Human Move", d_cfg["human_action"])
         st.info(f"💬 **Human Statement Received:** *\"{d_cfg['human_message']}\"*")
 
-        from agents.llm_client import is_ollama_available
         ollama_online = is_ollama_available()
 
         st.markdown("**Select LLMs to Test Side-by-Side:**")
