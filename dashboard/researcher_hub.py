@@ -570,6 +570,9 @@ def render_researcher_hub(embedded: bool = False):
         sc_info_col4.metric("Human Move", d_cfg["human_action"])
         st.info(f"💬 **Human Statement Received:** *\"{d_cfg['human_message']}\"*")
 
+        from agents.llm_client import is_ollama_available
+        ollama_online = is_ollama_available()
+
         st.markdown("**Select LLMs to Test Side-by-Side:**")
         test_col1, test_col2, test_col3, test_col4 = st.columns(4)
         with test_col1:
@@ -579,7 +582,10 @@ def render_researcher_hub(embedded: bool = False):
         with test_col3:
             use_openrouter = st.checkbox("OpenRouter (`lfm-2.5`)", value=has_openrouter)
         with test_col4:
-            use_ollama = st.checkbox("Ollama (`llama3.2 / Fallback`)", value=True)
+            ollama_label = f"Ollama (`{ollama_model}`)" if ollama_online else f"Ollama (`{ollama_model}` - Offline)"
+            use_ollama = st.checkbox(ollama_label, value=ollama_online)
+            if not ollama_online:
+                st.caption("ℹ️ Local daemon offline (only available on machines running `ollama serve`).")
 
         if st.button("🚀 Compare LLM Reasoning & Responses Now", type="primary", use_container_width=True):
             from agents.environment import Observation, OtherPlayerView

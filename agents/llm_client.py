@@ -257,8 +257,9 @@ def _complete_openai_compatible(
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
+    timeout_sec = 6.0 if provider_name == "ollama" else 30.0
     try:
-        resp = httpx.post(f"{base_url.rstrip('/')}/chat/completions", json=req_body, headers=headers, timeout=30.0)
+        resp = httpx.post(f"{base_url.rstrip('/')}/chat/completions", json=req_body, headers=headers, timeout=timeout_sec)
         if resp.status_code == 429:
             raise LLMRateLimitError(f"{provider_name} rate limit: {resp.text}")
         if resp.status_code != 200:
@@ -273,8 +274,25 @@ def _complete_openai_compatible(
         return _parse_json(text, provider_name)
     except (LLMRateLimitError, LLMCompletionError):
         raise
+    except httpx.ConnectError as exc:
+        raise LLMCompletionError(f"{provider_name} service unreachable at {base_url}: {exc}") from exc
+    except httpx.TimeoutException as exc:
+        raise LLMCompletionError(f"{provider_name} request timed out: {exc}") from exc
     except Exception as exc:
         raise LLMCompletionError(f"{provider_name} call failed: {exc}") from exc
+
+
+def is_ollama_available() -> bool:
+    """Check if the local or configured Ollama instance is reachable."""
+    import httpx
+    base_url = (os.environ.get("OLLAMA_BASE_URL") or DEFAULT_OLLAMA_BASE_URL).rstrip("/")
+    # Check parent root if ends with /v1
+    ping_url = base_url[:-3] if base_url.endswith("/v1") else base_url
+    try:
+        r = httpx.get(f"{ping_url}/api/tags", timeout=1.5)
+        return r.status_code == 200
+    except Exception:
+        return False
 
 
 def _complete_ollama(
@@ -531,18 +549,22 @@ def complete(
                 _COMPLETION_CACHE.pop(next(iter(_COMPLETION_CACHE)))
             _COMPLETION_CACHE[cache_key] = copy.deepcopy(res)
         return res
-    except LLMRateLimitError:
+    except Exception as exc:
         duration_ms = (time.time() - start_time) * 1000.0
-        record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=True)
+        is_rl = isinstance(exc, LLMRateLimitError)
+        record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=is_rl)
+        
         # Multi-tier fallback chain: try alternative providers down to zero-cost Ollama fallback
-        candidates = FALLBACK_CHAINS.get(target_provider, ["gemini", "openrouter", "ollama"])
+        candidates = FALLBACK_CHAINS.get(target_provider, ["groq", "gemini", "openrouter", "ollama"])
         for fallback in candidates:
-            if fallback in PROVIDERS:
+            if fallback in PROVIDERS and fallback != target_provider:
                 if fallback == "gemini" and not get_gemini_api_keys():
                     continue
                 if fallback == "groq" and not get_groq_api_keys():
                     continue
                 if fallback == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
+                    continue
+                if fallback == "ollama" and not is_ollama_available():
                     continue
                 fb_start = time.time()
                 try:
@@ -559,8 +581,4 @@ def complete(
                     return res
                 except Exception:
                     continue
-        raise
-    except Exception:
-        duration_ms = (time.time() - start_time) * 1000.0
-        record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=False)
         raise
