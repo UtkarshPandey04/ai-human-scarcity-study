@@ -582,7 +582,7 @@ def render_researcher_hub(embedded: bool = False):
             use_ollama = st.checkbox("Ollama (`llama3.2 / Fallback`)", value=True)
 
         if st.button("🚀 Compare LLM Reasoning & Responses Now", type="primary", use_container_width=True):
-            from agents.environment import Observation, OtherPlayerState
+            from agents.environment import Observation, OtherPlayerView
             from agents.llm_reasoning import decide
 
             active_test_providers = []
@@ -599,20 +599,23 @@ def render_researcher_hub(embedded: bool = False):
                 st.warning("Please check at least one LLM provider above to run the comparison.")
             else:
                 comp_progress = st.progress(0, text="Evaluating models...")
-                simulated_others = [
-                    OtherPlayerState(player_id="P_HUMAN", alive=True, last_action=None, last_action_target=None),
-                    OtherPlayerState(player_id="A3", alive=True, last_action=None, last_action_target=None),
-                    OtherPlayerState(player_id="A4", alive=True, last_action=None, last_action_target=None),
-                    OtherPlayerState(player_id="A5", alive=True, last_action=None, last_action_target=None),
-                ]
+                simulated_others = (
+                    OtherPlayerView(player_id="P_HUMAN", alive=True, last_action=None, last_action_target=None),
+                    OtherPlayerView(player_id="A3", alive=True, last_action=None, last_action_target=None),
+                    OtherPlayerView(player_id="A4", alive=True, last_action=None, last_action_target=None),
+                    OtherPlayerView(player_id="A5", alive=True, last_action=None, last_action_target=None),
+                )
                 mock_obs = Observation(
+                    player_id="A1",
                     round=d_cfg["round"],
                     total_rounds=10,
+                    scenario="drought" if d_cfg["is_drought"] else "baseline",
+                    is_drought=d_cfg["is_drought"],
                     own_resource=d_cfg["own_resource"],
+                    own_alive=True,
+                    received_share_last_round=1.0 if "share" in d_cfg["human_action"] else 0.0,
                     pool_stock=d_cfg["pool_stock"],
                     pool_capacity=20.0,
-                    is_drought=d_cfg["is_drought"],
-                    received_share_last_round=1.0 if "share" in d_cfg["human_action"] else 0.0,
                     others=simulated_others,
                 )
 
