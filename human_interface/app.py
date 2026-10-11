@@ -91,20 +91,16 @@ st.markdown(
         background: transparent !important;
         height: 3rem !important;
     }
-    [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"], [data-testid="stSidebarCollapseButton"] {
-        display: flex !important;
+    /* Pin the sidebar permanently open so it can never be hidden or collapsed */
+    section[data-testid="stSidebar"] {
+        display: block !important;
         visibility: visible !important;
-        position: fixed !important;
-        top: 12px !important;
-        left: 12px !important;
-        z-index: 1000000 !important;
-        background: #2563EB !important;
-        color: #FFFFFF !important;
-        border: 1px solid #3B82F6 !important;
-        border-radius: 8px !important;
-        padding: 6px 12px !important;
-        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5) !important;
-        cursor: pointer !important;
+        width: 330px !important;
+        min-width: 330px !important;
+        max-width: 330px !important;
+        transform: none !important;
+        margin-left: 0 !important;
+        position: relative !important;
     }
     #MainMenu {visibility: hidden !important; display: none !important;}
     footer {visibility: hidden !important; display: none !important;}
