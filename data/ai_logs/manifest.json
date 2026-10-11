@@ -34,7 +34,7 @@
       "dry_run": false
     }
   },
-  "updated_at": "2026-10-11T12:36:11.944005+00:00",
+  "updated_at": "2026-10-11T12:42:58.233231+00:00",
   "trials": [
     {
       "trial_id": "calm_ai_rl_only_sev000_000_000",
@@ -1966,6 +1966,78 @@
       "coplayer_mode": "llm_ecology",
       "seed": 23,
       "timestamp": "2026-10-11T12:36:11.943587+00:00"
+    },
+    {
+      "trial_id": "calm_ai_rl_only_llm_ecology_sev000_020_000",
+      "status": "ok",
+      "path": "data\\ai_logs\\calm_ai_rl_only_llm_ecology_sev000_020_000.jsonl",
+      "scenario": "calm",
+      "severity": 0.0,
+      "arm": "rl_only",
+      "coplayer_mode": "llm_ecology",
+      "provider": "groq",
+      "model": null,
+      "seed": 20,
+      "matched_seed": true,
+      "decision_source_counts": {
+        "rl": 10,
+        "llm": 0
+      },
+      "llm_calls": 0,
+      "parse_failures": 0,
+      "rate_limited": 0,
+      "git_sha": "cfd5245559447ecb343a3438f6651895d4d1a576",
+      "git_dirty": true,
+      "prompt_file_sha256": "23c3b942d26ce2c5468a9c87f05411e36dc1fe166e7f877ad72c4a7cd42663ce",
+      "timestamp": "2026-10-11T12:42:17.790415+00:00"
+    },
+    {
+      "trial_id": "calm_ai_rl_only_llm_ecology_sev000_021_000",
+      "status": "ok",
+      "path": "data\\ai_logs\\calm_ai_rl_only_llm_ecology_sev000_021_000.jsonl",
+      "scenario": "calm",
+      "severity": 0.0,
+      "arm": "rl_only",
+      "coplayer_mode": "llm_ecology",
+      "provider": "groq",
+      "model": null,
+      "seed": 21,
+      "matched_seed": true,
+      "decision_source_counts": {
+        "rl": 10,
+        "llm": 0
+      },
+      "llm_calls": 0,
+      "parse_failures": 0,
+      "rate_limited": 0,
+      "git_sha": "cfd5245559447ecb343a3438f6651895d4d1a576",
+      "git_dirty": true,
+      "prompt_file_sha256": "23c3b942d26ce2c5468a9c87f05411e36dc1fe166e7f877ad72c4a7cd42663ce",
+      "timestamp": "2026-10-11T12:42:43.403625+00:00"
+    },
+    {
+      "trial_id": "calm_ai_rl_only_llm_ecology_sev000_024_000",
+      "status": "ok",
+      "path": "data\\ai_logs\\calm_ai_rl_only_llm_ecology_sev000_024_000.jsonl",
+      "scenario": "calm",
+      "severity": 0.0,
+      "arm": "rl_only",
+      "coplayer_mode": "llm_ecology",
+      "provider": "groq",
+      "model": null,
+      "seed": 24,
+      "matched_seed": true,
+      "decision_source_counts": {
+        "rl": 10,
+        "llm": 0
+      },
+      "llm_calls": 0,
+      "parse_failures": 0,
+      "rate_limited": 0,
+      "git_sha": "cfd5245559447ecb343a3438f6651895d4d1a576",
+      "git_dirty": true,
+      "prompt_file_sha256": "23c3b942d26ce2c5468a9c87f05411e36dc1fe166e7f877ad72c4a7cd42663ce",
+      "timestamp": "2026-10-11T12:42:58.232809+00:00"
     }
   ]
 }
