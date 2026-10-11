@@ -217,29 +217,23 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Human study logs
-data/human_logs/
+# Human study logs (tracked for study reproducibility and Streamlit Cloud)
+# data/human_logs/
 
-# AI trial logs (regeneratable via `python tasks.py pilot` / `trials`) — see
-# agents/PHASE_PLAN.md Phase B; only the derived summary and the dataset README are committed
-data/ai_logs/*
-!data/ai_logs/README.md
+# AI trial logs
+# data/ai_logs/
 
-# Trained RL checkpoints (regeneratable via `python -m agents.rl_policy train`) — see
-# agents/PHASE_PLAN.md Phase D
-models/
+# Trained models & checkpoints
+# models/
 
 # Claude Code
 CLAUDE.md
 .claude/
 skills-lock.json
 
-# SQLite study database & exported datasets (reproducible via tasks.py sync_db / export)
-data/*.db
+# SQLite temporary journals
 data/*.db-journal
-data/combined_scarcity_dataset.csv
-data/trial_features.csv
-data/llm_sft_dataset.jsonl
+
 
 # Environment variables & secrets
 .env

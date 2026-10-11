@@ -1,0 +1,1 @@
+{"trial_id": "drought_human_c2b86b", "source": "human", "agent_id": "P29E6", "round": 1, "scenario": "drought", "action_type": "gather", "target_agent": null, "message_sent": null, "resource_before": 5, "resource_after": 6, "alive": true, "timestamp": "2026-09-17T17:44:51.135299+00:00"}
