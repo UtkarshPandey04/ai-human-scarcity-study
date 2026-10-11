@@ -42,16 +42,22 @@ st.markdown(
     <style>
     header[data-testid="stHeader"] {
         background: transparent !important;
-        height: 2.75rem !important;
+        height: 3rem !important;
     }
-    [data-testid="collapsedControl"] {
+    [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"], [data-testid="stSidebarCollapseButton"] {
         display: flex !important;
         visibility: visible !important;
-        z-index: 999999 !important;
-        color: #F8FAFC !important;
-        background: rgba(30, 41, 59, 0.8) !important;
-        border-radius: 6px !important;
-        margin: 6px !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 1000000 !important;
+        background: #2563EB !important;
+        color: #FFFFFF !important;
+        border: 1px solid #3B82F6 !important;
+        border-radius: 8px !important;
+        padding: 6px 12px !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5) !important;
+        cursor: pointer !important;
     }
     #MainMenu {visibility: hidden !important; display: none !important;}
     footer {visibility: hidden !important; display: none !important;}

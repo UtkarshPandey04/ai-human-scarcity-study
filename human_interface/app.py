@@ -89,16 +89,22 @@ st.markdown(
     <style>
     header[data-testid="stHeader"] {
         background: transparent !important;
-        height: 2.75rem !important;
+        height: 3rem !important;
     }
-    [data-testid="collapsedControl"] {
+    [data-testid="collapsedControl"], [data-testid="stSidebarCollapsedControl"], [data-testid="stSidebarCollapseButton"] {
         display: flex !important;
         visibility: visible !important;
-        z-index: 999999 !important;
-        color: #F8FAFC !important;
-        background: rgba(30, 41, 59, 0.8) !important;
-        border-radius: 6px !important;
-        margin: 6px !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 1000000 !important;
+        background: #2563EB !important;
+        color: #FFFFFF !important;
+        border: 1px solid #3B82F6 !important;
+        border-radius: 8px !important;
+        padding: 6px 12px !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5) !important;
+        cursor: pointer !important;
     }
     #MainMenu {visibility: hidden !important; display: none !important;}
     footer {visibility: hidden !important; display: none !important;}
@@ -365,6 +371,61 @@ def consent_screen():
         if st.button("🔐 Researcher Portal", key="hero_researcher_btn", help="Restricted access for investigators & faculty", use_container_width=True):
             st.session_state.portal_active = True
             st.rerun()
+
+    # Quick Island Settings Expander directly on page (guaranteed accessible even if sidebar is collapsed)
+    with st.expander("⚙️ Island Setup & Study Configuration (Also available in the left sidebar 👈)", expanded=False):
+        c_scen_col, c_seed_col = st.columns(2)
+        with c_scen_col:
+            m_scen = st.selectbox(
+                "Game Scenario",
+                options=list(SCENARIOS),
+                index=list(SCENARIOS).index(st.session_state.scenario),
+                key="main_scen_select",
+                format_func=lambda s: {
+                    "calm": "☀️ Normal Island (10 Rounds - Stable Rain)",
+                    "drought": "⚠️ Drought Crisis (10 Rounds - Heatwave in Round 6)",
+                    "repeated_trust": "🤝 Extended Society (30 Rounds - Long-Term Trust)",
+                }.get(s, s),
+            )
+        with c_seed_col:
+            m_seed = st.selectbox(
+                "Island Map # (Layout)",
+                options=list(MATCHED_SEEDS),
+                index=st.session_state.seed,
+                key="main_seed_select",
+            )
+        c_sev_col, c_eco_col = st.columns(2)
+        with c_sev_col:
+            m_sev = st.slider(
+                "Drought Hardship Level",
+                min_value=0.0,
+                max_value=1.0,
+                value=float(st.session_state.severity),
+                step=0.1,
+                key="main_sev_slider",
+            )
+        with c_eco_col:
+            eco_choices = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
+            m_eco = st.selectbox(
+                "Teammate Personalities",
+                options=eco_choices,
+                index=eco_choices.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in eco_choices else 0,
+                key="main_eco_select",
+            )
+        if (
+            m_scen != st.session_state.scenario
+            or m_seed != st.session_state.seed
+            or m_sev != st.session_state.severity
+            or m_eco != st.session_state.coplayer_mode
+        ):
+            st.session_state.scenario = m_scen
+            st.session_state.seed = m_seed
+            st.session_state.severity = m_sev
+            st.session_state.coplayer_mode = m_eco
+            st.session_state.trial_id = f"{m_scen}_human_{m_seed:03d}_{uuid.uuid4().hex[:6]}"
+            st.rerun()
+
+        st.caption(f"👤 Participant ID: `{st.session_state.participant_id}` | Trial: `{st.session_state.trial_id}`")
 
     st.title("🏝️ Island Survival Study: Water Decisions Under Scarcity")
     st.write(
