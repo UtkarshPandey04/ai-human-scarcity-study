@@ -66,8 +66,8 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
             """
         )
 
-        # Migration: add demographic columns if trials table existed prior
-        for col in ["participant_name", "age_group", "gender", "ai_familiarity"]:
+        # Migration: add demographic and coplayer_mode columns if trials table existed prior
+        for col in ["participant_name", "age_group", "gender", "ai_familiarity", "coplayer_mode"]:
             try:
                 cursor.execute(f"ALTER TABLE trials ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:
@@ -231,14 +231,16 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
 
     created_at = rows[0].get("timestamp", datetime.now(timezone.utc).isoformat())
 
-    # Extract demographic info if recorded across any row
+    # Extract demographic and coplayer_mode info if recorded across any row
     demographics = meta.get("demographics") or {}
-    if not demographics:
+    coplayer_mode = meta.get("coplayer_mode")
+    if not demographics or not coplayer_mode:
         for r in rows:
             r_meta = r.get("meta") or {}
-            if r_meta.get("demographics"):
+            if not demographics and r_meta.get("demographics"):
                 demographics = r_meta["demographics"]
-                break
+            if not coplayer_mode and r_meta.get("coplayer_mode"):
+                coplayer_mode = r_meta["coplayer_mode"]
 
     p_name = demographics.get("name")
     p_age = demographics.get("age_group")
@@ -253,14 +255,15 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
             """
             INSERT INTO trials (
                 trial_id, source, arm, scenario, seed, severity, participant_id,
-                participant_name, age_group, gender, ai_familiarity,
+                participant_name, age_group, gender, ai_familiarity, coplayer_mode,
                 rounds_completed, survived, final_resource, society_gini, alliance_count, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(trial_id) DO UPDATE SET
                 participant_name=COALESCE(excluded.participant_name, trials.participant_name),
                 age_group=COALESCE(excluded.age_group, trials.age_group),
                 gender=COALESCE(excluded.gender, trials.gender),
                 ai_familiarity=COALESCE(excluded.ai_familiarity, trials.ai_familiarity),
+                coplayer_mode=COALESCE(excluded.coplayer_mode, trials.coplayer_mode),
                 rounds_completed=excluded.rounds_completed,
                 survived=excluded.survived,
                 final_resource=excluded.final_resource,
@@ -269,7 +272,7 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
             """,
             (
                 trial_id, source, arm, scenario, seed, severity, focal_id,
-                p_name, p_age, p_gender, p_ai_fam,
+                p_name, p_age, p_gender, p_ai_fam, coplayer_mode,
                 rounds_completed, final_alive, final_res, society_gini, alliances, created_at
             ),
         )

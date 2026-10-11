@@ -14,22 +14,36 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from datetime import datetime, timezone
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from agents.coplayers import get_policy
 from agents.environment import DEFAULT_SEVERITY, ScarcityEnv
 from agents.hybrid_agent import HybridAgent, load_rl_model
+from common.actions import MessageKind
 from common.schema import validate_trial
 
 LOG_DIR = os.path.join("data", "ai_logs")
 
 
-def build_trial_id(scenario: str, arm: str, severity: float, seed: int, trial_index: int = 0) -> str:
-    """Shared trial-id/filename format. Includes `severity` so the Phase G grid (which sweeps
-    severity for a fixed scenario/arm/seed) doesn't collide on disk — pre-Phase-G trial ids didn't
-    need this since severity didn't exist as a real axis yet.
+def build_trial_id(
+    scenario: str,
+    arm: str,
+    severity: float,
+    seed: int,
+    trial_index: int = 0,
+    coplayer_mode: str = "standard",
+) -> str:
+    """Shared trial-id/filename format. Includes `severity` and `coplayer_mode` so the Phase G
+    grid doesn't collide on disk when sweeping across scenarios, arms, severities, rosters, and seeds.
     """
     sev_bucket = f"sev{round(severity * 100):03d}"
-    return f"{scenario}_ai_{arm}_{sev_bucket}_{seed:03d}_{trial_index:03d}"
+    roster_tag = f"_{coplayer_mode}" if coplayer_mode and coplayer_mode != "standard" else ""
+    return f"{scenario}_ai_{arm}{roster_tag}_{sev_bucket}_{seed:03d}_{trial_index:03d}"
 
 
 def run_trial(
@@ -42,6 +56,7 @@ def run_trial(
     trial_index: int = 0,
     severity: float = DEFAULT_SEVERITY,
     rl_model: object | None = None,
+    coplayer_mode: str = "standard",
 ) -> tuple[list[dict], dict]:
     """`rl_model` may be passed in pre-loaded (agents/run_ai_trials.py shares one loaded checkpoint
     across an entire campaign rather than reloading it from disk per trial)."""
@@ -50,10 +65,33 @@ def run_trial(
         rl_model = load_rl_model(**({"model_path": model_path} if model_path else {}))
     agent = HybridAgent(arm=arm, rl_model=rl_model, provider=provider, model=model)
 
-    env = ScarcityEnv(scenario=scenario, seed=seed, severity=severity)
+    focal_id = "A1"
+    coplayer_ids = ["A2", "A3", "A4", "A5"]
+    player_ids = [focal_id] + coplayer_ids
+    env = ScarcityEnv(
+        scenario=scenario,
+        seed=seed,
+        severity=severity,
+        player_ids=player_ids,
+    )
+    rosters = {
+        "standard": ["cooperator", "free_rider", "tit_for_tat", "random"],
+        "deceptive": ["cooperator", "free_rider", "tit_for_tat", "deceiver"],
+        "llm_ecology": ["llm_groq", "llm_gemini", "tit_for_tat", "llm_auto"],
+    }
+    if coplayer_mode not in rosters:
+        raise ValueError(f"unknown coplayer_mode {coplayer_mode!r}, must be one of {list(rosters.keys())}")
+    roster = rosters[coplayer_mode]
+    coplayers = {
+        pid: get_policy(roster[i], seed=seed + i + 1)
+        for i, pid in enumerate(coplayer_ids)
+    }
+
     obs = env.reset()
 
-    trial_id = build_trial_id(scenario, arm, severity, seed, trial_index)
+    trial_id = build_trial_id(
+        scenario, arm, severity, seed, trial_index, coplayer_mode=coplayer_mode
+    )
     timestamp = datetime.now(timezone.utc).isoformat()
 
     rows: list[dict] = []
@@ -69,17 +107,26 @@ def run_trial(
         for pid, o in obs.items():
             if not env.players[pid].alive:
                 continue
-            action, meta = agent.decide(o)
-            actions[pid] = action
-            decision_meta[pid] = meta
-            decision_source_counts[meta["decision_source"]] += 1
-            if meta["decision_source"] == "llm":
-                llm_calls += 1
-                if meta.get("llm_parse_failure"):
-                    if meta.get("llm_rate_limited"):
-                        rate_limited += 1
-                    else:
-                        parse_failures += 1
+            if pid == focal_id:
+                action, meta = agent.decide(o)
+                actions[pid] = action
+                decision_meta[pid] = meta
+                decision_source_counts[meta["decision_source"]] += 1
+                if meta["decision_source"] == "llm":
+                    llm_calls += 1
+                    if meta.get("llm_parse_failure"):
+                        if meta.get("llm_rate_limited"):
+                            rate_limited += 1
+                        else:
+                            parse_failures += 1
+            else:
+                action = coplayers[pid].act(o)
+                actions[pid] = action
+                policy_name = roster[coplayer_ids.index(pid)]
+                decision_meta[pid] = {
+                    "decision_source": "coplayer",
+                    "policy": policy_name,
+                }
 
         obs, done, log_rows = env.step(actions)
         for row in log_rows:
@@ -87,23 +134,47 @@ def run_trial(
             row["trial_id"] = trial_id
             row["source"] = "ai"
             row["timestamp"] = timestamp
-            row["meta"] = {
+            row_meta = {
                 "seed": seed,
                 "arm": arm,
-                "model": m.get("model"),
+                "coplayer_mode": coplayer_mode,
                 "severity": severity,
                 "decision_source": m.get("decision_source"),
-                "llm_parse_failure": m.get("llm_parse_failure", False),
-                # Kept separate from llm_parse_failure — see llm_reasoning.decide()'s docstring.
-                "llm_rate_limited": m.get("llm_rate_limited", False),
-                "prompt_tokens": m.get("prompt_tokens"),
-                "completion_tokens": m.get("completion_tokens"),
             }
+            if row["agent_id"] == focal_id:
+                row_meta.update(
+                    {
+                        "model": m.get("model"),
+                        "llm_parse_failure": m.get("llm_parse_failure", False),
+                        "llm_rate_limited": m.get("llm_rate_limited", False),
+                        "prompt_tokens": m.get("prompt_tokens"),
+                        "completion_tokens": m.get("completion_tokens"),
+                    }
+                )
+            else:
+                row_meta["policy"] = m.get("policy")
+
+            action_obj = actions.get(row["agent_id"])
+            if (
+                action_obj
+                and action_obj.message
+                and action_obj.message.kind
+                and action_obj.message.kind != MessageKind.NONE
+            ):
+                row_meta["claim"] = {
+                    "kind": action_obj.message.kind.value,
+                    "value": action_obj.message.value,
+                    "target": action_obj.message.target,
+                    "surface": action_obj.message.surface,
+                }
+
+            row["meta"] = row_meta
             rows.append(row)
 
     stats = {
         "trial_id": trial_id,
         "arm": arm,
+        "coplayer_mode": coplayer_mode,
         "decision_source_counts": decision_source_counts,
         "llm_calls": llm_calls,
         "parse_failures": parse_failures,
@@ -133,6 +204,12 @@ def _main() -> int:
     parser.add_argument(
         "--severity", type=float, default=DEFAULT_SEVERITY, help="ambient scarcity dose in [0, 1]"
     )
+    parser.add_argument(
+        "--coplayer-mode",
+        default="standard",
+        choices=["standard", "deceptive", "llm_ecology"],
+        help="co-player roster preset",
+    )
     args = parser.parse_args()
 
     rows, stats = run_trial(
@@ -143,12 +220,14 @@ def _main() -> int:
         model=args.model,
         model_path=args.model_path,
         severity=args.severity,
+        coplayer_mode=args.coplayer_mode,
     )
     validate_trial(rows)
     path = write_trial(rows)
 
     print(f"OK   {path} ({len(rows)} rows)")
     print(f"Arm:                 {stats['arm']}")
+    print(f"Coplayer Mode:       {stats['coplayer_mode']}")
     print(f"Decisions by source: {stats['decision_source_counts']}")
     if stats["llm_calls"]:
         non_rate_limited = stats["llm_calls"] - stats["rate_limited"]

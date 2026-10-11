@@ -36,7 +36,7 @@ try:
 except Exception:
     pass
 
-# Hide Streamlit top-right menu and toolbar while keeping the sidebar toggle button accessible
+# Hide Streamlit top-right menu and toolbar while keeping the sidebar toggle button accessible and prominent
 st.markdown(
     """
     <style>
@@ -50,10 +50,72 @@ st.markdown(
     div[class*="viewerBadge"] {display: none !important;}
     button[title="View app source"] {display: none !important;}
     a[href*="github.com"] {display: none !important;}
+
+    /* Ensure the sidebar open toggle button is prominent and always accessible */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="stSidebarCollapseButton"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 999999 !important;
+        background: #0284c7 !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        padding: 6px 8px !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5) !important;
+        cursor: pointer !important;
+        transition: transform 0.2s ease !important;
+    }
+    [data-testid="collapsedControl"]:hover,
+    [data-testid="stSidebarCollapsedControl"]:hover {
+        transform: scale(1.08) !important;
+        background: #0369a1 !important;
+    }
+    [data-testid="collapsedControl"] svg,
+    [data-testid="stSidebarCollapsedControl"] svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+        width: 22px !important;
+        height: 22px !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+# Auto-expand sidebar if collapsed on initial page load
+try:
+    import streamlit.components.v1 as components
+    components.html(
+        """
+        <script>
+        function triggerSidebarOpen() {
+            try {
+                const doc = window.parent.document;
+                const sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+                const isClosed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
+                if (isClosed) {
+                    const btn = doc.querySelector('[data-testid="collapsedControl"] button') ||
+                                doc.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
+                                doc.querySelector('[data-testid="collapsedControl"]') ||
+                                doc.querySelector('button[aria-label="Expand sidebar"]');
+                    if (btn) btn.click();
+                }
+            } catch(e) {}
+        }
+        setTimeout(triggerSidebarOpen, 300);
+        setTimeout(triggerSidebarOpen, 800);
+        </script>
+        """,
+        height=0,
+    )
+except Exception:
+    pass
+
 
 # Sidebar mode switcher (collapsible for participants)
 with st.sidebar:

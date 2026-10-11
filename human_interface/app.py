@@ -95,10 +95,76 @@ st.markdown(
     div[class*="viewerBadge"] {display: none !important;}
     button[title="View app source"] {display: none !important;}
     a[href*="github.com"] {display: none !important;}
+
+    /* Prominent floating toggle button when sidebar is collapsed */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="stSidebarCollapseButton"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: fixed !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 9999999 !important;
+        background: #0284c7 !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        padding: 6px 10px !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5) !important;
+        cursor: pointer !important;
+    }
+    [data-testid="collapsedControl"]:hover,
+    [data-testid="stSidebarCollapsedControl"]:hover {
+        transform: scale(1.06) !important;
+        background: #0369a1 !important;
+    }
+    [data-testid="collapsedControl"] button,
+    [data-testid="stSidebarCollapsedControl"] button {
+        color: #ffffff !important;
+        background: transparent !important;
+        border: none !important;
+    }
+    [data-testid="collapsedControl"] svg,
+    [data-testid="stSidebarCollapsedControl"] svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+        width: 24px !important;
+        height: 24px !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+try:
+    import streamlit.components.v1 as components
+    components.html(
+        """
+        <script>
+        function expandSidebarIfClosed() {
+            try {
+                const doc = window.parent.document;
+                const sidebar = doc.querySelector('section[data-testid="stSidebar"]');
+                const isClosed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
+                if (isClosed) {
+                    const btn = doc.querySelector('[data-testid="collapsedControl"] button') ||
+                                doc.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
+                                doc.querySelector('[data-testid="collapsedControl"]') ||
+                                doc.querySelector('button[aria-label="Expand sidebar"]');
+                    if (btn) btn.click();
+                }
+            } catch(e) {}
+        }
+        setTimeout(expandSidebarIfClosed, 250);
+        setTimeout(expandSidebarIfClosed, 700);
+        </script>
+        """,
+        height=0,
+    )
+except Exception:
+    pass
+
 
 # ---------- RESEARCHER CONTROLS & QUERY PARAMS ----------
 query_params = st.query_params
@@ -107,11 +173,15 @@ if default_scenario not in SCENARIOS:
     default_scenario = "drought"
 
 try:
-    default_seed = int(query_params.get("seed", 0))
-    if default_seed not in MATCHED_SEEDS:
-        default_seed = 0
+    if "seed" in query_params:
+        default_seed = int(query_params.get("seed", 0))
+        if default_seed not in MATCHED_SEEDS:
+            default_seed = random.choice(list(MATCHED_SEEDS))
+    else:
+        # Auto-select balanced map seed for participant so they don't have to pick arbitrary numbers
+        default_seed = random.choice(list(MATCHED_SEEDS))
 except (ValueError, TypeError):
-    default_seed = 0
+    default_seed = random.choice(list(MATCHED_SEEDS))
 
 # ---------- SESSION STATE INIT ----------
 if "stage" not in st.session_state:
@@ -211,56 +281,60 @@ def go_to(stage: str):
 with st.sidebar:
     st.header("⚙️ Island Setup")
     if st.session_state.stage in ("consent", "instructions"):
-        selected_scenario = st.selectbox(
-            "Game Scenario",
-            options=list(SCENARIOS),
-            index=list(SCENARIOS).index(st.session_state.scenario),
-            format_func=lambda s: {
-                "calm": "☀️ Normal Island (10 Rounds - Stable Rain)",
-                "drought": "⚠️ Drought Crisis (10 Rounds - Heatwave in Round 6)",
-                "repeated_trust": "🤝 Extended Society (30 Rounds - Long-Term Trust)",
-            }.get(s, s),
-            help="Choose the island condition: normal weather, severe drought heatwave, or long-term 30-round community.",
-        )
-        selected_seed = st.selectbox(
-            "Island Map # (Layout)",
-            options=list(MATCHED_SEEDS),
-            index=st.session_state.seed,
-            help="Preset island scenario map (0-29). Matched directly against AI computer runs.",
-        )
-        severity_val = st.slider(
-            "Drought Hardship Level",
-            min_value=0.0,
-            max_value=1.0,
-            value=0.7 if selected_scenario == "drought" else 0.0,
-            step=0.1,
-            help="Sets how severe the water scarcity gets during drought (0.0 = Mild, 1.0 = Extreme Scarcity).",
-        )
-        ecology_opts = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
-        default_eco_idx = ecology_opts.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in ecology_opts else 0
-        coplayer_opt = st.selectbox(
-            "Teammate Personalities",
-            options=ecology_opts,
-            index=default_eco_idx,
-            format_func=lambda e: {
-                "Standard": "Standard Teammates (Cooperative, Selfish & Fair bots)",
-                "Deceptive (Strategic Deceiver)": "Challenging Island (Includes Sneaky/Secretive bot)",
-                "Live LLM Ecology (Groq + Gemini)": "Smart AI Island (Live AI bots with Groq & Gemini)",
-            }.get(e, e),
-            help="Standard: Balanced mix of bots. Deceptive: Adds a secretive player. Live LLM: Smart bots powered by live AI reasoning.",
-        )
-        if (
-            selected_scenario != st.session_state.scenario
-            or selected_seed != st.session_state.seed
-            or severity_val != st.session_state.severity
-            or coplayer_opt != st.session_state.coplayer_mode
-        ):
-            st.session_state.scenario = selected_scenario
-            st.session_state.seed = selected_seed
-            st.session_state.severity = severity_val
-            st.session_state.coplayer_mode = coplayer_opt
-            st.session_state.trial_id = f"{selected_scenario}_human_{selected_seed:03d}_{uuid.uuid4().hex[:6]}"
-            st.rerun()
+        st.success(f"🏝️ **Island Layout:** Map #{st.session_state.seed + 1} (Auto-Calibrated)")
+        st.caption("Topography and natural spring reserves have been pre-calibrated to guarantee balanced experimental conditions across participants.")
+
+        with st.expander("🛠️ Researcher Overrides", expanded=False):
+            selected_scenario = st.selectbox(
+                "Game Scenario",
+                options=list(SCENARIOS),
+                index=list(SCENARIOS).index(st.session_state.scenario),
+                format_func=lambda s: {
+                    "calm": "☀️ Normal Island (10 Rounds - Stable Rain)",
+                    "drought": "⚠️ Drought Crisis (10 Rounds - Heatwave in Round 6)",
+                    "repeated_trust": "🤝 Extended Society (30 Rounds - Long-Term Trust)",
+                }.get(s, s),
+                help="Choose the island condition: normal weather, severe drought heatwave, or long-term 30-round community.",
+            )
+            selected_seed = st.selectbox(
+                "Island Map # (Layout)",
+                options=list(MATCHED_SEEDS),
+                index=st.session_state.seed,
+                help="Preset island scenario map (0-29). Matched directly against AI computer runs.",
+            )
+            severity_val = st.slider(
+                "Drought Hardship Level",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.7 if selected_scenario == "drought" else 0.0,
+                step=0.1,
+                help="Sets how severe the water scarcity gets during drought (0.0 = Mild, 1.0 = Extreme Scarcity).",
+            )
+            ecology_opts = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
+            default_eco_idx = ecology_opts.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in ecology_opts else 0
+            coplayer_opt = st.selectbox(
+                "Teammate Personalities",
+                options=ecology_opts,
+                index=default_eco_idx,
+                format_func=lambda e: {
+                    "Standard": "Standard Teammates (Cooperative, Selfish & Fair bots)",
+                    "Deceptive (Strategic Deceiver)": "Challenging Island (Includes Sneaky/Secretive bot)",
+                    "Live LLM Ecology (Groq + Gemini)": "Smart AI Island (Live AI bots with Groq & Gemini)",
+                }.get(e, e),
+                help="Standard: Balanced mix of bots. Deceptive: Adds a secretive player. Live LLM: Smart bots powered by live AI reasoning.",
+            )
+            if (
+                selected_scenario != st.session_state.scenario
+                or selected_seed != st.session_state.seed
+                or severity_val != st.session_state.severity
+                or coplayer_opt != st.session_state.coplayer_mode
+            ):
+                st.session_state.scenario = selected_scenario
+                st.session_state.seed = selected_seed
+                st.session_state.severity = severity_val
+                st.session_state.coplayer_mode = coplayer_opt
+                st.session_state.trial_id = f"{selected_scenario}_human_{selected_seed:03d}_{uuid.uuid4().hex[:6]}"
+                st.rerun()
     else:
         scenario_labels = {
             "calm": "☀️ Normal Island (10 Rounds)",
@@ -349,6 +423,68 @@ def consent_screen():
     with tcol_right:
         if st.button("🔐 Researcher Portal", key="hero_researcher_btn", help="Restricted access for investigators & faculty", use_container_width=True):
             st.session_state.portal_active = True
+            st.rerun()
+
+    # In-page Island Setup Status Card (guarantees full visibility whether sidebar is open or closed)
+    st.markdown(
+        f"""
+        <div style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 12px 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <span style="font-size: 15px; font-weight: 700; color: #38bdf8;">🏝️ Island Setup:</span>
+                <span style="color: #f1f5f9; margin-left: 10px;"><strong>Scenario:</strong> {st.session_state.scenario.upper()}</span>
+                <span style="color: #64748b; margin: 0 8px;">•</span>
+                <span style="color: #f1f5f9;"><strong>Map:</strong> #{st.session_state.seed + 1} (Auto-Calibrated)</span>
+                <span style="color: #64748b; margin: 0 8px;">•</span>
+                <span style="color: #f1f5f9;"><strong>Teammates:</strong> {st.session_state.coplayer_mode}</span>
+            </div>
+            <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">
+                💡 <em>Press <code>[</code> or click top-left <code>&gt;</code> arrow to toggle sidebar</em>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("⚙️ Customize Island Settings & Teammates (In-Page Controls)", expanded=False):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            in_scenario = st.selectbox(
+                "Game Scenario",
+                list(SCENARIOS),
+                index=list(SCENARIOS).index(st.session_state.scenario),
+                key="inpage_scenario",
+                format_func=lambda s: {
+                    "calm": "☀️ Normal Island (10 Rounds)",
+                    "drought": "⚠️ Drought Crisis (10 Rounds)",
+                    "repeated_trust": "🤝 Extended Society (30 Rounds)",
+                }.get(s, s),
+            )
+        with c2:
+            in_seed = st.selectbox(
+                "Island Map Layout",
+                list(MATCHED_SEEDS),
+                index=st.session_state.seed,
+                key="inpage_seed",
+                format_func=lambda s: f"Map #{s + 1} (Seed {s})",
+            )
+        with c3:
+            eco_list = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
+            eco_idx = eco_list.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in eco_list else 0
+            in_coplayer = st.selectbox(
+                "Teammate Personalities",
+                eco_list,
+                index=eco_idx,
+                key="inpage_coplayer",
+            )
+        if (
+            in_scenario != st.session_state.scenario
+            or in_seed != st.session_state.seed
+            or in_coplayer != st.session_state.coplayer_mode
+        ):
+            st.session_state.scenario = in_scenario
+            st.session_state.seed = in_seed
+            st.session_state.coplayer_mode = in_coplayer
+            st.session_state.trial_id = f"{in_scenario}_human_{in_seed:03d}_{uuid.uuid4().hex[:6]}"
             st.rerun()
 
     st.title("🏝️ Island Survival Study: Water Decisions Under Scarcity")

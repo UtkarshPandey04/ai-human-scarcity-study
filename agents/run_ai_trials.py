@@ -33,6 +33,10 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from agents.environment import POOL_CAPACITY, POOL_GROWTH_RATE
 from agents.hybrid_trial import build_trial_id, run_trial, write_trial
 from common.config import (
@@ -54,6 +58,7 @@ MANIFEST_PATH = os.path.join(LOG_DIR, "manifest.json")
 DEFAULT_SEVERITIES = (0.0, 0.3, 0.5, 0.7, 0.9)
 DEFAULT_ABLATION_SEVERITIES = (0.0, 0.7)
 DEFAULT_ABLATION_ARMS = ("rl_only", "llm_only")
+DEFAULT_COPLAYER_MODES = ("standard", "deceptive", "llm_ecology")
 RATE_LIMIT_STOP_AFTER = 3  # consecutive rate-limited trials before the campaign stops submitting
 
 
@@ -97,6 +102,7 @@ class RateLimiter:
 def build_grid(
     scenarios: list[str],
     severities: list[float],
+    coplayer_modes: list[str],
     primary_arm: str,
     primary_provider: str | None,
     primary_model: str | None,
@@ -112,36 +118,40 @@ def build_grid(
 
     for scenario in scenarios:
         for severity in severities:
-            for seed in range(primary_seeds):
-                specs.append(
-                    {
-                        "scenario": scenario,
-                        "severity": severity,
-                        "arm": primary_arm,
-                        "provider": primary_provider,
-                        "model": primary_model,
-                        "seed": seed,
-                        "matched_seed": seed in matched_seeds,
-                    }
-                )
+            for coplayer_mode in coplayer_modes:
+                for seed in range(primary_seeds):
+                    specs.append(
+                        {
+                            "scenario": scenario,
+                            "severity": severity,
+                            "coplayer_mode": coplayer_mode,
+                            "arm": primary_arm,
+                            "provider": primary_provider,
+                            "model": primary_model,
+                            "seed": seed,
+                            "matched_seed": seed in matched_seeds,
+                        }
+                    )
 
     for scenario in scenarios:
         for severity in ablation_severities:
             for arm in ablation_arms:
                 provider = primary_provider if arm != "rl_only" else None
                 model = primary_model if arm != "rl_only" else None
-                for seed in range(ablation_seeds):
-                    specs.append(
-                        {
-                            "scenario": scenario,
-                            "severity": severity,
-                            "arm": arm,
-                            "provider": provider,
-                            "model": model,
-                            "seed": seed,
-                            "matched_seed": seed in matched_seeds,
-                        }
-                    )
+                for coplayer_mode in coplayer_modes:
+                    for seed in range(ablation_seeds):
+                        specs.append(
+                            {
+                                "scenario": scenario,
+                                "severity": severity,
+                                "coplayer_mode": coplayer_mode,
+                                "arm": arm,
+                                "provider": provider,
+                                "model": model,
+                                "seed": seed,
+                                "matched_seed": seed in matched_seeds,
+                            }
+                        )
 
     return specs
 
@@ -231,10 +241,20 @@ class Manifest:
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "trials": list(self.entries.values()),
         }
-        tmp_path = f"{self.path}.tmp"
+        tmp_path = f"{self.path}.{threading.get_ident()}.tmp"
         with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2)
-        os.replace(tmp_path, self.path)
+        for attempt in range(10):
+            try:
+                os.replace(tmp_path, self.path)
+                break
+            except PermissionError:
+                time.sleep(0.05 * (attempt + 1))
+        else:
+            try:
+                os.replace(tmp_path, self.path)
+            except Exception:
+                pass
 
 
 def run_campaign(
@@ -248,8 +268,24 @@ def run_campaign(
         s
         for s in specs
         if not manifest.is_done(
-            build_trial_id(s["scenario"], s["arm"], s["severity"], s["seed"]),
-            os.path.join(LOG_DIR, build_trial_id(s["scenario"], s["arm"], s["severity"], s["seed"]) + ".jsonl"),
+            build_trial_id(
+                s["scenario"],
+                s["arm"],
+                s["severity"],
+                s["seed"],
+                coplayer_mode=s.get("coplayer_mode", "standard"),
+            ),
+            os.path.join(
+                LOG_DIR,
+                build_trial_id(
+                    s["scenario"],
+                    s["arm"],
+                    s["severity"],
+                    s["seed"],
+                    coplayer_mode=s.get("coplayer_mode", "standard"),
+                )
+                + ".jsonl",
+            ),
         )
     ]
     skipped = len(specs) - len(pending)
@@ -273,7 +309,13 @@ def run_campaign(
     counts_lock = threading.Lock()
 
     def _run_one(spec: dict) -> None:
-        trial_id = build_trial_id(spec["scenario"], spec["arm"], spec["severity"], spec["seed"])
+        trial_id = build_trial_id(
+            spec["scenario"],
+            spec["arm"],
+            spec["severity"],
+            spec["seed"],
+            coplayer_mode=spec.get("coplayer_mode", "standard"),
+        )
         if quota_exhausted.is_set():
             with counts_lock:
                 counts["deferred"] += 1
@@ -287,6 +329,7 @@ def run_campaign(
                 model=spec["model"],
                 severity=spec["severity"],
                 rl_model=rl_model,
+                coplayer_mode=spec.get("coplayer_mode", "standard"),
             )
             validate_trial(rows)
             for row in rows:
@@ -310,6 +353,7 @@ def run_campaign(
                     "scenario": spec["scenario"],
                     "severity": spec["severity"],
                     "arm": spec["arm"],
+                    "coplayer_mode": spec.get("coplayer_mode", "standard"),
                     "provider": spec["provider"],
                     "model": stats.get("model"),
                     "seed": spec["seed"],
@@ -341,6 +385,7 @@ def run_campaign(
                     "scenario": spec["scenario"],
                     "severity": spec["severity"],
                     "arm": spec["arm"],
+                    "coplayer_mode": spec.get("coplayer_mode", "standard"),
                     "seed": spec["seed"],
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
@@ -366,8 +411,10 @@ def _parse_float_list(raw: str) -> list[float]:
     return [float(x) for x in raw.split(",") if x.strip()]
 
 
-def _parse_str_list(raw: str) -> list[str]:
-    return [x.strip() for x in raw.split(",") if x.strip()]
+def _parse_str_list(raw: str | None) -> list[str]:
+    if not raw or raw in ("none", "None", '""', "''"):
+        return []
+    return [x.strip() for x in raw.split(",") if x.strip() and x.strip() not in ("none", "None", '""', "''")]
 
 
 def _parse_int_set(raw: str | None) -> set[int]:
@@ -390,6 +437,11 @@ def _main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--scenarios", default=",".join(SCENARIOS))
     parser.add_argument("--severities", default=",".join(str(s) for s in DEFAULT_SEVERITIES))
+    parser.add_argument(
+        "--coplayer-modes",
+        default=",".join(DEFAULT_COPLAYER_MODES),
+        help="comma-separated coplayer presets: standard,deceptive,llm_ecology",
+    )
     parser.add_argument("--primary-arm", default="hybrid", choices=["rl_only", "llm_only", "hybrid"])
     parser.add_argument("--primary-provider", default="groq")
     parser.add_argument("--primary-model", default=None)
@@ -416,9 +468,15 @@ def _main() -> int:
         if s not in SCENARIOS:
             parser.error(f"unknown scenario {s!r}, must be one of {SCENARIOS}")
 
+    coplayer_modes = _parse_str_list(args.coplayer_modes)
+    for cpm in coplayer_modes:
+        if cpm not in ("standard", "deceptive", "llm_ecology"):
+            parser.error(f"unknown coplayer_mode {cpm!r}, must be one of standard, deceptive, llm_ecology")
+
     specs = build_grid(
         scenarios=scenarios,
         severities=_parse_float_list(args.severities),
+        coplayer_modes=coplayer_modes,
         primary_arm=args.primary_arm,
         primary_provider=args.primary_provider,
         primary_model=args.primary_model,
