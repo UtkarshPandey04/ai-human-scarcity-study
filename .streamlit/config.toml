@@ -15,4 +15,4 @@ enableCORS = false
 enableXsrfProtection = true
 
 [ui]
-hideTopBar = true
+hideTopBar = false

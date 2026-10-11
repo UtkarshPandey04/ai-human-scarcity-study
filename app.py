@@ -26,13 +26,35 @@ for mod_name in list(sys.modules.keys()):
 # Check query parameter for mode selection (?mode=researcher or ?mode=study)
 query_mode = st.query_params.get("mode", "").lower()
 
-# Hide Streamlit top-right menu, toolbar, and GitHub repo badge from participants
+try:
+    st.set_page_config(
+        page_title="AI-Human Scarcity Study",
+        page_icon="🏝️",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+except Exception:
+    pass
+
+# Hide Streamlit top-right menu and toolbar while keeping the sidebar toggle button accessible
 st.markdown(
     """
     <style>
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        height: 2.75rem !important;
+    }
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        z-index: 999999 !important;
+        color: #F8FAFC !important;
+        background: rgba(30, 41, 59, 0.8) !important;
+        border-radius: 6px !important;
+        margin: 6px !important;
+    }
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
     [data-testid="stToolbar"] {display: none !important;}
     [data-testid="stDecoration"] {display: none !important;}
     [data-testid="stStatusWidget"] {display: none !important;}
