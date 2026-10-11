@@ -683,29 +683,28 @@ def render_researcher_hub(embedded: bool = False):
                     }.get(act_type, act_type)
 
                     badge_color = "#38BDF8" if "SHARE" in act_badge else ("#F97316" if "GATHER" in act_badge else "#10B981")
-                    st.markdown(
-                        f"""
-                        <div style="background: rgba(15, 23, 42, 0.85); padding: 14px; border-radius: 10px; border: 1px solid #334155; min-height: 380px;">
-                            <div style="font-weight: 700; font-size: 1.0rem; color: #F1F5F9;">{r_data['provider']}</div>
-                            <div style="font-size: 0.75rem; color: #94A3B8;"><code>{r_data.get('model', '')}</code></div>
-                            <hr style="margin: 8px 0; border-color: #334155;">
-                            <div style="font-weight: 600; font-size: 0.9rem; color: {badge_color};">Action: {act_badge}</div>
-                            {f"<div style='font-size: 0.8rem; color: #CBD5E1;'>Target: <b>{r_data['target']}</b> (Amt: {r_data.get('amount', 1)})</div>" if r_data.get('target') else ""}
-                            {f"<div style='font-size: 0.78rem; font-style: italic; color: #94A3B8; margin-top: 4px;'>\"{r_data['message']}\"</div>" if r_data.get('message') else ""}
-                            <hr style="margin: 8px 0; border-color: #334155;">
-                            <div style="font-size: 0.8rem; font-weight: 600; color: #E2E8F0;">🧠 Strategic Reasoning:</div>
-                            <div style="font-size: 0.78rem; color: #CBD5E1; margin-top: 4px; line-height: 1.35; background: rgba(30, 41, 59, 0.5); padding: 8px; border-radius: 6px;">
-                                {r_data.get('reasoning')}
-                            </div>
-                            <hr style="margin: 8px 0; border-color: #334155;">
-                            <div style="font-size: 0.75rem; color: #64748B;">
-                                ⏱️ {r_data.get('latency_ms', 0):.0f} ms | 🪙 {r_data.get('tokens', 0)} tokens
-                                {f" | 🔄 Fallback from {r_data['fallback_from']}" if r_data.get('fallback_from') else ""}
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
+                    target_html = f"<div style='font-size: 0.8rem; color: #CBD5E1;'>Target: <b>{r_data['target']}</b> (Amt: {r_data.get('amount', 1)})</div>" if r_data.get("target") else ""
+                    msg_html = f"<div style='font-size: 0.78rem; font-style: italic; color: #94A3B8; margin-top: 4px;'>\"{r_data['message']}\"</div>" if r_data.get("message") else ""
+                    fallback_html = f" | 🔄 Fallback from {r_data['fallback_from']}" if r_data.get("fallback_from") else ""
+                    reasoning_text = r_data.get("reasoning") or "No explicit rationale string returned."
+
+                    card_html = (
+                        f'<div style="background: rgba(15, 23, 42, 0.85); padding: 14px; border-radius: 10px; border: 1px solid #334155; min-height: 380px;">'
+                        f'<div style="font-weight: 700; font-size: 1.0rem; color: #F1F5F9;">{r_data["provider"]}</div>'
+                        f'<div style="font-size: 0.75rem; color: #94A3B8;"><code>{r_data.get("model", "")}</code></div>'
+                        f'<hr style="margin: 8px 0; border-color: #334155;">'
+                        f'<div style="font-weight: 600; font-size: 0.9rem; color: {badge_color};">Action: {act_badge}</div>'
+                        f'{target_html}'
+                        f'{msg_html}'
+                        f'<hr style="margin: 8px 0; border-color: #334155;">'
+                        f'<div style="font-size: 0.8rem; font-weight: 600; color: #E2E8F0;">🧠 Strategic Reasoning:</div>'
+                        f'<div style="font-size: 0.78rem; color: #CBD5E1; margin-top: 4px; line-height: 1.35; background: rgba(30, 41, 59, 0.5); padding: 8px; border-radius: 6px;">{reasoning_text}</div>'
+                        f'<hr style="margin: 8px 0; border-color: #334155;">'
+                        f'<div style="font-size: 0.75rem; color: #64748B;">⏱️ {r_data.get("latency_ms", 0):.0f} ms | 🪙 {r_data.get("tokens", 0)} tokens{fallback_html}</div>'
+                        f'</div>'
                     )
+                    st.html(card_html)
+
 
         st.divider()
 
