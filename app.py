@@ -42,16 +42,23 @@ st.markdown(
     <style>
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
-    [data-testid="stToolbar"] {display: none !important;}
-    [data-testid="stDecoration"] {display: none !important;}
-    [data-testid="stStatusWidget"] {display: none !important;}
+    [data-testid="stToolbarActions"] {display: none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     .viewerBadge_link__qRIco {display: none !important;}
     div[class*="viewerBadge"] {display: none !important;}
     button[title="View app source"] {display: none !important;}
     a[href*="github.com"] {display: none !important;}
 
+    /* Make sure the toolbar holding the expand button is always visible */
+    [data-testid="stToolbar"] {
+        visibility: visible !important;
+        display: flex !important;
+        background: transparent !important;
+    }
+
     /* Ensure the sidebar open toggle button is prominent and always accessible */
+    [data-testid="stExpandSidebarButton"],
+    button[data-testid="stExpandSidebarButton"],
     [data-testid="collapsedControl"],
     [data-testid="stSidebarCollapsedControl"],
     [data-testid="stSidebarCollapseButton"] {
@@ -61,60 +68,56 @@ st.markdown(
         position: fixed !important;
         top: 12px !important;
         left: 12px !important;
-        z-index: 999999 !important;
+        z-index: 9999999 !important;
         background: #0284c7 !important;
         color: #ffffff !important;
         border-radius: 8px !important;
-        padding: 6px 8px !important;
-        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5) !important;
+        padding: 6px 10px !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.6) !important;
         cursor: pointer !important;
-        transition: transform 0.2s ease !important;
     }
-    [data-testid="collapsedControl"]:hover,
-    [data-testid="stSidebarCollapsedControl"]:hover {
+    [data-testid="stExpandSidebarButton"]:hover,
+    button[data-testid="stExpandSidebarButton"]:hover {
         transform: scale(1.08) !important;
         background: #0369a1 !important;
     }
-    [data-testid="collapsedControl"] svg,
-    [data-testid="stSidebarCollapsedControl"] svg {
+    [data-testid="stExpandSidebarButton"] svg,
+    button[data-testid="stExpandSidebarButton"] svg {
         fill: #ffffff !important;
         stroke: #ffffff !important;
-        width: 22px !important;
-        height: 22px !important;
+        color: #ffffff !important;
+        width: 24px !important;
+        height: 24px !important;
     }
     </style>
+    <img src="data:image/svg+xml;utf8,<svg></svg>" onerror="
+        try {
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('stSidebarCollapsed') !== -1) {
+                    localStorage.setItem(k, 'false');
+                }
+            }
+            function triggerSidebarOpen() {
+                var sidebar = document.querySelector('section[data-testid=\\'stSidebar\\']');
+                var isClosed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
+                if (isClosed) {
+                    var btn = document.querySelector('[data-testid=\\'stExpandSidebarButton\\']') ||
+                              document.querySelector('button[data-testid=\\'stExpandSidebarButton\\']') ||
+                              document.querySelector('[data-testid=\\'collapsedControl\\'] button') ||
+                              document.querySelector('[data-testid=\\'stSidebarCollapsedControl\\'] button') ||
+                              document.querySelector('button[aria-label=\\'Expand sidebar\\']');
+                    if (btn) btn.click();
+                }
+            }
+            setTimeout(triggerSidebarOpen, 50);
+            setTimeout(triggerSidebarOpen, 300);
+            setTimeout(triggerSidebarOpen, 800);
+        } catch(e) {}
+    " style="display:none;" />
     """,
     unsafe_allow_html=True,
 )
-
-# Auto-expand sidebar if collapsed on initial page load
-try:
-    import streamlit.components.v1 as components
-    components.html(
-        """
-        <script>
-        function triggerSidebarOpen() {
-            try {
-                const doc = window.parent.document;
-                const sidebar = doc.querySelector('section[data-testid="stSidebar"]');
-                const isClosed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
-                if (isClosed) {
-                    const btn = doc.querySelector('[data-testid="collapsedControl"] button') ||
-                                doc.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
-                                doc.querySelector('[data-testid="collapsedControl"]') ||
-                                doc.querySelector('button[aria-label="Expand sidebar"]');
-                    if (btn) btn.click();
-                }
-            } catch(e) {}
-        }
-        setTimeout(triggerSidebarOpen, 300);
-        setTimeout(triggerSidebarOpen, 800);
-        </script>
-        """,
-        height=0,
-    )
-except Exception:
-    pass
 
 
 # Sidebar mode switcher (collapsible for participants)

@@ -90,14 +90,23 @@ st.markdown(
     <style>
     #MainMenu {visibility: hidden !important;}
     footer {visibility: hidden !important;}
-    [data-testid="stToolbar"] {visibility: hidden !important;}
+    [data-testid="stToolbarActions"] {display: none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     .viewerBadge_link__qRIco {display: none !important;}
     div[class*="viewerBadge"] {display: none !important;}
     button[title="View app source"] {display: none !important;}
     a[href*="github.com"] {display: none !important;}
 
+    /* Make sure the toolbar holding the expand button is always visible */
+    [data-testid="stToolbar"] {
+        visibility: visible !important;
+        display: flex !important;
+        background: transparent !important;
+    }
+
     /* Prominent floating toggle button when sidebar is collapsed */
+    [data-testid="stExpandSidebarButton"],
+    button[data-testid="stExpandSidebarButton"],
     [data-testid="collapsedControl"],
     [data-testid="stSidebarCollapsedControl"],
     [data-testid="stSidebarCollapseButton"] {
@@ -112,59 +121,51 @@ st.markdown(
         color: #ffffff !important;
         border-radius: 8px !important;
         padding: 6px 10px !important;
-        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5) !important;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.6) !important;
         cursor: pointer !important;
     }
-    [data-testid="collapsedControl"]:hover,
-    [data-testid="stSidebarCollapsedControl"]:hover {
-        transform: scale(1.06) !important;
+    [data-testid="stExpandSidebarButton"]:hover,
+    button[data-testid="stExpandSidebarButton"]:hover {
+        transform: scale(1.08) !important;
         background: #0369a1 !important;
     }
-    [data-testid="collapsedControl"] button,
-    [data-testid="stSidebarCollapsedControl"] button {
-        color: #ffffff !important;
-        background: transparent !important;
-        border: none !important;
-    }
-    [data-testid="collapsedControl"] svg,
-    [data-testid="stSidebarCollapsedControl"] svg {
+    [data-testid="stExpandSidebarButton"] svg,
+    button[data-testid="stExpandSidebarButton"] svg {
         fill: #ffffff !important;
         stroke: #ffffff !important;
+        color: #ffffff !important;
         width: 24px !important;
         height: 24px !important;
     }
     </style>
+    <img src="data:image/svg+xml;utf8,<svg></svg>" onerror="
+        try {
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('stSidebarCollapsed') !== -1) {
+                    localStorage.setItem(k, 'false');
+                }
+            }
+            function openSidebar() {
+                var sidebar = document.querySelector('section[data-testid=\\'stSidebar\\']');
+                var isClosed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
+                if (isClosed) {
+                    var btn = document.querySelector('[data-testid=\\'stExpandSidebarButton\\']') ||
+                              document.querySelector('button[data-testid=\\'stExpandSidebarButton\\']') ||
+                              document.querySelector('[data-testid=\\'collapsedControl\\'] button') ||
+                              document.querySelector('[data-testid=\\'stSidebarCollapsedControl\\'] button') ||
+                              document.querySelector('button[aria-label=\\'Expand sidebar\\']');
+                    if (btn) btn.click();
+                }
+            }
+            setTimeout(openSidebar, 50);
+            setTimeout(openSidebar, 300);
+            setTimeout(openSidebar, 800);
+        } catch(e) {}
+    " style="display:none;" />
     """,
     unsafe_allow_html=True,
 )
-
-try:
-    import streamlit.components.v1 as components
-    components.html(
-        """
-        <script>
-        function expandSidebarIfClosed() {
-            try {
-                const doc = window.parent.document;
-                const sidebar = doc.querySelector('section[data-testid="stSidebar"]');
-                const isClosed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
-                if (isClosed) {
-                    const btn = doc.querySelector('[data-testid="collapsedControl"] button') ||
-                                doc.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
-                                doc.querySelector('[data-testid="collapsedControl"]') ||
-                                doc.querySelector('button[aria-label="Expand sidebar"]');
-                    if (btn) btn.click();
-                }
-            } catch(e) {}
-        }
-        setTimeout(expandSidebarIfClosed, 250);
-        setTimeout(expandSidebarIfClosed, 700);
-        </script>
-        """,
-        height=0,
-    )
-except Exception:
-    pass
 
 
 # ---------- RESEARCHER CONTROLS & QUERY PARAMS ----------
@@ -424,68 +425,6 @@ def consent_screen():
     with tcol_right:
         if st.button("🔐 Researcher Portal", key="hero_researcher_btn", help="Restricted access for investigators & faculty", use_container_width=True):
             st.session_state.portal_active = True
-            st.rerun()
-
-    # In-page Island Setup Status Card (guarantees full visibility whether sidebar is open or closed)
-    st.markdown(
-        f"""
-        <div style="background: rgba(30, 41, 59, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 12px 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-            <div>
-                <span style="font-size: 15px; font-weight: 700; color: #38bdf8;">🏝️ Island Setup:</span>
-                <span style="color: #f1f5f9; margin-left: 10px;"><strong>Scenario:</strong> {st.session_state.scenario.upper()}</span>
-                <span style="color: #64748b; margin: 0 8px;">•</span>
-                <span style="color: #f1f5f9;"><strong>Map:</strong> #{st.session_state.seed + 1} (Auto-Calibrated)</span>
-                <span style="color: #64748b; margin: 0 8px;">•</span>
-                <span style="color: #f1f5f9;"><strong>Teammates:</strong> {st.session_state.coplayer_mode}</span>
-            </div>
-            <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">
-                💡 <em>Press <code>[</code> or click top-left <code>&gt;</code> arrow to toggle sidebar</em>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    with st.expander("⚙️ Customize Island Settings & Teammates (In-Page Controls)", expanded=False):
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            in_scenario = st.selectbox(
-                "Game Scenario",
-                list(SCENARIOS),
-                index=list(SCENARIOS).index(st.session_state.scenario),
-                key="inpage_scenario",
-                format_func=lambda s: {
-                    "calm": "☀️ Normal Island (10 Rounds)",
-                    "drought": "⚠️ Drought Crisis (10 Rounds)",
-                    "repeated_trust": "🤝 Extended Society (30 Rounds)",
-                }.get(s, s),
-            )
-        with c2:
-            in_seed = st.selectbox(
-                "Island Map Layout",
-                list(MATCHED_SEEDS),
-                index=st.session_state.seed,
-                key="inpage_seed",
-                format_func=lambda s: f"Map #{s + 1} (Seed {s})",
-            )
-        with c3:
-            eco_list = ["Standard", "Deceptive (Strategic Deceiver)", "Live LLM Ecology (Groq + Gemini)"]
-            eco_idx = eco_list.index(st.session_state.coplayer_mode) if st.session_state.coplayer_mode in eco_list else 0
-            in_coplayer = st.selectbox(
-                "Teammate Personalities",
-                eco_list,
-                index=eco_idx,
-                key="inpage_coplayer",
-            )
-        if (
-            in_scenario != st.session_state.scenario
-            or in_seed != st.session_state.seed
-            or in_coplayer != st.session_state.coplayer_mode
-        ):
-            st.session_state.scenario = in_scenario
-            st.session_state.seed = in_seed
-            st.session_state.coplayer_mode = in_coplayer
-            st.session_state.trial_id = f"{in_scenario}_human_{in_seed:03d}_{uuid.uuid4().hex[:6]}"
             st.rerun()
 
     st.title("🏝️ Island Survival Study: Water Decisions Under Scarcity")

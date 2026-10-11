@@ -1,29 +1,29 @@
 {
   "groq": {
-    "total_calls": 317,
-    "successful_calls": 169,
-    "rate_limited_calls": 139,
+    "total_calls": 535,
+    "successful_calls": 172,
+    "rate_limited_calls": 354,
     "failed_calls": 9,
-    "total_prompt_tokens": 138306,
-    "total_completion_tokens": 91155,
-    "total_latency_ms": 6203005.698680878,
-    "avg_latency_ms": 19567.8,
-    "last_latency_ms": 2381.9,
+    "total_prompt_tokens": 140910,
+    "total_completion_tokens": 92625,
+    "total_latency_ms": 7427831.503629684,
+    "avg_latency_ms": 13883.8,
+    "last_latency_ms": 62339.2,
     "last_status": "Rate Limited (429)",
-    "last_call_at": "2026-10-11T12:42:53.618857+00:00"
+    "last_call_at": "2026-10-11T13:04:07.372725+00:00"
   },
   "gemini": {
-    "total_calls": 156,
+    "total_calls": 292,
     "successful_calls": 39,
-    "rate_limited_calls": 106,
+    "rate_limited_calls": 242,
     "failed_calls": 11,
     "total_prompt_tokens": 26028,
     "total_completion_tokens": 2280,
-    "total_latency_ms": 675079.891204834,
-    "avg_latency_ms": 4327.4,
-    "last_latency_ms": 4125.9,
+    "total_latency_ms": 1271889.55950737,
+    "avg_latency_ms": 4355.8,
+    "last_latency_ms": 8089.0,
     "last_status": "Rate Limited (429)",
-    "last_call_at": "2026-10-11T12:42:58.637527+00:00"
+    "last_call_at": "2026-10-11T13:04:21.184464+00:00"
   },
   "openrouter": {
     "total_calls": 50,
