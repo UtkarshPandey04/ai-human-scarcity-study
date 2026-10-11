@@ -40,23 +40,8 @@ except Exception:
 st.markdown(
     """
     <style>
-    header[data-testid="stHeader"] {
-        background: transparent !important;
-        height: 3rem !important;
-    }
-    /* Pin the sidebar permanently open so it can never be hidden or collapsed */
-    section[data-testid="stSidebar"] {
-        display: block !important;
-        visibility: visible !important;
-        width: 330px !important;
-        min-width: 330px !important;
-        max-width: 330px !important;
-        transform: none !important;
-        margin-left: 0 !important;
-        position: relative !important;
-    }
-    #MainMenu {visibility: hidden !important; display: none !important;}
-    footer {visibility: hidden !important; display: none !important;}
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
     [data-testid="stToolbar"] {display: none !important;}
     [data-testid="stDecoration"] {display: none !important;}
     [data-testid="stStatusWidget"] {display: none !important;}
