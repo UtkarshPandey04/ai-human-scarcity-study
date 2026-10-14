@@ -1,0 +1,50 @@
+{
+  "version": "v1",
+  "frozen_at": "2026-10-14T04:54:48.579240+00:00",
+  "zip": "ai_logs_v1.zip",
+  "zip_sha256": "846a60589e5047315e622fd23621a5a982007492a2e4eff8b4d4597428332223",
+  "n_trials": 959,
+  "n_rows": 58290,
+  "excluded_failed_trials": [
+    "calm_ai_rl_only_llm_ecology_sev000_023_000"
+  ],
+  "qa_pass_rate": 1.0,
+  "git_shas": [
+    "15a1ef4fe394cfd16c6f828208b01844492b045f",
+    "cfd5245559447ecb343a3438f6651895d4d1a576"
+  ],
+  "prompt_file_sha256s": [
+    "23c3b942d26ce2c5468a9c87f05411e36dc1fe166e7f877ad72c4a7cd42663ce"
+  ],
+  "models": [],
+  "summary": {
+    "cells": {
+      "calm/hybrid": {
+        "trials": 6,
+        "rows": 265
+      },
+      "calm/llm_only": {
+        "trials": 5,
+        "rows": 222
+      },
+      "calm/rl_only": {
+        "trials": 348,
+        "rows": 16280
+      },
+      "drought/rl_only": {
+        "trials": 300,
+        "rows": 14220
+      },
+      "repeated_trust/rl_only": {
+        "trials": 300,
+        "rows": 27303
+      }
+    },
+    "llm_calls": 234,
+    "llm_rate_limited": 0,
+    "llm_parse_failures": 0,
+    "llm_parse_failure_rate": 0.0,
+    "prompt_tokens": 50943,
+    "completion_tokens": 42532
+  }
+}
