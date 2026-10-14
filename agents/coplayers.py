@@ -144,15 +144,27 @@ class StrategicDeceiver:
 class LLMCoPlayer:
     """An island co-player whose decisions are driven by live LLM reasoning."""
 
-    def __init__(self, provider: str = "groq", model: str | None = None, seed: int = 0):
+    def __init__(
+        self,
+        provider: str = "groq",
+        model: str | None = None,
+        seed: int = 0,
+        fallback_to_scripted: bool = False,
+    ):
         self.provider = provider
         self.model = model
         self.seed = seed
+        self.fallback_to_scripted = fallback_to_scripted
 
     def act(self, obs: Observation) -> Action:
         from agents.llm_reasoning import decide
 
-        action, _ = decide(obs, provider=self.provider, model=self.model)
+        action, _ = decide(
+            obs,
+            provider=self.provider,
+            model=self.model,
+            fallback_to_scripted=self.fallback_to_scripted,
+        )
         return action
 
 
@@ -165,13 +177,14 @@ POLICIES: dict[str, type] = {
 }
 
 
-def get_policy(name: str, seed: int = 0) -> CoPlayerPolicy:
+def get_policy(name: str, seed: int = 0, fallback_to_scripted: bool = False) -> CoPlayerPolicy:
     if name in POLICIES:
         return POLICIES[name](seed=seed)
     if name == "llm_groq":
-        return LLMCoPlayer(provider="groq", seed=seed)
+        return LLMCoPlayer(provider="groq", seed=seed, fallback_to_scripted=fallback_to_scripted)
     if name == "llm_gemini":
-        return LLMCoPlayer(provider="gemini", seed=seed)
+        return LLMCoPlayer(provider="gemini", seed=seed, fallback_to_scripted=fallback_to_scripted)
     if name in ("llm_auto", "llm_heterogeneous"):
-        return LLMCoPlayer(provider="heterogeneous", seed=seed)
+        return LLMCoPlayer(provider="heterogeneous", seed=seed, fallback_to_scripted=fallback_to_scripted)
     raise ValueError(f"unknown co-player policy {name!r}, must be one of {sorted(POLICIES)}")
+

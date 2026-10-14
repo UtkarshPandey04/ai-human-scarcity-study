@@ -85,6 +85,36 @@ class TestCompleteDispatch(unittest.TestCase):
             with self.assertRaises(LLMCompletionError):
                 complete([ChatMessage(role="user", content="hi")], provider="groq")
 
+    def test_key_getters_parse_comma_separated_pools(self):
+        from agents.llm_client import get_gemini_api_keys, get_groq_api_keys, get_openrouter_api_keys
+        with patch.dict("os.environ", {
+            "GROQ_API_KEYS": "k1, k2, k3",
+            "GEMINI_API_KEYS": "g1, g2",
+            "OPENROUTER_API_KEYS": "o1, o2, o3",
+        }):
+            self.assertEqual(get_groq_api_keys(), ["k1", "k2", "k3"])
+            self.assertEqual(get_gemini_api_keys(), ["g1", "g2"])
+            self.assertEqual(get_openrouter_api_keys(), ["o1", "o2", "o3"])
+
+    def test_fallback_chain_prioritizes_openrouter_over_gemini(self):
+        from agents.llm_client import FALLBACK_CHAINS
+        groq_chain = FALLBACK_CHAINS.get("groq", [])
+        self.assertIn("openrouter", groq_chain)
+        self.assertIn("gemini", groq_chain)
+        self.assertLess(groq_chain.index("openrouter"), groq_chain.index("gemini"))
+
+    def test_heterogeneous_dispatches_across_providers(self):
+        mock_groq = MagicMock(return_value={"provider": "groq"})
+        mock_openrouter = MagicMock(return_value={"provider": "openrouter"})
+        clear_completion_cache()
+        with patch.dict("agents.llm_client.PROVIDERS", {"groq": mock_groq, "openrouter": mock_openrouter}):
+            with patch("agents.llm_client.get_available_providers", return_value=["groq", "openrouter"]):
+                r1 = complete([ChatMessage(role="user", content="msg1")], provider="heterogeneous")
+                r2 = complete([ChatMessage(role="user", content="msg2")], provider="heterogeneous")
+        self.assertIn(r1.get("provider"), ("groq", "openrouter"))
+        self.assertIn(r2.get("provider"), ("groq", "openrouter"))
+
 
 if __name__ == "__main__":
     unittest.main()
+

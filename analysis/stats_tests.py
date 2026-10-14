@@ -194,7 +194,10 @@ def analyze_scenarios(df: pd.DataFrame) -> dict[str, list[dict[str, Any]]]:
 
     for subset_name, sub_df in subsets:
         human_sub = sub_df[sub_df["source"] == "human"]
-        ai_sub = sub_df[(sub_df["source"] == "ai") & (sub_df["arm"] != "llm_human_steered")]
+        ai_cond = (sub_df["source"] == "ai") & (sub_df["arm"] != "llm_human_steered")
+        if "pilot" in sub_df.columns:
+            ai_cond = ai_cond & ((sub_df["pilot"].isna()) | (sub_df["pilot"] == 0) | (sub_df["pilot"] == False))
+        ai_sub = sub_df[ai_cond]
 
         if len(human_sub) == 0 or len(ai_sub) == 0:
             continue
@@ -222,7 +225,10 @@ def compute_dose_response(df: pd.DataFrame) -> dict[str, Any]:
     for sev in severities:
         sub = df[df["severity"] == sev]
         h_sub = sub[sub["source"] == "human"]
-        a_sub = sub[(sub["source"] == "ai") & (sub["arm"] != "llm_human_steered")]
+        ai_cond = (sub["source"] == "ai") & (sub["arm"] != "llm_human_steered")
+        if "pilot" in sub.columns:
+            ai_cond = ai_cond & ((sub["pilot"].isna()) | (sub["pilot"] == 0) | (sub["pilot"] == False))
+        a_sub = sub[ai_cond]
 
         summary_rows.append({
             "severity": float(sev),
@@ -239,7 +245,10 @@ def compute_dose_response(df: pd.DataFrame) -> dict[str, Any]:
         })
 
     human_df = df[df["source"] == "human"].dropna(subset=["severity", "share_rate", "hoard_rate"])
-    ai_df = df[(df["source"] == "ai") & (df["arm"] != "llm_human_steered")].dropna(subset=["severity", "share_rate", "hoard_rate"])
+    ai_cond = (df["source"] == "ai") & (df["arm"] != "llm_human_steered")
+    if "pilot" in df.columns:
+        ai_cond = ai_cond & ((df["pilot"].isna()) | (df["pilot"] == 0) | (df["pilot"] == False))
+    ai_df = df[ai_cond].dropna(subset=["severity", "share_rate", "hoard_rate"])
 
     try:
         h_share_res = stats.linregress(human_df["severity"], human_df["share_rate"])

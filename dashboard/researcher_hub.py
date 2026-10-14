@@ -271,7 +271,8 @@ def render_researcher_hub(embedded: bool = False):
             m2.metric("Human Hoarding", f"{h_hoard:.1f}%", f"{h_hoard - a_hoard:+.1f}% vs AI")
 
             h_dec = feat_df[feat_df["source"] == "human"]["deception_rate"].mean() * 100
-            m3.metric("Human Deception Rate", f"{h_dec:.1f}%", "AI Deception: 0.0%")
+            a_dec = feat_df[feat_df["source"] == "ai"]["deception_rate"].mean() * 100
+            m3.metric("Human Deception Rate", f"{h_dec:.1f}%", f"AI Deception: {a_dec:.1f}%")
 
             h_lat = feat_df[feat_df["source"] == "human"]["mean_latency_ms"].mean()
             m4.metric("Avg Human Latency", f"{h_lat:.0f} ms", "Moral Deliberation")
@@ -505,7 +506,32 @@ def render_researcher_hub(embedded: bool = False):
         # Cumulative API Operations Telemetry Table
         st.markdown("#### 📊 Cumulative API Telemetry (All Sessions)")
         st.caption("Aggregated request count, token volume, error rate, and auto-failovers recorded by the abstraction layer.")
+
+        # Check for degraded providers (success rate < 50% with at least 5 calls)
+        degraded = []
+        for p_name, s in telemetry.items():
+            tot = s.get("total_calls", 0)
+            succ = s.get("successful_calls", 0)
+            rl = s.get("rate_limited_calls", 0)
+            if tot >= 5:
+                pct = (succ / tot) * 100.0
+                if pct < 50.0:
+                    degraded.append((p_name.upper(), pct, tot, rl, s.get("failed_calls", 0)))
+
+        if degraded:
+            details = ", ".join(
+                f"**{p}** ({pct:.1f}% success; {rl} rate-limited / {tot} calls)"
+                for p, pct, tot, rl, err in degraded
+            )
+            st.warning(
+                f"⚠️ **High API Degradation Alert (Success Rate < 50%)**: {details}. "
+                "Provider quotas or single-key rate limits are severely impacting call success. "
+                "Action recommended: populate `GROQ_API_KEYS`, `GEMINI_API_KEYS`, or `OPENROUTER_API_KEYS` "
+                "with a comma-separated key pool (3-4 keys each) and set `LLM_PROVIDER=heterogeneous` to balance traffic across healthy backends."
+            )
+
         t_rows = []
+
         for p_name, s in telemetry.items():
             tot = s.get("total_calls", 0)
             succ = s.get("successful_calls", 0)

@@ -6,18 +6,18 @@ This report presents the non-parametric hypothesis testing (Mann-Whitney U, Clif
 
 | Metric | Human Mean (SD) | AI Mean (SD) | Mann-Whitney U | p-value | Cliff's Delta (Effect) | Cohen's d |
 |:-------|:---------------:|:------------:|:--------------:|:-------:|:----------------------:|:---------:|
-| **Sharing Rate** | 0.168 (0.14) | 0.158 (0.15) | 901.5 | 0.7827  | +0.036 (Negligible) | +0.07 |
-| **Hoarding Rate** | 0.067 (0.10) | 0.090 (0.17) | 899.0 | 0.7618  | +0.033 (Negligible) | -0.17 |
-| **Hoarding Index** | 0.318 (0.33) | 0.206 (0.23) | 1045.0 | 0.1231  | +0.201 (Small) | +0.39 |
-| **Gather Rate** | 0.683 (0.27) | 0.662 (0.28) | 945.5 | 0.5080  | +0.087 (Negligible) | +0.08 |
-| **Cooperation Rate** | 0.208 (0.16) | 0.158 (0.15) | 1008.0 | 0.2213  | +0.159 (Small) | +0.33 |
-| **Deception Rate** | 0.103 (0.31) | 0.000 (0.00) | 960.0 | 0.0122 * | +0.103 (Negligible) | +0.47 |
-| **Total Water Shared** | 6.724 (8.31) | 5.633 (8.28) | 981.0 | 0.3250  | +0.128 (Negligible) | +0.13 |
-| **Society Gini Coefficient** | 0.263 (0.18) | 0.108 (0.16) | 1227.5 | 0.0013 ** | +0.411 (Medium) | +0.91 |
-| **Society Survival Rate** | 0.805 (0.38) | 0.850 (0.36) | 774.0 | 0.2211  | -0.110 (Negligible) | -0.12 |
-| **Focal Survival** | 0.793 (0.41) | 0.717 (0.45) | 936.5 | 0.4461  | +0.076 (Negligible) | +0.18 |
-| **Alliance Count** | 0.586 (0.82) | 2.133 (3.19) | 673.5 | 0.0641 † | -0.226 (Small) | -0.66 |
-| **Decision Latency (ms)** | 1671.945 (1577.38) | 0.000 (0.00) | 1500.0 | 0.0000 *** | +0.724 (Large) | +1.50 |
+| **Sharing Rate** | 0.094 (0.13) | 0.158 (0.15) | 1108.5 | 0.0059 ** | -0.289 (Small) | -0.46 |
+| **Hoarding Rate** | 0.037 (0.08) | 0.090 (0.17) | 1393.5 | 0.2026  | -0.107 (Negligible) | -0.41 |
+| **Hoarding Index** | 0.557 (0.37) | 0.206 (0.23) | 2425.0 | 0.0000 *** | +0.554 (Large) | +1.14 |
+| **Gather Rate** | 0.823 (0.25) | 0.662 (0.28) | 2210.5 | 0.0001 *** | +0.417 (Medium) | +0.60 |
+| **Cooperation Rate** | 0.116 (0.16) | 0.158 (0.15) | 1215.0 | 0.0354 * | -0.221 (Small) | -0.28 |
+| **Deception Rate** | 0.058 (0.24) | 0.000 (0.00) | 1650.0 | 0.0619 † | +0.058 (Negligible) | +0.35 |
+| **Total Water Shared** | 3.750 (7.02) | 5.633 (8.28) | 1188.0 | 0.0232 * | -0.238 (Small) | -0.25 |
+| **Society Gini Coefficient** | 0.256 (0.14) | 0.108 (0.16) | 2400.5 | 0.0000 *** | +0.539 (Large) | +1.01 |
+| **Society Survival Rate** | 0.891 (0.30) | 0.833 (0.38) | 1595.0 | 0.7522  | +0.022 (Negligible) | +0.17 |
+| **Focal Survival** | 0.885 (0.32) | 0.717 (0.45) | 1822.0 | 0.0292 * | +0.168 (Small) | +0.43 |
+| **Alliance Count** | 0.327 (0.68) | 2.150 (3.18) | 961.0 | 0.0001 *** | -0.384 (Medium) | -0.79 |
+| **Decision Latency (ms)** | 1040.777 (1370.64) | 0.000 (0.00) | 2880.0 | 0.0000 *** | +0.846 (Large) | +1.07 |
 
 *Significance: † p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001.*
 
@@ -44,18 +44,18 @@ This report presents the non-parametric hypothesis testing (Mann-Whitney U, Clif
 
 | Metric | Human Mean (SD) | AI Mean (SD) | Mann-Whitney U | p-value | Cliff's Delta (Effect) | Cohen's d |
 |:-------|:---------------:|:------------:|:--------------:|:-------:|:----------------------:|:---------:|
-| **Sharing Rate** | 0.123 (0.16) | 0.155 (0.14) | 156.0 | 0.3313  | -0.179 (Small) | -0.22 |
-| **Hoarding Rate** | 0.102 (0.11) | 0.046 (0.11) | 255.5 | 0.0366 * | +0.345 (Medium) | +0.52 |
-| **Hoarding Index** | 0.418 (0.38) | 0.294 (0.22) | 222.0 | 0.3697  | +0.168 (Small) | +0.40 |
-| **Gather Rate** | 0.684 (0.33) | 0.711 (0.29) | 189.0 | 0.9885  | -0.005 (Negligible) | -0.08 |
-| **Cooperation Rate** | 0.149 (0.17) | 0.155 (0.14) | 177.5 | 0.7286  | -0.066 (Negligible) | -0.04 |
-| **Deception Rate** | 0.158 (0.37) | 0.000 (0.00) | 220.0 | 0.0726 † | +0.158 (Small) | +0.60 |
-| **Total Water Shared** | 2.211 (2.27) | 3.500 (3.49) | 164.0 | 0.4585  | -0.137 (Negligible) | -0.44 |
-| **Society Gini Coefficient** | 0.175 (0.17) | 0.124 (0.18) | 215.0 | 0.4778  | +0.132 (Negligible) | +0.30 |
-| **Society Survival Rate** | 0.713 (0.44) | 1.000 (0.00) | 120.0 | 0.0034 ** | -0.368 (Medium) | -0.91 |
-| **Focal Survival** | 0.684 (0.48) | 0.800 (0.41) | 168.0 | 0.4246  | -0.116 (Negligible) | -0.26 |
-| **Alliance Count** | 0.211 (0.54) | 1.400 (1.96) | 110.0 | 0.0090 ** | -0.421 (Medium) | -0.83 |
-| **Decision Latency (ms)** | 1262.442 (1832.23) | 0.000 (0.00) | 300.0 | 0.0001 *** | +0.579 (Large) | +0.97 |
+| **Sharing Rate** | 0.056 (0.12) | 0.155 (0.14) | 225.0 | 0.0009 *** | -0.464 (Medium) | -0.77 |
+| **Hoarding Rate** | 0.046 (0.09) | 0.046 (0.11) | 439.5 | 0.7031  | +0.046 (Negligible) | +0.01 |
+| **Hoarding Index** | 0.658 (0.33) | 0.294 (0.22) | 682.0 | 0.0000 *** | +0.624 (Large) | +1.29 |
+| **Gather Rate** | 0.857 (0.27) | 0.711 (0.29) | 591.5 | 0.0040 ** | +0.408 (Medium) | +0.52 |
+| **Cooperation Rate** | 0.067 (0.13) | 0.155 (0.14) | 246.5 | 0.0033 ** | -0.413 (Medium) | -0.65 |
+| **Deception Rate** | 0.071 (0.26) | 0.000 (0.00) | 450.0 | 0.2321  | +0.071 (Negligible) | +0.39 |
+| **Total Water Shared** | 1.000 (1.87) | 3.500 (3.49) | 233.0 | 0.0015 ** | -0.445 (Medium) | -0.89 |
+| **Society Gini Coefficient** | 0.215 (0.12) | 0.124 (0.18) | 606.0 | 0.0031 ** | +0.443 (Medium) | +0.61 |
+| **Society Survival Rate** | 0.870 (0.33) | 0.950 (0.22) | 372.0 | 0.2189  | -0.114 (Negligible) | -0.28 |
+| **Focal Survival** | 0.857 (0.35) | 0.800 (0.41) | 444.0 | 0.5786  | +0.057 (Negligible) | +0.15 |
+| **Alliance Count** | 0.095 (0.37) | 1.450 (1.93) | 193.0 | 0.0000 *** | -0.540 (Large) | -0.97 |
+| **Decision Latency (ms)** | 705.248 (1318.02) | 0.000 (0.00) | 760.0 | 0.0000 *** | +0.810 (Large) | +0.76 |
 
 *Significance: † p < 0.1, * p < 0.05, ** p < 0.01, *** p < 0.001.*
 
@@ -82,7 +82,7 @@ This report presents the non-parametric hypothesis testing (Mann-Whitney U, Clif
 
 | Group | d(Share)/d(Severity) | d(Hoard)/d(Severity) | Interpretation |
 |:------|:--------------------:|:--------------------:|:---------------|
-| **Human** | `-0.2173` | `+0.1396` | Shows steep behavioral shifts when scarcity strikes |
+| **Human** | `-0.3093` | `+0.0577` | Shows steep behavioral shifts when scarcity strikes |
 | **AI Agent** | `-0.0072` | `-0.0959` | Displays flatter, more rigid behavioral adjustments |
 
 ### Camera-Ready LaTeX Table (All Scenarios)
@@ -96,18 +96,18 @@ This report presents the non-parametric hypothesis testing (Mann-Whitney U, Clif
 \toprule
 \textbf{Metric} & \textbf{Human Mean (SD)} & \textbf{AI Mean (SD)} & \textbf{Mann-Whitney $U$} & \textbf{$p$-value} & \textbf{Cliff's $\delta$} & \textbf{Cohen's $d$} \\
 \midrule
-Sharing Rate & 0.168 \small{(0.14)} & 0.158 \small{(0.15)} & 901.5 & 0.7827 & +0.036 & +0.07 \\
-Hoarding Rate & 0.067 \small{(0.10)} & 0.090 \small{(0.17)} & 899.0 & 0.7618 & +0.033 & -0.17 \\
-Hoarding Index & 0.318 \small{(0.33)} & 0.206 \small{(0.23)} & 1045.0 & 0.1231 & +0.201 & +0.39 \\
-Gather Rate & 0.683 \small{(0.27)} & 0.662 \small{(0.28)} & 945.5 & 0.5080 & +0.087 & +0.08 \\
-Cooperation Rate & 0.208 \small{(0.16)} & 0.158 \small{(0.15)} & 1008.0 & 0.2213 & +0.159 & +0.33 \\
-Deception Rate & 0.103 \small{(0.31)} & 0.000 \small{(0.00)} & 960.0 & 0.0122$^{\ast}$ & +0.103 & +0.47 \\
-Total Water Shared & 6.724 \small{(8.31)} & 5.633 \small{(8.28)} & 981.0 & 0.3250 & +0.128 & +0.13 \\
-Society Gini Coefficient & 0.263 \small{(0.18)} & 0.108 \small{(0.16)} & 1227.5 & 0.0013$^{\ast\ast}$ & +0.411 & +0.91 \\
-Society Survival Rate & 0.805 \small{(0.38)} & 0.850 \small{(0.36)} & 774.0 & 0.2211 & -0.110 & -0.12 \\
-Focal Survival & 0.793 \small{(0.41)} & 0.717 \small{(0.45)} & 936.5 & 0.4461 & +0.076 & +0.18 \\
-Alliance Count & 0.586 \small{(0.82)} & 2.133 \small{(3.19)} & 673.5 & 0.0641$^{†}$ & -0.226 & -0.66 \\
-Decision Latency (ms) & 1671.945 \small{(1577.38)} & 0.000 \small{(0.00)} & 1500.0 & 0.0000$^{\ast\ast\ast}$ & +0.724 & +1.50 \\
+Sharing Rate & 0.094 \small{(0.13)} & 0.158 \small{(0.15)} & 1108.5 & 0.0059$^{\ast\ast}$ & -0.289 & -0.46 \\
+Hoarding Rate & 0.037 \small{(0.08)} & 0.090 \small{(0.17)} & 1393.5 & 0.2026 & -0.107 & -0.41 \\
+Hoarding Index & 0.557 \small{(0.37)} & 0.206 \small{(0.23)} & 2425.0 & 0.0000$^{\ast\ast\ast}$ & +0.554 & +1.14 \\
+Gather Rate & 0.823 \small{(0.25)} & 0.662 \small{(0.28)} & 2210.5 & 0.0001$^{\ast\ast\ast}$ & +0.417 & +0.60 \\
+Cooperation Rate & 0.116 \small{(0.16)} & 0.158 \small{(0.15)} & 1215.0 & 0.0354$^{\ast}$ & -0.221 & -0.28 \\
+Deception Rate & 0.058 \small{(0.24)} & 0.000 \small{(0.00)} & 1650.0 & 0.0619$^{†}$ & +0.058 & +0.35 \\
+Total Water Shared & 3.750 \small{(7.02)} & 5.633 \small{(8.28)} & 1188.0 & 0.0232$^{\ast}$ & -0.238 & -0.25 \\
+Society Gini Coefficient & 0.256 \small{(0.14)} & 0.108 \small{(0.16)} & 2400.5 & 0.0000$^{\ast\ast\ast}$ & +0.539 & +1.01 \\
+Society Survival Rate & 0.891 \small{(0.30)} & 0.833 \small{(0.38)} & 1595.0 & 0.7522 & +0.022 & +0.17 \\
+Focal Survival & 0.885 \small{(0.32)} & 0.717 \small{(0.45)} & 1822.0 & 0.0292$^{\ast}$ & +0.168 & +0.43 \\
+Alliance Count & 0.327 \small{(0.68)} & 2.150 \small{(3.18)} & 961.0 & 0.0001$^{\ast\ast\ast}$ & -0.384 & -0.79 \\
+Decision Latency (ms) & 1040.777 \small{(1370.64)} & 0.000 \small{(0.00)} & 2880.0 & 0.0000$^{\ast\ast\ast}$ & +0.846 & +1.07 \\
 \bottomrule
 \multicolumn{7}{l}{\footnotesize{$^\ast p < 0.05$, $^{\ast\ast} p < 0.01$, $^{\ast\ast\ast} p < 0.001$. Two-sided Mann-Whitney $U$ test.}}
 \end{tabular}

@@ -1,0 +1,107 @@
+diff --git a/agents/environment.py b/agents/environment.py
+index 0aa84e4..36b8b53 100644
+--- a/agents/environment.py
++++ b/agents/environment.py
+@@ -248,10 +248,22 @@ class ScarcityEnv:
+             target_agent: str | None = None
+             message_sent: str | None = None
+ 
++            claim_meta: dict | None = None
+             if action.type in (ActionType.SHARE, ActionType.COMMUNICATE):
+                 target_agent = action.target
+                 if action.message is not None:
+                     message_sent = action.message.surface
++                    # Thread the structured claim through so deception is detectable downstream
++                    # (analysis.feature_extraction compares meta.claim.value against
++                    # resource_before). Previously only human_interface/app.py built this dict
++                    # itself for the human focal row; AI-only trials (smoke_random.py,
++                    # hybrid_trial.py) never got a claim at all, so a co-player's StrategicDeceiver
++                    # claims were invisible to every downstream analysis script.
++                    if action.message.kind is not None and action.message.kind.value != "none":
++                        claim_meta = {
++                            "kind": action.message.kind.value,
++                            "value": action.message.value,
++                        }
+ 
+             # HOARD, MOVE, SKIP and GATHER (already applied in pass 1) take no further effect here.
+             # HOARD and MOVE are currently no-ops distinct only in label — see ACTIONS.md rows for
+@@ -262,19 +274,23 @@ class ScarcityEnv:
+             state.last_action = action.type
+             state.last_action_target = target_agent
+ 
+-            log_rows.append(
+-                {
+-                    "agent_id": pid,
+-                    "round": self.round,
+-                    "scenario": self.scenario,
+-                    "action_type": action.type.value,
+-                    "target_agent": target_agent,
+-                    "message_sent": message_sent,
+-                    "resource_before": resource_before[pid],
+-                    "resource_after": state.resource,
+-                    "alive": state.alive,
+-                }
+-            )
++            row = {
++                "agent_id": pid,
++                "round": self.round,
++                "scenario": self.scenario,
++                "action_type": action.type.value,
++                "target_agent": target_agent,
++                "message_sent": message_sent,
++                "resource_before": resource_before[pid],
++                "resource_after": state.resource,
++                "alive": state.alive,
++            }
++            if claim_meta is not None:
++                # Callers (smoke_random.py, hybrid_trial.py) build row["meta"] themselves after
++                # env.step() returns, so stash this under a throwaway key here and have them fold
++                # it into meta.claim rather than env.step() owning the meta dict's shape.
++                row["_claim"] = claim_meta
++            log_rows.append(row)
+ 
+         done = self.round >= self.total_rounds or all(not s.alive for s in self.players.values())
+         if not done:
+diff --git a/agents/hybrid_trial.py b/agents/hybrid_trial.py
+index a546f7e..0b0477a 100644
+--- a/agents/hybrid_trial.py
++++ b/agents/hybrid_trial.py
+@@ -87,6 +87,7 @@ def run_trial(
+             row["trial_id"] = trial_id
+             row["source"] = "ai"
+             row["timestamp"] = timestamp
++            claim = row.pop("_claim", None)
+             row["meta"] = {
+                 "seed": seed,
+                 "arm": arm,
+@@ -98,6 +99,10 @@ def run_trial(
+                 "llm_rate_limited": m.get("llm_rate_limited", False),
+                 "prompt_tokens": m.get("prompt_tokens"),
+                 "completion_tokens": m.get("completion_tokens"),
++                # Previously dropped: StrategicDeceiver's (and the focal agent's own) claims never
++                # reached meta, so analysis.feature_extraction's deception detector had nothing to
++                # compare against resource_before for any AI-only trial.
++                "claim": claim,
+             }
+             rows.append(row)
+ 
+diff --git a/agents/smoke_random.py b/agents/smoke_random.py
+index d1b917e..ce36e9e 100644
+--- a/agents/smoke_random.py
++++ b/agents/smoke_random.py
+@@ -51,7 +51,14 @@ def run_trial(scenario: str, seed: int, policy_name: str, trial_index: int = 0)
+             row["trial_id"] = trial_id
+             row["source"] = "ai"
+             row["timestamp"] = timestamp
+-            row["meta"] = {"seed": seed, "arm": "scripted", "policy": policy_name, "severity": None}
++            claim = row.pop("_claim", None)
++            row["meta"] = {
++                "seed": seed,
++                "arm": "scripted",
++                "policy": policy_name,
++                "severity": None,
++                "claim": claim,
++            }
+             rows.append(row)
+ 
+     return rows

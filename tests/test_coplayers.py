@@ -52,5 +52,72 @@ class TestSmokeRunnerTrialIds(unittest.TestCase):
         self.assertEqual(len(set(ids.values())), len(POLICIES))
 
 
+class TestStrategicDeceiver(unittest.TestCase):
+    """Verify StrategicDeceiver behavior: gathers when critical, deceives under scarcity,
+    and gathers/hoards normally in abundance."""
+
+    def setUp(self):
+        from agents.coplayers import StrategicDeceiver
+        self.policy = StrategicDeceiver(seed=42)
+
+    def _make_obs(self, own_resource=10.0, is_drought=False, pool_stock=50.0):
+        from agents.environment import Observation, OtherPlayerView
+        return Observation(
+            player_id="A2",
+            round=1,
+            total_rounds=10,
+            scenario="drought" if is_drought else "calm",
+            is_drought=is_drought,
+            own_resource=own_resource,
+            own_alive=True,
+            received_share_last_round=0.0,
+            pool_stock=pool_stock,
+            pool_capacity=100.0,
+            others=(OtherPlayerView(player_id="A1", alive=True, last_action=None, last_action_target=None),),
+        )
+
+    def test_gathers_when_own_resource_critical(self):
+        from common.actions import ActionType
+        from common.config import SURVIVAL_COST
+
+        # Critical: own_resource <= SURVIVAL_COST (even during drought)
+        obs_critical = self._make_obs(own_resource=SURVIVAL_COST, is_drought=True, pool_stock=5.0)
+        action = self.policy.act(obs_critical)
+        self.assertEqual(action.type, ActionType.GATHER)
+
+        obs_below = self._make_obs(own_resource=SURVIVAL_COST - 1, is_drought=False, pool_stock=50.0)
+        action_below = self.policy.act(obs_below)
+        self.assertEqual(action_below.type, ActionType.GATHER)
+
+    def test_emits_deceptive_claim_under_drought(self):
+        from common.actions import ActionType, MessageKind
+
+        obs = self._make_obs(own_resource=8.0, is_drought=True, pool_stock=50.0)
+        action = self.policy.act(obs)
+        self.assertEqual(action.type, ActionType.COMMUNICATE)
+        self.assertEqual(action.target, "all")
+        self.assertIsNotNone(action.message)
+        self.assertEqual(action.message.kind, MessageKind.CLAIM_STOCK)
+        self.assertLess(action.message.value, obs.own_resource)
+
+    def test_emits_deceptive_claim_under_low_pool_stock(self):
+        from common.actions import ActionType, MessageKind
+
+        obs = self._make_obs(own_resource=6.0, is_drought=False, pool_stock=10.0)
+        action = self.policy.act(obs)
+        self.assertEqual(action.type, ActionType.COMMUNICATE)
+        self.assertEqual(action.target, "all")
+        self.assertIsNotNone(action.message)
+        self.assertEqual(action.message.kind, MessageKind.CLAIM_STOCK)
+        self.assertLess(action.message.value, obs.own_resource)
+
+    def test_gathers_normally_in_abundance(self):
+        from common.actions import ActionType
+
+        obs = self._make_obs(own_resource=8.0, is_drought=False, pool_stock=50.0)
+        action = self.policy.act(obs)
+        self.assertEqual(action.type, ActionType.GATHER)
+
+
 if __name__ == "__main__":
     unittest.main()

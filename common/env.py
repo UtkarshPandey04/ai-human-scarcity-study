@@ -37,6 +37,9 @@ def load_dotenv(path: str = ".env") -> None:
             for sec_key, sec_val in st.secrets.items():
                 if isinstance(sec_val, str) and sec_val:
                     os.environ.setdefault(sec_key, sec_val)
+                elif isinstance(sec_val, (list, tuple)):
+                    os.environ.setdefault(sec_key, ",".join(str(x).strip() for x in sec_val if str(x).strip()))
     except Exception:
         pass
+
 

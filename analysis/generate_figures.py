@@ -67,7 +67,10 @@ def plot_fig1_behavioral_comparison(df: pd.DataFrame):
         for sc in scenarios:
             sub = df[df["scenario"] == sc]
             h_sub = sub[sub["source"] == "human"][m_col].dropna()
-            a_sub = sub[(sub["source"] == "ai") & (sub["arm"] != "llm_human_steered")][m_col].dropna()
+            ai_cond = (sub["source"] == "ai") & (~sub["arm"].isin(["llm_human_steered", "scripted"]))
+            if "pilot" in sub.columns:
+                ai_cond = ai_cond & ((sub["pilot"].isna()) | (sub["pilot"] == 0) | (sub["pilot"] == False))
+            a_sub = sub[ai_cond][m_col].dropna()
 
             h_means.append(h_sub.mean() if len(h_sub) > 0 else 0)
             h_stds.append(h_sub.std() if len(h_sub) > 1 else 0)
@@ -250,7 +253,10 @@ def plot_fig5_survival_curves(df: pd.DataFrame):
     for sc in scenarios:
         sub = df[df["scenario"] == sc]
         h_sub = sub[sub["source"] == "human"]
-        a_sub = sub[(sub["source"] == "ai") & (sub["arm"] != "llm_human_steered")]
+        ai_cond = (sub["source"] == "ai") & (~sub["arm"].isin(["llm_human_steered", "scripted"]))
+        if "pilot" in sub.columns:
+            ai_cond = ai_cond & ((sub["pilot"].isna()) | (sub["pilot"] == 0) | (sub["pilot"] == False))
+        a_sub = sub[ai_cond]
 
         h_surv.append(h_sub["survived"].mean() * 100 if len(h_sub) > 0 else 0)
         a_surv.append(a_sub["survived"].mean() * 100 if len(a_sub) > 0 else 0)

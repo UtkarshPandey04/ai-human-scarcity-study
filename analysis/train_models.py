@@ -84,10 +84,13 @@ def train_distinguishability_classifier(db_path: str = DEFAULT_DB_PATH) -> dict[
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
         cols = ", ".join(FEATURE_COLUMNS)
-        # Filter to human vs unsteered AI trials; llm_human_steered must never be pooled with llm_only
+        # Filter to human vs unsteered AI trials; exclude llm_human_steered and pilot trials
+        cursor.execute("PRAGMA table_info(trial_features)")
+        col_names = [col_row["name"] for col_row in cursor.fetchall()]
+        pilot_clause = " AND (pilot IS NULL OR pilot = 0)" if "pilot" in col_names else ""
         cursor.execute(
             f"SELECT source, {cols} FROM trial_features "
-            f"WHERE source IN ('human', 'ai') AND (arm IS NULL OR arm != 'llm_human_steered')"
+            f"WHERE source IN ('human', 'ai') AND (arm IS NULL OR arm != 'llm_human_steered'){pilot_clause}"
         )
         rows = cursor.fetchall()
 

@@ -77,30 +77,70 @@ class ChatMessage:
     content: str
 
 
-DEFAULT_PROVIDER = os.environ.get("LLM_PROVIDER", "groq")
+def _get_env_or_secret(key: str, default: str = "") -> str:
+    """Retrieve configuration from os.environ first, falling back to streamlit.secrets if running in Streamlit."""
+    val = os.environ.get(key)
+    if val:
+        return str(val).strip()
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and key in st.secrets:
+            sec_val = st.secrets[key]
+            if isinstance(sec_val, str) and sec_val:
+                return sec_val.strip()
+            if isinstance(sec_val, (list, tuple)):
+                return ",".join(str(x).strip() for x in sec_val if str(x).strip())
+    except Exception:
+        pass
+    return default
+
+
+DEFAULT_PROVIDER = _get_env_or_secret("LLM_PROVIDER", "heterogeneous")
 # Verified against this project's live keys on 2026-09-10 — both `llama-3.3-70b-versatile`
 # (Groq) and `gemini-2.5-flash` (Gemini) had been deprecated/retired since this file's original
 # knowledge cutoff. Re-verify with `client.models.list()` (Groq) if this ever 404s again — model
 # names go stale faster than code does; see the module docstring.
-DEFAULT_GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
-GROQ_MAX_RETRIES = int(os.environ.get("GROQ_MAX_RETRIES", "6"))
-DEFAULT_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-DEFAULT_OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
-DEFAULT_OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-DEFAULT_OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
+DEFAULT_GROQ_MODEL = _get_env_or_secret("GROQ_MODEL", "openai/gpt-oss-20b")
+GROQ_MAX_RETRIES = int(_get_env_or_secret("GROQ_MAX_RETRIES", "6"))
+DEFAULT_GEMINI_MODEL = _get_env_or_secret("GEMINI_MODEL", "gemini-3.6-flash")
+DEFAULT_OLLAMA_MODEL = _get_env_or_secret("OLLAMA_MODEL", "llama3.2")
+DEFAULT_OLLAMA_BASE_URL = _get_env_or_secret("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+DEFAULT_OPENROUTER_MODEL = _get_env_or_secret("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
 
 _groq_key_idx = 0
 _gemini_key_idx = 0
+_openrouter_key_idx = 0
+_heterogeneous_call_idx = 0
 
 
 def get_groq_api_keys() -> list[str]:
-    raw = os.environ.get("GROQ_API_KEYS") or os.environ.get("GROQ_API_KEY") or ""
+    raw = _get_env_or_secret("GROQ_API_KEYS") or _get_env_or_secret("GROQ_API_KEY")
     return [k.strip() for k in raw.split(",") if k.strip()]
 
 
 def get_gemini_api_keys() -> list[str]:
-    raw = os.environ.get("GEMINI_API_KEYS") or os.environ.get("GEMINI_API_KEY") or ""
+    raw = _get_env_or_secret("GEMINI_API_KEYS") or _get_env_or_secret("GEMINI_API_KEY")
     return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def get_openrouter_api_keys() -> list[str]:
+    raw = _get_env_or_secret("OPENROUTER_API_KEYS") or _get_env_or_secret("OPENROUTER_API_KEY")
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def get_available_providers() -> list[str]:
+    """Return available providers in priority order (favoring healthy providers) for load-balancing."""
+    avail = []
+    if get_groq_api_keys():
+        avail.append("groq")
+    if get_openrouter_api_keys():
+        avail.append("openrouter")
+    if get_gemini_api_keys():
+        avail.append("gemini")
+    if is_ollama_available():
+        avail.append("ollama")
+    return avail or ["groq"]
+
 
 
 def _schema_instruction(schema: dict | None) -> str | None:
@@ -315,20 +355,38 @@ def _complete_ollama(
 def _complete_openrouter(
     messages: list[ChatMessage], schema: dict | None, model: str | None, temperature: float, usage: dict | None
 ) -> dict:
-    key = os.environ.get("OPENROUTER_API_KEY")
-    if not key:
+    keys = get_openrouter_api_keys()
+    if not keys:
         raise LLMCompletionError("OPENROUTER_API_KEY is not set")
-    return _complete_openai_compatible(
-        messages,
-        schema,
-        model,
-        temperature,
-        usage,
-        api_key=key,
-        base_url="https://openrouter.ai/api/v1",
-        default_model=DEFAULT_OPENROUTER_MODEL,
-        provider_name="openrouter",
-    )
+
+    global _openrouter_key_idx
+    last_rate_limit = None
+    for attempt in range(len(keys)):
+        curr_key = keys[(_openrouter_key_idx + attempt) % len(keys)]
+        try:
+            res = _complete_openai_compatible(
+                messages,
+                schema,
+                model,
+                temperature,
+                usage,
+                api_key=curr_key,
+                base_url="https://openrouter.ai/api/v1",
+                default_model=DEFAULT_OPENROUTER_MODEL,
+                provider_name="openrouter",
+            )
+            _openrouter_key_idx = (_openrouter_key_idx + attempt + 1) % len(keys)
+            return res
+        except LLMRateLimitError as exc:
+            last_rate_limit = exc
+            continue
+        except Exception:
+            raise
+
+    if last_rate_limit:
+        raise LLMRateLimitError(f"openrouter rate limit across all {len(keys)} key(s): {last_rate_limit}") from last_rate_limit
+    raise LLMCompletionError("openrouter request failed on all configured keys")
+
 
 
 PROVIDERS = {
@@ -490,10 +548,10 @@ def clear_completion_cache() -> None:
 
 
 FALLBACK_CHAINS = {
-    "groq": ["gemini", "openrouter", "ollama"],
-    "gemini": ["groq", "openrouter", "ollama"],
+    "groq": ["openrouter", "gemini", "ollama"],
+    "gemini": ["openrouter", "groq", "ollama"],
     "openrouter": ["groq", "gemini", "ollama"],
-    "ollama": ["groq", "gemini", "openrouter"],
+    "ollama": ["openrouter", "groq", "gemini"],
 }
 
 
@@ -507,9 +565,15 @@ def complete(
     usage: dict | None = None,
 ) -> dict:
     """The one entry point agents/llm_reasoning.py should ever call.
-    Includes in-memory cache and resilient multi-tier fallback (Groq -> Gemini -> OpenRouter -> Ollama).
+    Includes in-memory cache and resilient multi-tier fallback (Groq -> OpenRouter -> Gemini -> Ollama).
     """
-    target_provider = provider or DEFAULT_PROVIDER
+    target_provider = provider or _get_env_or_secret("LLM_PROVIDER", DEFAULT_PROVIDER)
+    if target_provider in ("heterogeneous", "auto"):
+        global _heterogeneous_call_idx
+        avail = get_available_providers()
+        target_provider = avail[_heterogeneous_call_idx % len(avail)]
+        _heterogeneous_call_idx += 1
+
     if target_provider not in PROVIDERS:
         raise ValueError(f"unknown provider {target_provider!r}, must be one of {sorted(PROVIDERS)}")
 
@@ -554,18 +618,19 @@ def complete(
         is_rl = isinstance(exc, LLMRateLimitError)
         record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=is_rl)
         
-        # Multi-tier fallback chain: try alternative providers down to zero-cost Ollama fallback
-        candidates = FALLBACK_CHAINS.get(target_provider, ["groq", "gemini", "openrouter", "ollama"])
+        # Multi-tier fallback chain: try alternative providers favoring healthy ones down to zero-cost Ollama
+        candidates = FALLBACK_CHAINS.get(target_provider, ["groq", "openrouter", "gemini", "ollama"])
         for fallback in candidates:
             if fallback in PROVIDERS and fallback != target_provider:
+                if fallback == "openrouter" and not get_openrouter_api_keys():
+                    continue
                 if fallback == "gemini" and not get_gemini_api_keys():
                     continue
                 if fallback == "groq" and not get_groq_api_keys():
                     continue
-                if fallback == "openrouter" and not os.environ.get("OPENROUTER_API_KEY"):
-                    continue
                 if fallback == "ollama" and not is_ollama_available():
                     continue
+
                 fb_start = time.time()
                 try:
                     res = PROVIDERS[fallback](messages, schema, None, temperature, call_usage)

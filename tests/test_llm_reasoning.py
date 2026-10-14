@@ -144,7 +144,19 @@ class TestDecideRetryLogic(unittest.TestCase):
         self.assertTrue(meta["llm_parse_failure"])
         self.assertTrue(meta["llm_rate_limited"])
 
+    def test_rate_limit_falls_back_to_scripted_when_flag_set(self):
+        """Live human-facing sessions must fall back to a nearest scripted policy (TitForTat/Cooperator)
+        rather than skipping turn, while still recording llm_rate_limited=True for uncompromised analysis."""
+        with patch("agents.llm_reasoning.complete", side_effect=LLMRateLimitError("quota exceeded")):
+            action, meta = decide(_make_observation(), fallback_to_scripted=True)
+        # Action must not be bare SKIP — it should be an active action (GATHER/SHARE from TitForTat)
+        self.assertNotEqual(action.type, ActionType.SKIP)
+        self.assertTrue(meta["llm_parse_failure"])
+        self.assertTrue(meta["llm_rate_limited"])
+        self.assertTrue(meta.get("llm_fallback_to_scripted"))
+
     def test_success_meta_explicitly_marks_not_rate_limited(self):
+
         with patch("agents.llm_reasoning.complete", return_value={"action_type": "gather"}):
             _, meta = decide(_make_observation())
         self.assertFalse(meta["llm_rate_limited"])

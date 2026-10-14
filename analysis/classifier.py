@@ -165,10 +165,13 @@ def evaluate_dose_response_distinguishability(
     ]
 
     for name, sub in subsets:
-        clean_sub = sub[
+        filter_cond = (
             sub["source"].isin(["human", "ai"]) &
             (sub["arm"] != "llm_human_steered")
-        ].copy()
+        )
+        if "pilot" in sub.columns:
+            filter_cond = filter_cond & ((sub["pilot"].isna()) | (sub["pilot"] == 0) | (sub["pilot"] == False))
+        clean_sub = sub[filter_cond].copy()
 
         # Check features exist
         cols = [c for c in feature_names if c in clean_sub.columns]
@@ -217,10 +220,13 @@ def main():
     print(f"Loaded {len(df)} trials for Distinguishability Classifier.")
 
     # 1. Overall Evaluation
-    valid_df = df[
+    filter_cond = (
         df["source"].isin(["human", "ai"]) &
         (df["arm"] != "llm_human_steered")
-    ].copy()
+    )
+    if "pilot" in df.columns:
+        filter_cond = filter_cond & ((df["pilot"].isna()) | (df["pilot"] == 0) | (df["pilot"] == False))
+    valid_df = df[filter_cond].copy()
 
     cols = [c for c in FEATURE_COLUMNS if c in valid_df.columns]
     X = valid_df[cols].fillna(0.0).values

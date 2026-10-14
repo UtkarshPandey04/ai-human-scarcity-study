@@ -171,6 +171,8 @@ def extract_trial_features(rows: list[dict[str, Any]], focal_id: str | None = No
         "seed": seed,
         "severity": severity if severity is not None else 0.0,
         "focal_id": focal_id,
+        "pilot": 1 if bool(meta.get("pilot", False)) else 0,
+        "policy": meta.get("policy"),
         "rounds_survived": rounds_survived,
         "survived": 1 if final_alive else 0,
         "final_resource": final_resource,

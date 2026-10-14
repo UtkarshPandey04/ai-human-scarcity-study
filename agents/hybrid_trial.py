@@ -130,6 +130,7 @@ def run_trial(
 
         obs, done, log_rows = env.step(actions)
         for row in log_rows:
+            claim = row.pop("_claim", None)
             m = decision_meta.get(row["agent_id"], {})
             row["trial_id"] = trial_id
             row["source"] = "ai"
@@ -140,6 +141,7 @@ def run_trial(
                 "coplayer_mode": coplayer_mode,
                 "severity": severity,
                 "decision_source": m.get("decision_source"),
+                "claim": claim,
             }
             if row["agent_id"] == focal_id:
                 row_meta.update(
@@ -153,20 +155,6 @@ def run_trial(
                 )
             else:
                 row_meta["policy"] = m.get("policy")
-
-            action_obj = actions.get(row["agent_id"])
-            if (
-                action_obj
-                and action_obj.message
-                and action_obj.message.kind
-                and action_obj.message.kind != MessageKind.NONE
-            ):
-                row_meta["claim"] = {
-                    "kind": action_obj.message.kind.value,
-                    "value": action_obj.message.value,
-                    "target": action_obj.message.target,
-                    "surface": action_obj.message.surface,
-                }
 
             row["meta"] = row_meta
             rows.append(row)

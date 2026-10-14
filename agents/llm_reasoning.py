@@ -161,34 +161,40 @@ def _parse_action(data: dict) -> Action:
 from agents.human_exemplars import format_exemplars_prompt, query_human_exemplars
 
 
+_reasoning_rr_idx = 0
+
+
 def get_agent_provider(player_id: str | None = None, requested: str | None = None) -> str | None:
     """Resolve which provider should serve an agent to balance load and prevent free-tier 429s.
     If requested is explicitly specified (e.g. 'groq' or 'gemini'), respects it.
     If requested is None, 'auto', or 'heterogeneous':
-      - Detects available providers from environment variables.
-      - If multiple providers are available, distributes players across them:
-        e.g. A1 -> groq, A2 -> gemini, A3 -> groq, A4 -> gemini, A5 -> groq.
+      - Detects available providers from environment variables and key getters.
+      - Distributes players across available healthy providers:
+        e.g. A1 -> groq, A2 -> openrouter, A3 -> gemini, A4 -> ollama, A5 -> groq.
     """
     if requested and requested not in ("auto", "heterogeneous"):
         return requested
 
-    has_groq = bool(os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEYS"))
-    has_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEYS"))
-    has_ollama = bool(os.environ.get("OLLAMA_MODEL") or os.environ.get("OLLAMA_BASE_URL") or os.environ.get("USE_OLLAMA"))
-    has_openrouter = bool(os.environ.get("OPENROUTER_API_KEY"))
+    from agents.llm_client import (
+        get_available_providers,
+        get_gemini_api_keys,
+        get_groq_api_keys,
+        get_openrouter_api_keys,
+        is_ollama_available,
+    )
 
     available = []
-    if has_groq:
+    if get_groq_api_keys():
         available.append("groq")
-    if has_gemini:
-        available.append("gemini")
-    if has_openrouter:
+    if get_openrouter_api_keys():
         available.append("openrouter")
-    if has_ollama:
+    if get_gemini_api_keys():
+        available.append("gemini")
+    if is_ollama_available():
         available.append("ollama")
 
     if not available:
-        return requested or os.environ.get("LLM_PROVIDER", "groq")
+        return requested or os.environ.get("LLM_PROVIDER", "heterogeneous")
 
     env_prov = os.environ.get("LLM_PROVIDER", "").lower()
     # If environment explicitly pinned a single provider (and not heterogeneous/auto)
@@ -203,7 +209,10 @@ def get_agent_provider(player_id: str | None = None, requested: str | None = Non
             idx = int(match.group()) - 1
             return available[idx % len(available)]
 
-    return available[0]
+    global _reasoning_rr_idx
+    selected = available[_reasoning_rr_idx % len(available)]
+    _reasoning_rr_idx += 1
+    return selected
 
 
 def decide(
@@ -213,10 +222,11 @@ def decide(
     model: str | None = None,
     use_human_exemplars: bool | None = None,
     n_exemplars: int = 2,
+    fallback_to_scripted: bool = False,
 ) -> tuple[Action, dict]:
     """Decide one action for `obs`'s player. Never raises — on repeated failure it returns a
-    `skip` action and flags `llm_parse_failure` in the returned meta dict, per
-    agents/PHASE_PLAN.md Phase E ("parse failures are data, not crashes").
+    `skip` action (or falls back to a nearest scripted policy in live human-facing sessions if
+    `fallback_to_scripted` is True) and flags `llm_parse_failure` in the returned meta dict.
 
     If `use_human_exemplars` is True (or env LLM_USE_HUMAN_EXEMPLARS=1), dynamically retrieves
     actual human play trajectories from data/scarcity_study.db to condition the LLM via
@@ -228,14 +238,12 @@ def decide(
     tracking, so cost is counted even for attempts that failed our own validation.
 
     On failure, meta also carries `llm_rate_limited` (bool) — kept **separate** from
-    `llm_parse_failure`. Caught live: a Gemini free-tier quota of 20 requests/day produced a batch
-    of failures that, viewed only through `llm_parse_failure`, looked exactly like the model
-    producing bad output 69% of the time. It wasn't a model-quality issue at all — it was this
-    project's quota headroom. Any parse-failure-rate figure that goes in the paper must filter out
-    `llm_rate_limited` rows, or it's reporting infrastructure noise as a finding about the model.
+    `llm_parse_failure`.
     """
     if use_human_exemplars is None:
         use_human_exemplars = os.environ.get("LLM_USE_HUMAN_EXEMPLARS", "0").lower() in ("1", "true", "yes")
+
+    should_fallback = fallback_to_scripted or os.environ.get("LLM_FALLBACK_TO_SCRIPTED", "0").lower() in ("1", "true", "yes")
 
     target_provider = get_agent_provider(getattr(obs, "player_id", None), provider)
     obs_prompt = render_observation(obs)
@@ -287,6 +295,25 @@ def decide(
             last_error = f"{exc.__class__.__name__}: {exc}"
             last_error_was_rate_limit = False
 
+    # Live human-facing fallback: if rate-limited during a human session, fall back to nearest
+    # scripted policy (TitForTat/Cooperator) so game experience doesn't stall, while preserving
+    # llm_rate_limited=True in meta for uncompromised analysis.
+    if last_error_was_rate_limit and should_fallback:
+        from agents.coplayers import TitForTat
+        seed_offset = int(obs.player_id[-1]) if (obs.player_id and obs.player_id[-1].isdigit()) else 0
+        fallback_policy = TitForTat(seed=obs.round + seed_offset)
+        fallback_action = fallback_policy.act(obs)
+        return fallback_action, {
+            "llm_parse_failure": True,
+            "llm_rate_limited": True,
+            "llm_fallback_to_scripted": True,
+            "parse_attempts": 2,
+            "parse_error": last_error,
+            "use_human_exemplars": bool(use_human_exemplars),
+            "exemplars_count": exemplars_count,
+            **usage,
+        }
+
     return Action(type=ActionType.SKIP), {
         "llm_parse_failure": True,
         "llm_rate_limited": last_error_was_rate_limit,
@@ -296,3 +323,4 @@ def decide(
         "exemplars_count": exemplars_count,
         **usage,
     }
+

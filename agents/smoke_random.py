@@ -51,7 +51,14 @@ def run_trial(scenario: str, seed: int, policy_name: str, trial_index: int = 0) 
             row["trial_id"] = trial_id
             row["source"] = "ai"
             row["timestamp"] = timestamp
-            row["meta"] = {"seed": seed, "arm": "scripted", "policy": policy_name, "severity": None}
+            claim = row.pop("_claim", None)
+            row["meta"] = {
+                "seed": seed,
+                "arm": "scripted",
+                "policy": policy_name,
+                "severity": None,
+                "claim": claim,
+            }
             rows.append(row)
 
     return rows

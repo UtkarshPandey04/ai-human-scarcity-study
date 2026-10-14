@@ -59,7 +59,22 @@ DEFAULT_SEVERITIES = (0.0, 0.3, 0.5, 0.7, 0.9)
 DEFAULT_ABLATION_SEVERITIES = (0.0, 0.7)
 DEFAULT_ABLATION_ARMS = ("rl_only", "llm_only")
 DEFAULT_COPLAYER_MODES = ("standard", "deceptive", "llm_ecology")
-RATE_LIMIT_STOP_AFTER = 3  # consecutive rate-limited trials before the campaign stops submitting
+RATE_LIMIT_STOP_AFTER = 10  # default consecutive rate-limited trials before the campaign stops submitting
+
+
+def get_configured_key_count(provider: str | None = None) -> int:
+    """Count the number of configured API keys for the given provider (or across all available if heterogeneous)."""
+    from agents.llm_client import get_gemini_api_keys, get_groq_api_keys, get_openrouter_api_keys
+    p = (provider or os.environ.get("LLM_PROVIDER", "heterogeneous")).lower()
+    if p == "groq":
+        return max(1, len(get_groq_api_keys()))
+    if p == "gemini":
+        return max(1, len(get_gemini_api_keys()))
+    if p == "openrouter":
+        return max(1, len(get_openrouter_api_keys()))
+    # For heterogeneous, auto, or unconstrained: sum pool across active providers
+    total = len(get_groq_api_keys()) + len(get_openrouter_api_keys()) + len(get_gemini_api_keys())
+    return max(1, total)
 
 
 class ThreadSafeRLModel:
@@ -78,14 +93,16 @@ class ThreadSafeRLModel:
 
 
 class RateLimiter:
-    """Fixed-interval throttle shared across the worker pool. Simpler than a token bucket — this
-    project doesn't need burst allowance, just a hard ceiling on calls/second so a free-tier quota
-    (e.g. Gemini's, see PHASE_PLAN.md Phase F) can't be blown through by concurrent workers."""
+    """Fixed-interval throttle shared across the worker pool.
+    The budget scales proportionally with the number of configured keys in the key pool,
+    so adding teammates' keys safely increases overall throughput without bursting single-key quotas."""
 
-    def __init__(self, calls_per_second: float):
-        self._min_interval = 1.0 / calls_per_second if calls_per_second > 0 else 0.0
+    def __init__(self, calls_per_second: float, num_keys: int = 1):
+        effective_rate = calls_per_second * max(1, num_keys)
+        self._min_interval = 1.0 / effective_rate if effective_rate > 0 else 0.0
         self._lock = threading.Lock()
         self._next_allowed = 0.0
+        self.effective_rate = effective_rate
 
     def acquire(self) -> None:
         if self._min_interval <= 0:
@@ -97,6 +114,7 @@ class RateLimiter:
                 time.sleep(wait)
                 now = time.monotonic()
             self._next_allowed = now + self._min_interval
+
 
 
 def build_grid(
@@ -263,6 +281,7 @@ def run_campaign(
     rl_model,
     workers: int,
     limit: int | None,
+    rate_limit_stop_after: int = RATE_LIMIT_STOP_AFTER,
 ) -> dict:
     pending = [
         s
@@ -341,10 +360,11 @@ def run_campaign(
             with counts_lock:
                 if status == "rate_limited":
                     consecutive_rate_limited[0] += 1
-                    if consecutive_rate_limited[0] >= RATE_LIMIT_STOP_AFTER:
+                    if consecutive_rate_limited[0] >= rate_limit_stop_after:
                         quota_exhausted.set()
                 else:
                     consecutive_rate_limited[0] = 0
+
             manifest.record(
                 {
                     "trial_id": trial_id,
@@ -457,7 +477,18 @@ def _main() -> int:
         help='seeds paired with human sessions, e.g. "0-29" (default: common.config.MATCHED_SEEDS)',
     )
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--rate-limit", type=float, default=2.0, help="max LLM calls/second, 0 = unthrottled")
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=1.0,
+        help="max LLM calls/second per key, 0 = unthrottled (default: 1.0)",
+    )
+    parser.add_argument(
+        "--rate-limit-stop-after",
+        type=int,
+        default=RATE_LIMIT_STOP_AFTER,
+        help=f"consecutive rate-limited trials before circuit breaker halts campaign (default: {RATE_LIMIT_STOP_AFTER})",
+    )
     parser.add_argument("--rl-model-path", default=None, help="defaults to agents.rl_policy.DEFAULT_MODEL_PATH")
     parser.add_argument("--limit", type=int, default=None, help="run at most this many pending trials")
     parser.add_argument("--dry-run", action="store_true", help="print the planned grid and exit; no runs")
@@ -511,8 +542,10 @@ def _main() -> int:
     if args.rate_limit > 0:
         from agents import llm_client
 
-        limiter = RateLimiter(args.rate_limit)
+        num_keys = get_configured_key_count(args.primary_provider)
+        limiter = RateLimiter(args.rate_limit, num_keys=num_keys)
         llm_client.set_rate_limiter(limiter.acquire)
+        print(f"RateLimiter active: {args.rate_limit} calls/sec/key across {num_keys} key(s) (effective {limiter.effective_rate:.2f} calls/sec)")
 
     run_metadata = {
         "git_sha": _git_sha(),
@@ -524,7 +557,15 @@ def _main() -> int:
     }
     manifest = Manifest(MANIFEST_PATH, run_metadata)
 
-    counts = run_campaign(specs, manifest, rl_model, workers=args.workers, limit=args.limit)
+    counts = run_campaign(
+        specs,
+        manifest,
+        rl_model,
+        workers=args.workers,
+        limit=args.limit,
+        rate_limit_stop_after=args.rate_limit_stop_after,
+    )
+
 
     print(
         f"Done. ok={counts['ok']} failed={counts['failed']} rate_limited={counts['rate_limited']} "

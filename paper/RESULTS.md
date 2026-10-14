@@ -15,6 +15,9 @@ To empirically answer whether autonomous AI agents diverge from human behavior u
 
 All trials followed **focal-player substitution** (holding co-players $A_2$–$A_5$ fixed across identical random seeds while substituting only the focal seat $A_1$ between human participants and AI agents). In total, **84 trials** containing **5,320 individual decision events** were logged, verified against all game invariants with a 100% QA pass rate, and synchronized to the relational research database.
 
+> **Methodological Note on Agent Policy Attribution:**
+> The initial comparisons in this section ($N=84$ trials; 24 human vs. 60 AI) benchmark human participants against a deterministic, rule-based algorithmic baseline (`meta.arm="scripted"`). In the full campaign dataset (`ai_logs_v1`, $N=959$ trials), evaluations expand to trained reinforcement-learning agents (`rl_only`) and hybrid LLM/RL architectures across heterogeneous co-player ecologies.
+
 ---
 
 ## 2. Statistical Divergence Across Behavioral Metrics

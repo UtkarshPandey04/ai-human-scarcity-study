@@ -255,12 +255,14 @@ def reset_environment():
         seed=st.session_state.seed,
         player_ids=player_ids,
     )
-    # Instantiate co-player policies with matched deterministic seeds
+    # Instantiate co-player policies with matched deterministic seeds; enable fallback_to_scripted
+    # so live participant sessions don't stall or see teammates skip turns on transient API rate limits.
     active_policies = get_active_coplayer_policies()
     coplayers = {
-        pid: get_policy(active_policies[i], seed=st.session_state.seed + i + 1)
+        pid: get_policy(active_policies[i], seed=st.session_state.seed + i + 1, fallback_to_scripted=True)
         for i, pid in enumerate(COPLAYER_IDS)
     }
+
     obs = env.reset()
     st.session_state.env = env
     st.session_state.coplayers = coplayers

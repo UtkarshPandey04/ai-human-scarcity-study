@@ -56,6 +56,8 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
                 age_group TEXT,
                 gender TEXT,
                 ai_familiarity TEXT,
+                coplayer_mode TEXT,
+                pilot INTEGER DEFAULT 0,
                 rounds_completed INTEGER,
                 survived INTEGER,
                 final_resource REAL,
@@ -66,10 +68,17 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
             """
         )
 
-        # Migration: add demographic and coplayer_mode columns if trials table existed prior
-        for col in ["participant_name", "age_group", "gender", "ai_familiarity", "coplayer_mode"]:
+        # Migration: add demographic, coplayer_mode, and pilot columns if trials table existed prior
+        for col, col_type in [
+            ("participant_name", "TEXT"),
+            ("age_group", "TEXT"),
+            ("gender", "TEXT"),
+            ("ai_familiarity", "TEXT"),
+            ("coplayer_mode", "TEXT"),
+            ("pilot", "INTEGER DEFAULT 0"),
+        ]:
             try:
-                cursor.execute(f"ALTER TABLE trials ADD COLUMN {col} TEXT")
+                cursor.execute(f"ALTER TABLE trials ADD COLUMN {col} {col_type}")
             except sqlite3.OperationalError:
                 pass  # column already exists
 
@@ -125,10 +134,19 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
                 society_survival_rate REAL,
                 society_gini REAL,
                 alliance_count INTEGER,
+                pilot INTEGER DEFAULT 0,
+                policy TEXT,
                 FOREIGN KEY (trial_id) REFERENCES trials(trial_id)
             )
             """
         )
+
+        # Migration: add pilot and policy columns to trial_features if table existed prior
+        for col, col_type in [("pilot", "INTEGER DEFAULT 0"), ("policy", "TEXT")]:
+            try:
+                cursor.execute(f"ALTER TABLE trial_features ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass
 
         # 4. Turing Judgments table
         cursor.execute(
@@ -160,6 +178,9 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
                 t.age_group,
                 t.gender,
                 t.ai_familiarity,
+                t.coplayer_mode,
+                t.pilot,
+                f.policy,
                 t.rounds_completed,
                 t.survived,
                 t.final_resource,
@@ -246,6 +267,8 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
     p_age = demographics.get("age_group")
     p_gender = demographics.get("gender")
     p_ai_fam = demographics.get("ai_familiarity")
+    pilot = 1 if bool(meta.get("pilot", False)) else 0
+    policy = meta.get("policy")
 
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
@@ -255,15 +278,16 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
             """
             INSERT INTO trials (
                 trial_id, source, arm, scenario, seed, severity, participant_id,
-                participant_name, age_group, gender, ai_familiarity, coplayer_mode,
+                participant_name, age_group, gender, ai_familiarity, coplayer_mode, pilot,
                 rounds_completed, survived, final_resource, society_gini, alliance_count, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(trial_id) DO UPDATE SET
                 participant_name=COALESCE(excluded.participant_name, trials.participant_name),
                 age_group=COALESCE(excluded.age_group, trials.age_group),
                 gender=COALESCE(excluded.gender, trials.gender),
                 ai_familiarity=COALESCE(excluded.ai_familiarity, trials.ai_familiarity),
                 coplayer_mode=COALESCE(excluded.coplayer_mode, trials.coplayer_mode),
+                pilot=excluded.pilot,
                 rounds_completed=excluded.rounds_completed,
                 survived=excluded.survived,
                 final_resource=excluded.final_resource,
@@ -272,7 +296,7 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
             """,
             (
                 trial_id, source, arm, scenario, seed, severity, focal_id,
-                p_name, p_age, p_gender, p_ai_fam, coplayer_mode,
+                p_name, p_age, p_gender, p_ai_fam, coplayer_mode, pilot,
                 rounds_completed, final_alive, final_res, society_gini, alliances, created_at
             ),
         )
@@ -327,8 +351,8 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
                     survived, final_resource, gather_rate, share_rate, hoard_rate,
                     skip_rate, communicate_rate, total_shared, stock_claims_count,
                     deceptive_claims_count, deception_rate, mean_latency_ms,
-                    society_survival_rate, society_gini, alliance_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    society_survival_rate, society_gini, alliance_count, pilot, policy
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(trial_id) DO UPDATE SET
                     rounds_survived=excluded.rounds_survived,
                     survived=excluded.survived,
@@ -340,7 +364,9 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
                     communicate_rate=excluded.communicate_rate,
                     total_shared=excluded.total_shared,
                     deception_rate=excluded.deception_rate,
-                    society_gini=excluded.society_gini
+                    society_gini=excluded.society_gini,
+                    pilot=excluded.pilot,
+                    policy=excluded.policy
                 """,
                 (
                     trial_id, feat["source"], feat["arm"], feat["scenario"], feat["seed"],
@@ -348,7 +374,8 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
                     feat["gather_rate"], feat["share_rate"], feat["hoard_rate"], feat["skip_rate"],
                     feat["communicate_rate"], feat["total_shared"], feat["stock_claims_count"],
                     feat["deceptive_claims_count"], feat["deception_rate"], feat["mean_latency_ms"],
-                    feat["society_survival_rate"], feat["society_gini"], feat["alliance_count"]
+                    feat["society_survival_rate"], feat["society_gini"], feat["alliance_count"],
+                    pilot, policy
                 ),
             )
 
