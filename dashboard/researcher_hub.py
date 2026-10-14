@@ -364,7 +364,13 @@ def render_researcher_hub(embedded: bool = False):
             "and empirical behavioral performance across LLM models and co-player policies."
         )
 
-        from agents.llm_client import get_api_telemetry, ping_provider, get_groq_api_keys, get_gemini_api_keys
+        from agents.llm_client import (
+            get_api_telemetry,
+            reset_api_telemetry,
+            ping_provider,
+            get_groq_api_keys,
+            get_gemini_api_keys,
+        )
         telemetry = get_api_telemetry()
         groq_keys = get_groq_api_keys()
         gemini_keys = get_gemini_api_keys()
@@ -373,9 +379,14 @@ def render_researcher_hub(embedded: bool = False):
         ollama_model = os.environ.get("OLLAMA_MODEL", "llama3.2")
 
         # Top KPI Highlights & Dynamic Refresh Bar
-        top_bar_col, refresh_col = st.columns([4, 1])
+        top_bar_col, refresh_col, clear_col = st.columns([3.5, 1, 1])
         with refresh_col:
-            if st.button("🔄 Refresh Telemetry", help="Re-read live telemetry metrics from data/api_telemetry.json", use_container_width=True):
+            if st.button("🔄 Refresh", help="Re-read live telemetry metrics from data/api_telemetry.json", use_container_width=True):
+                st.rerun()
+        with clear_col:
+            if st.button("🧹 Reset Stats", help="Clear historical failure counts to start fresh live telemetry tracking", use_container_width=True):
+                reset_api_telemetry()
+                st.success("Telemetry counters reset!")
                 st.rerun()
 
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)

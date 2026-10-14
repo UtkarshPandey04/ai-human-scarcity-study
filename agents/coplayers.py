@@ -177,7 +177,12 @@ POLICIES: dict[str, type] = {
 }
 
 
-def get_policy(name: str, seed: int = 0, fallback_to_scripted: bool = False) -> CoPlayerPolicy:
+def get_policy(
+    name: str,
+    seed: int = 0,
+    fallback_to_scripted: bool = False,
+    **kwargs,
+) -> CoPlayerPolicy:
     if name in POLICIES:
         return POLICIES[name](seed=seed)
     if name == "llm_groq":

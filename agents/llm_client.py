@@ -506,6 +506,27 @@ def get_api_telemetry() -> dict:
     return _load_telemetry()
 
 
+def reset_api_telemetry() -> dict:
+    """Reset aggregate telemetry dictionary to clean baseline."""
+    empty_data = {}
+    for p in ("groq", "gemini", "openrouter", "ollama"):
+        empty_data[p] = {
+            "total_calls": 0,
+            "successful_calls": 0,
+            "rate_limited_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens": 0,
+            "total_completion_tokens": 0,
+            "total_latency_ms": 0.0,
+            "avg_latency_ms": 0.0,
+            "last_latency_ms": 0.0,
+            "last_status": "Ready",
+            "last_call_at": datetime.now(timezone.utc).isoformat(),
+        }
+    _save_telemetry(empty_data)
+    return empty_data
+
+
 def ping_provider(provider: str) -> dict:
     """Run a live round-trip test against a specific provider to measure latency and status."""
     start = time.time()

@@ -44,6 +44,12 @@ from common.config import (
     is_alive,
     is_drought,
 )
+import importlib
+import agents.coplayers
+try:
+    importlib.reload(agents.coplayers)
+except Exception:
+    pass
 from agents.coplayers import get_policy
 from agents.environment import ScarcityEnv
 from human_interface.logging_utils import (
@@ -258,10 +264,17 @@ def reset_environment():
     # Instantiate co-player policies with matched deterministic seeds; enable fallback_to_scripted
     # so live participant sessions don't stall or see teammates skip turns on transient API rate limits.
     active_policies = get_active_coplayer_policies()
-    coplayers = {
-        pid: get_policy(active_policies[i], seed=st.session_state.seed + i + 1, fallback_to_scripted=True)
-        for i, pid in enumerate(COPLAYER_IDS)
-    }
+    coplayers = {}
+    for i, pid in enumerate(COPLAYER_IDS):
+        pol_name = active_policies[i]
+        p_seed = st.session_state.seed + i + 1
+        try:
+            coplayers[pid] = get_policy(pol_name, seed=p_seed, fallback_to_scripted=True)
+        except TypeError:
+            policy = get_policy(pol_name, seed=p_seed)
+            if hasattr(policy, "fallback_to_scripted"):
+                policy.fallback_to_scripted = True
+            coplayers[pid] = policy
 
     obs = env.reset()
     st.session_state.env = env
