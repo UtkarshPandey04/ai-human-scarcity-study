@@ -44,7 +44,10 @@ from human_interface.session_analysis import calculate_gini
 
 
 def extract_trial_features(rows: list[dict[str, Any]], focal_id: str | None = None) -> dict[str, Any] | None:
-    """Extract one feature row from a trial's action records."""
+    """Extract one feature row from a trial's action records.
+
+    Note: Deception metrics only score the focal agent's claims (focal-player substitution methodology); co-player deception is not evaluated here.
+    """
     if not rows:
         return None
 
@@ -68,6 +71,8 @@ def extract_trial_features(rows: list[dict[str, Any]], focal_id: str | None = No
             focal_id = "A1"
 
     # Separate focal rows and all rows
+    # Note: deception_rate only evaluates claims from focal_rows. A future "co-player deception rate"
+    # would need a separate extraction pass over non-focal rows (r["agent_id"] != focal_id) to report on AI-as-co-player deceptive behavior.
     focal_rows = [r for r in rows if r["agent_id"] == focal_id]
     if not focal_rows:
         return None

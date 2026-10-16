@@ -161,6 +161,34 @@ class DatabasePilotIsolationTest(unittest.TestCase):
         self.assertIn("test_human_01", df_included)
         self.assertIn("test_ai_01", df_included)
 
+        # Researcher Hub empirical summary query check (Task 1)
+        summary_query = """
+            SELECT source, COUNT(*) as n_trials
+            FROM trial_features
+            WHERE (pilot IS NULL OR pilot = 0)
+            GROUP BY source
+        """
+        with get_connection(self.db_path) as conn:
+            summary_res = dict(conn.execute(summary_query).fetchall())
+        self.assertEqual(summary_res.get("ai"), 2)  # test_ai_01 + test_steered_01; test_ai_pilot_01 excluded
+
+        # Researcher Hub game performance query check (Task 2)
+        game_query = """
+            SELECT COALESCE(a.policy, CASE WHEN a.source = 'human' THEN 'human' ELSE 'unknown_ai' END) as agent_policy,
+                   COUNT(*) as total_actions
+            FROM actions a
+            JOIN trials t ON a.trial_id = t.trial_id
+            WHERE (t.pilot IS NULL OR t.pilot = 0)
+            GROUP BY agent_policy
+        """
+        with get_connection(self.db_path) as conn:
+            game_res = dict(conn.execute(game_query).fetchall())
+        # Verify actions from test_ai_pilot_01 are excluded from game_res
+        total_actions_pilot_free = sum(game_res.values())
+        with get_connection(self.db_path) as conn:
+            total_actions_all = conn.execute("SELECT COUNT(*) FROM actions").fetchone()[0]
+        self.assertLess(total_actions_pilot_free, total_actions_all)
+
     def test_sync_all_logs_to_db_propagates_pilot_flag(self):
         """(c): Verify sync_all_logs_to_db() reads JSONL files and populates pilot/policy."""
         fake_ai_dir = os.path.join(self.tmp_dir, "data", "ai_logs")

@@ -18,6 +18,13 @@ import sys
 import numpy as np
 import pandas as pd
 import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
+
+# Dark-mode validated categorical color pair (surface #0e1117, WCAG contrast > 6:1, CVD ΔE > 90)
+# Validated via scripts/validate_palette.js --mode dark --surface "#0e1117"
+COLOR_HUMAN = "#4f9ae0"
+COLOR_AI = "#e0762a"
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -236,7 +243,26 @@ def render_researcher_hub(embedded: bool = False):
                 list(db_stats["scenario_counts"].items()),
                 columns=["Scenario", "Count"],
             )
-            st.bar_chart(sc_df.set_index("Scenario"))
+            fig_sc = go.Figure(data=[
+                go.Bar(
+                    x=sc_df["Scenario"],
+                    y=sc_df["Count"],
+                    marker_color=COLOR_HUMAN,
+                    text=sc_df["Count"],
+                    textposition="auto",
+                    hovertemplate="<b>Scenario:</b> %{x}<br><b>Trials:</b> %{y}<extra></extra>",
+                )
+            ])
+            fig_sc.update_layout(
+                margin=dict(l=20, r=20, t=20, b=20),
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                yaxis=dict(title="Trials (N)", gridcolor="rgba(255,255,255,0.08)"),
+                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                height=280,
+            )
+            st.plotly_chart(fig_sc, use_container_width=True)
 
         with ov_col2:
             st.markdown("**Empirical Comparison by Scenario & Arm:**")
@@ -251,6 +277,7 @@ def render_researcher_hub(embedded: bool = False):
                        ROUND(AVG(deception_rate) * 100, 1) as avg_deception_pct,
                        ROUND(AVG(society_gini), 2) as avg_gini
                 FROM trial_features
+                WHERE (pilot IS NULL OR pilot = 0)
                 GROUP BY source, scenario
                 """
                 summary_df = pd.read_sql_query(query, conn)
@@ -260,11 +287,17 @@ def render_researcher_hub(embedded: bool = False):
         st.markdown("### 📈 Key Divergence Summary Metrics")
         m1, m2, m3, m4 = st.columns(4)
         with get_connection() as conn:
-            feat_df = pd.read_sql_query("SELECT * FROM trial_features", conn)
+            feat_df = pd.read_sql_query(
+                "SELECT * FROM trial_features WHERE (pilot IS NULL OR pilot = 0) AND (arm IS NULL OR arm != 'llm_human_steered')",
+                conn,
+            )
         if not feat_df.empty:
-            h_share = feat_df[feat_df["source"] == "human"]["share_rate"].mean() * 100
-            a_share = feat_df[feat_df["source"] == "ai"]["share_rate"].mean() * 100
-            m1.metric("Human Cooperation", f"{h_share:.1f}%", f"{h_share - a_share:+.1f}% vs AI")
+            if "cooperation_rate" not in feat_df.columns and "communicate_rate" in feat_df.columns:
+                feat_df["cooperation_rate"] = feat_df["share_rate"] + feat_df["communicate_rate"]
+
+            h_coop = feat_df[feat_df["source"] == "human"]["cooperation_rate"].mean() * 100
+            a_coop = feat_df[feat_df["source"] == "ai"]["cooperation_rate"].mean() * 100
+            m1.metric("Human Cooperation", f"{h_coop:.1f}%", f"{h_coop - a_coop:+.1f}% vs AI")
 
             h_hoard = feat_df[feat_df["source"] == "human"]["hoard_rate"].mean() * 100
             a_hoard = feat_df[feat_df["source"] == "ai"]["hoard_rate"].mean() * 100
@@ -303,8 +336,37 @@ def render_researcher_hub(embedded: bool = False):
                         feat_df[feat_df["source"] == "ai"]["deception_rate"].mean() * 100,
                     ],
                 }
-                act_df = pd.DataFrame(action_data).set_index("Action Type")
-                st.bar_chart(act_df)
+                fig_act = go.Figure()
+                fig_act.add_trace(go.Bar(
+                    x=action_data["Action Type"],
+                    y=[round(v, 1) for v in action_data["Human (%)"]],
+                    name="Human",
+                    marker_color=COLOR_HUMAN,
+                    text=[f"{v:.1f}%" for v in action_data["Human (%)"]],
+                    textposition="outside",
+                    hovertemplate="<b>Human</b><br>%{x}: %{y:.1f}%<extra></extra>",
+                ))
+                fig_act.add_trace(go.Bar(
+                    x=action_data["Action Type"],
+                    y=[round(v, 1) for v in action_data["AI Agents (%)"]],
+                    name="AI Agent",
+                    marker_color=COLOR_AI,
+                    text=[f"{v:.1f}%" for v in action_data["AI Agents (%)"]],
+                    textposition="outside",
+                    hovertemplate="<b>AI Agent</b><br>%{x}: %{y:.1f}%<extra></extra>",
+                ))
+                fig_act.update_layout(
+                    barmode="group",
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    yaxis=dict(title="Action Allocation (%)", gridcolor="rgba(255,255,255,0.08)"),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=320,
+                )
+                st.plotly_chart(fig_act, use_container_width=True)
 
         with vcol2:
             st.markdown("#### ⏱️ 2. Cognitive Deliberation Latency (Reaction Time)")
@@ -313,12 +375,31 @@ def render_researcher_hub(embedded: bool = False):
                 lat_query = """
                 SELECT scenario, ROUND(AVG(mean_latency_ms), 0) as avg_latency_ms
                 FROM trial_features
-                WHERE source = 'human'
+                WHERE source = 'human' AND (pilot IS NULL OR pilot = 0)
                 GROUP BY scenario
                 """
                 lat_df = pd.read_sql_query(lat_query, conn)
             if not lat_df.empty:
-                st.bar_chart(lat_df.set_index("scenario"))
+                fig_lat = go.Figure(data=[
+                    go.Bar(
+                        x=lat_df["scenario"],
+                        y=lat_df["avg_latency_ms"],
+                        marker_color=COLOR_HUMAN,
+                        text=[f"{v:.0f} ms" for v in lat_df["avg_latency_ms"]],
+                        textposition="outside",
+                        hovertemplate="<b>Scenario:</b> %{x}<br><b>Latency:</b> %{y:.0f} ms<extra></extra>",
+                    )
+                ])
+                fig_lat.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    yaxis=dict(title="Latency (ms)", gridcolor="rgba(255,255,255,0.08)"),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=320,
+                )
+                st.plotly_chart(fig_lat, use_container_width=True)
             else:
                 st.info("Latency logged automatically as human participants complete trials.")
 
@@ -347,12 +428,36 @@ def render_researcher_hub(embedded: bool = False):
                 gini_query = """
                 SELECT scenario, source, ROUND(AVG(society_gini), 3) as mean_gini
                 FROM trial_features
+                WHERE (pilot IS NULL OR pilot = 0)
                 GROUP BY scenario, source
                 """
                 gini_df = pd.read_sql_query(gini_query, conn)
             if not gini_df.empty:
-                pivot_gini = gini_df.pivot(index="scenario", columns="source", values="mean_gini")
-                st.bar_chart(pivot_gini)
+                fig_gini = go.Figure()
+                for src, col, name in [("human", COLOR_HUMAN, "Human"), ("ai", COLOR_AI, "AI Agent")]:
+                    s_df = gini_df[gini_df["source"] == src]
+                    if not s_df.empty:
+                        fig_gini.add_trace(go.Bar(
+                            x=s_df["scenario"],
+                            y=s_df["mean_gini"],
+                            name=name,
+                            marker_color=col,
+                            text=[f"{v:.2f}" for v in s_df["mean_gini"]],
+                            textposition="outside",
+                            hovertemplate=f"<b>{name}</b><br>Scenario: %{{x}}<br>Gini: %{{y:.3f}}<extra></extra>",
+                        ))
+                fig_gini.update_layout(
+                    barmode="group",
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    yaxis=dict(title="Gini Coefficient", gridcolor="rgba(255,255,255,0.08)"),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=320,
+                )
+                st.plotly_chart(fig_gini, use_container_width=True)
 
     # -------------------------------------------------------------
     # TAB: API TELEMETRY & IN-GAME AGENT PERFORMANCE
@@ -808,6 +913,8 @@ def render_researcher_hub(embedded: bool = False):
                 ROUND(AVG(a.resource_after), 1) as avg_water_reserve,
                 ROUND(AVG(a.alive) * 100.0, 1) as round_survival_pct
             FROM actions a
+            JOIN trials t ON a.trial_id = t.trial_id
+            WHERE (t.pilot IS NULL OR t.pilot = 0)
             GROUP BY agent_policy
             ORDER BY total_actions DESC
             """
@@ -834,22 +941,105 @@ def render_researcher_hub(embedded: bool = False):
             with gcol1:
                 st.markdown("#### ⏱️ Decision Latency by Agent Policy")
                 st.caption("Reaction time comparison in milliseconds across human participants vs AI co-players.")
-                lat_chart_df = game_perf_df[game_perf_df["mean_latency_ms"].notnull()][["agent_policy", "mean_latency_ms"]].set_index("agent_policy")
-                st.bar_chart(lat_chart_df)
+
+                # Split view (Task 5 option a): Real human latency distribution + callout for 0ms deterministic AI co-players
+                m_lat1, m_lat2 = st.columns(2)
+                h_rows = game_perf_df[game_perf_df["agent_policy"] == "human"]
+                h_lat_val = h_rows["mean_latency_ms"].values[0] if not h_rows.empty else 0.0
+                with m_lat1:
+                    st.metric("Human Deliberation Latency", f"{h_lat_val:.0f} ms", "Moral Deliberation")
+                with m_lat2:
+                    st.metric("AI Co-players Latency", "0 ms", "Deterministic Heuristic")
+
+                st.info("💡 **AI co-players: 0ms (deterministic, no deliberation)** — Scripted policies execute next-action lookups instantly without cognitive hesitation.")
+
+                with get_connection() as conn:
+                    h_lat_dist_df = pd.read_sql_query(
+                        """
+                        SELECT a.decision_latency_ms, t.scenario
+                        FROM actions a
+                        JOIN trials t ON a.trial_id = t.trial_id
+                        WHERE a.source = 'human' AND a.decision_latency_ms IS NOT NULL AND (t.pilot IS NULL OR t.pilot = 0)
+                        """,
+                        conn,
+                    )
+                if not h_lat_dist_df.empty:
+                    fig_h_lat = px.histogram(
+                        h_lat_dist_df,
+                        x="decision_latency_ms",
+                        color="scenario",
+                        nbins=20,
+                        labels={"decision_latency_ms": "Human Latency (ms)", "scenario": "Scenario"},
+                        template="plotly_dark",
+                    )
+                    fig_h_lat.update_layout(
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=20, r=20, t=20, b=20),
+                        yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
+                        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                        height=240,
+                    )
+                    st.plotly_chart(fig_h_lat, use_container_width=True)
 
             with gcol2:
                 st.markdown("#### 🤝 Cooperation vs. Hoarding Dynamics")
                 st.caption("Behavioral balance between social sharing and self-preservation hoarding.")
-                social_df = game_perf_df[["agent_policy", "share_pct", "hoard_pct"]].set_index("agent_policy")
-                social_df.columns = ["Cooperation / Share %", "Selfish / Hoard %"]
-                st.bar_chart(social_df)
+                fig_social = go.Figure()
+                fig_social.add_trace(go.Bar(
+                    x=game_perf_df["agent_policy"],
+                    y=game_perf_df["share_pct"],
+                    name="Cooperation / Share %",
+                    marker_color=COLOR_HUMAN,
+                    text=[f"{v:.1f}%" for v in game_perf_df["share_pct"]],
+                    textposition="outside",
+                    hovertemplate="<b>%{x}</b><br>Share: %{y:.1f}%<extra></extra>",
+                ))
+                fig_social.add_trace(go.Bar(
+                    x=game_perf_df["agent_policy"],
+                    y=game_perf_df["hoard_pct"],
+                    name="Selfish / Hoard %",
+                    marker_color=COLOR_AI,
+                    text=[f"{v:.1f}%" for v in game_perf_df["hoard_pct"]],
+                    textposition="outside",
+                    hovertemplate="<b>%{x}</b><br>Hoard: %{y:.1f}%<extra></extra>",
+                ))
+                fig_social.update_layout(
+                    barmode="group",
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    yaxis=dict(title="Percentage (%)", gridcolor="rgba(255,255,255,0.08)"),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=320,
+                )
+                st.plotly_chart(fig_social, use_container_width=True)
 
             # Survival Rate by Policy
             st.markdown("#### 🛡️ Scarcity Survival Resilience by Policy")
             st.caption("Percentage of rounds where agents successfully maintained survival threshold (> 0 water).")
-            surv_chart = game_perf_df[["agent_policy", "round_survival_pct"]].set_index("agent_policy")
-            surv_chart.columns = ["Survival Rate (%)"]
-            st.bar_chart(surv_chart)
+            fig_surv = go.Figure(data=[
+                go.Bar(
+                    x=game_perf_df["agent_policy"],
+                    y=game_perf_df["round_survival_pct"],
+                    marker_color=COLOR_HUMAN,
+                    text=[f"{v:.1f}%" for v in game_perf_df["round_survival_pct"]],
+                    textposition="outside",
+                    hovertemplate="<b>Policy:</b> %{x}<br><b>Survival Rate:</b> %{y:.1f}%<extra></extra>",
+                )
+            ])
+            fig_surv.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=20, r=20, t=30, b=20),
+                yaxis=dict(title="Round Survival Rate (%)", gridcolor="rgba(255,255,255,0.08)", range=[0, 115]),
+                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                height=280,
+            )
+            st.plotly_chart(fig_surv, use_container_width=True)
         else:
             st.info("No action records found in database. Complete participant games or run `python tasks.py smoke` to populate.")
 
@@ -1056,7 +1246,26 @@ def render_researcher_hub(embedded: bool = False):
                         st.metric("Action Prediction Accuracy", f"{res['test_accuracy'] * 100:.1f}%")
                         st.metric("Trained Decision Steps", res["n_samples"])
                         acts_df = pd.DataFrame(list(res["action_counts"].items()), columns=["Action", "Count"])
-                        st.bar_chart(acts_df.set_index("Action"))
+                        fig_acts = go.Figure(data=[
+                            go.Bar(
+                                x=acts_df["Action"],
+                                y=acts_df["Count"],
+                                marker_color=COLOR_HUMAN,
+                                text=acts_df["Count"],
+                                textposition="auto",
+                                hovertemplate="<b>Action:</b> %{x}<br><b>Count:</b> %{y}<extra></extra>",
+                            )
+                        ])
+                        fig_acts.update_layout(
+                            template="plotly_dark",
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            margin=dict(l=20, r=20, t=20, b=20),
+                            yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
+                            xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                            height=260,
+                        )
+                        st.plotly_chart(fig_acts, use_container_width=True)
 
     # -------------------------------------------------------------
     # TAB 5: INTERACTIVE BEHAVIOR SIMULATOR
@@ -1083,7 +1292,27 @@ def render_researcher_hub(embedded: bool = False):
 
             st.markdown("**Predicted Action Probability Distribution:**")
             prob_dict = {action: float(probs[idx]) for action, idx in chk_data["action_map"].items()}
-            st.bar_chart(pd.DataFrame(list(prob_dict.items()), columns=["Action", "Probability"]).set_index("Action"))
+            prob_df = pd.DataFrame(list(prob_dict.items()), columns=["Action", "Probability"])
+            fig_prob = go.Figure(data=[
+                go.Bar(
+                    x=prob_df["Action"],
+                    y=[p * 100 for p in prob_df["Probability"]],
+                    marker_color=COLOR_HUMAN,
+                    text=[f"{p*100:.1f}%" for p in prob_df["Probability"]],
+                    textposition="outside",
+                    hovertemplate="<b>Action:</b> %{x}<br><b>Probability:</b> %{y:.1f}%<extra></extra>",
+                )
+            ])
+            fig_prob.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=20, r=20, t=20, b=20),
+                yaxis=dict(title="Probability (%)", gridcolor="rgba(255,255,255,0.08)", range=[0, 115]),
+                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                height=260,
+            )
+            st.plotly_chart(fig_prob, use_container_width=True)
 
             top_act = max(prob_dict.items(), key=lambda k: k[1])
             st.success(f"🎯 **Predicted Human Action:** `{top_act[0].upper()}` ({top_act[1] * 100:.1f}% confidence)")

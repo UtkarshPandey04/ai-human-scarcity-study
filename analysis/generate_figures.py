@@ -77,14 +77,21 @@ def plot_fig1_behavioral_comparison(df: pd.DataFrame):
             a_means.append(a_sub.mean() if len(a_sub) > 0 else 0)
             a_stds.append(a_sub.std() if len(a_sub) > 1 else 0)
 
-        ax.bar(x - width/2, h_means, width, yerr=h_stds, label="Human", color="#2b5c8f", capsize=4, alpha=0.9)
-        ax.bar(x + width/2, a_means, width, yerr=a_stds, label="AI Agent", color="#d95f02", capsize=4, alpha=0.9)
+        bars_h = ax.bar(x - width/2, h_means, width, yerr=h_stds, label="Human", color="#1b5fa8", capsize=4, alpha=0.9)
+        bars_a = ax.bar(x + width/2, a_means, width, yerr=a_stds, label="AI Agent", color="#d95f02", capsize=4, alpha=0.9)
+
+        if m_col == "society_gini":
+            ax.bar_label(bars_h, fmt='%.2f', padding=3, fontsize=7.5)
+            ax.bar_label(bars_a, fmt='%.2f', padding=3, fontsize=7.5)
+        else:
+            ax.bar_label(bars_h, fmt=lambda v: f"{v*100:.1f}%" if v > 0 else "0%", padding=3, fontsize=7.5)
+            ax.bar_label(bars_a, fmt=lambda v: f"{v*100:.1f}%" if v > 0 else "0%", padding=3, fontsize=7.5)
 
         ax.set_title(m_title, fontweight="bold")
         ax.set_xticks(x)
         ax.set_xticklabels(scenario_labels, rotation=15)
-        ax.set_ylim(ylim)
-        ax.grid(axis="y", linestyle="--", alpha=0.7)
+        ax.set_ylim([0, ylim[1] * 1.15])
+        ax.grid(axis="y", linestyle=":", color="#cccccc", alpha=0.35)
         if ax == axes[0]:
             ax.legend(frameon=True)
 
@@ -116,23 +123,23 @@ def plot_fig2_dose_response(stats_json_path: str):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.5))
 
     # Panel A: Sharing Rate
-    ax1.plot(sevs, h_share, marker="o", linewidth=2.5, color="#2b5c8f", label="Human Participants")
+    ax1.plot(sevs, h_share, marker="o", linewidth=2.5, color="#1b5fa8", label="Human Participants")
     ax1.plot(sevs, a_share, marker="s", linewidth=2.5, linestyle="--", color="#d95f02", label="AI Agents")
     ax1.set_title("(A) Sharing Rate vs. Scarcity Severity", fontweight="bold")
     ax1.set_xlabel("Scarcity Severity parameter (g reduction)")
     ax1.set_ylabel("Sharing Rate (actions / round)")
     ax1.set_ylim([0.0, 0.4])
-    ax1.grid(True, linestyle="--", alpha=0.6)
+    ax1.grid(True, linestyle=":", color="#cccccc", alpha=0.35)
     ax1.legend()
 
     # Panel B: Hoarding Rate
-    ax2.plot(sevs, h_hoard, marker="o", linewidth=2.5, color="#2b5c8f", label="Human Participants")
+    ax2.plot(sevs, h_hoard, marker="o", linewidth=2.5, color="#1b5fa8", label="Human Participants")
     ax2.plot(sevs, a_hoard, marker="s", linewidth=2.5, linestyle="--", color="#d95f02", label="AI Agents")
     ax2.set_title("(B) Hoarding Rate vs. Scarcity Severity", fontweight="bold")
     ax2.set_xlabel("Scarcity Severity parameter (g reduction)")
     ax2.set_ylabel("Hoarding Rate (actions / round)")
     ax2.set_ylim([0.0, 0.3])
-    ax2.grid(True, linestyle="--", alpha=0.6)
+    ax2.grid(True, linestyle=":", color="#cccccc", alpha=0.35)
     ax2.legend()
 
     plt.tight_layout()
@@ -264,25 +271,29 @@ def plot_fig5_survival_curves(df: pd.DataFrame):
         a_rounds.append(a_sub["rounds_survived"].mean() if len(a_sub) > 0 else 0)
 
     # Panel A: Overall Survival %
-    ax1.bar(x - width/2, h_surv, width, label="Human", color="#2b5c8f", alpha=0.9)
-    ax1.bar(x + width/2, a_surv, width, label="AI Agent", color="#d95f02", alpha=0.9)
+    bars_h1 = ax1.bar(x - width/2, h_surv, width, label="Human", color="#1b5fa8", alpha=0.9)
+    bars_a1 = ax1.bar(x + width/2, a_surv, width, label="AI Agent", color="#d95f02", alpha=0.9)
+    ax1.bar_label(bars_h1, fmt='%.1f%%', padding=3, fontsize=8)
+    ax1.bar_label(bars_a1, fmt='%.1f%%', padding=3, fontsize=8)
     ax1.set_title("(A) Survival Rate by Scenario (%)", fontweight="bold")
     ax1.set_xticks(x)
     ax1.set_xticklabels(scenario_labels)
     ax1.set_ylabel("Survival Rate (%)")
-    ax1.set_ylim([0, 105])
-    ax1.grid(axis="y", linestyle="--", alpha=0.7)
+    ax1.set_ylim([0, 115])
+    ax1.grid(axis="y", linestyle=":", color="#cccccc", alpha=0.35)
     ax1.legend()
 
     # Panel B: Mean Rounds Survived
-    ax2.bar(x - width/2, h_rounds, width, label="Human", color="#2b5c8f", alpha=0.9)
-    ax2.bar(x + width/2, a_rounds, width, label="AI Agent", color="#d95f02", alpha=0.9)
+    bars_h2 = ax2.bar(x - width/2, h_rounds, width, label="Human", color="#1b5fa8", alpha=0.9)
+    bars_a2 = ax2.bar(x + width/2, a_rounds, width, label="AI Agent", color="#d95f02", alpha=0.9)
+    ax2.bar_label(bars_h2, fmt='%.1f', padding=3, fontsize=8)
+    ax2.bar_label(bars_a2, fmt='%.1f', padding=3, fontsize=8)
     ax2.set_title("(B) Mean Rounds Survived (Max 10)", fontweight="bold")
     ax2.set_xticks(x)
     ax2.set_xticklabels(scenario_labels)
     ax2.set_ylabel("Rounds Completed")
-    ax2.set_ylim([0, 11])
-    ax2.grid(axis="y", linestyle="--", alpha=0.7)
+    ax2.set_ylim([0, 12])
+    ax2.grid(axis="y", linestyle=":", color="#cccccc", alpha=0.35)
     ax2.legend()
 
     plt.tight_layout()
@@ -322,23 +333,31 @@ def plot_fig6_communication_deception(df: pd.DataFrame):
         a_dec_rate.append(a_dr)
 
     # Panel A: Claims Volume
-    ax1.bar(x - width/2, claims, width, label="Honest Claims", color="#2ca02c", alpha=0.85)
-    ax1.bar(x + width/2, deceptions, width, label="Deceptive Claims", color="#d62728", alpha=0.85)
+    bars_c = ax1.bar(x - width/2, claims, width, label="Honest Claims", color="#2ca02c", alpha=0.85)
+    bars_d = ax1.bar(x + width/2, deceptions, width, label="Deceptive Claims", color="#d62728", alpha=0.85)
+    ax1.bar_label(bars_c, fmt='%d', padding=3, fontsize=8)
+    ax1.bar_label(bars_d, fmt='%d', padding=3, fontsize=8)
     ax1.set_title("(A) Human Communication Honesty vs. Deception", fontweight="bold")
     ax1.set_xticks(x)
     ax1.set_xticklabels(labels)
     ax1.set_ylabel("Message Count")
-    ax1.grid(axis="y", linestyle="--", alpha=0.7)
+    max_c = max(max(claims), max(deceptions)) if claims else 10
+    ax1.set_ylim([0, max_c * 1.25])
+    ax1.grid(axis="y", linestyle=":", color="#cccccc", alpha=0.35)
     ax1.legend()
 
     # Panel B: Deception Rate %
-    ax2.bar(x - width/2, h_dec_rate, width, label="Human", color="#2b5c8f", alpha=0.9)
-    ax2.bar(x + width/2, a_dec_rate, width, label="AI Agent", color="#d95f02", alpha=0.9)
+    bars_hd = ax2.bar(x - width/2, h_dec_rate, width, label="Human", color="#1b5fa8", alpha=0.9)
+    bars_ad = ax2.bar(x + width/2, a_dec_rate, width, label="AI Agent", color="#d95f02", alpha=0.9)
+    ax2.bar_label(bars_hd, fmt='%.1f%%', padding=3, fontsize=8)
+    ax2.bar_label(bars_ad, fmt='%.1f%%', padding=3, fontsize=8)
     ax2.set_title("(B) Deception Rate by Experimental Arm (%)", fontweight="bold")
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels)
     ax2.set_ylabel("Deception Rate (%)")
-    ax2.grid(axis="y", linestyle="--", alpha=0.7)
+    max_d = max(max(h_dec_rate), max(a_dec_rate)) if h_dec_rate else 10
+    ax2.set_ylim([0, max(15, max_d * 1.3)])
+    ax2.grid(axis="y", linestyle=":", color="#cccccc", alpha=0.35)
     ax2.legend()
 
     plt.tight_layout()
@@ -411,14 +430,14 @@ def plot_fig8_steering_alignment(policy_json_path: str, df: pd.DataFrame):
     c_vals = [clone_pcts.get(a, 0) for a in actions]
     h_vals = [human_pcts.get(a, 0) for a in actions]
 
-    ax.bar(x - width/2, h_vals, width, label="Human Empirical Target", color="#2b5c8f", alpha=0.9)
-    ax.bar(x + width/2, c_vals, width, label=f"Cloned Policy Model (Acc: {policy_data.get('test_accuracy', 0.68):.1%})", color="#2ca02c", alpha=0.9)
+    ax.bar(x - width/2, h_vals, width, label="Human Empirical Target", color="#1b5fa8", alpha=0.9)
+    ax.bar(x + width/2, c_vals, width, label=f"Cloned Policy Model (Acc: {policy_data.get('test_accuracy', 0.68):.1%})", color="#d95f02", alpha=0.9)
 
     ax.set_title("Behavioral Cloning Alignment: Model Strategy vs. Human Ground Truth", fontweight="bold")
     ax.set_xticks(x)
     ax.set_xticklabels(action_labels)
     ax.set_ylabel("Action Allocation (%)")
-    ax.grid(axis="y", linestyle="--", alpha=0.7)
+    ax.grid(axis="y", linestyle=":", color="#cccccc", alpha=0.35)
     ax.legend()
 
     plt.tight_layout()
