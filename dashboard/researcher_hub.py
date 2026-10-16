@@ -18,8 +18,14 @@ import sys
 import numpy as np
 import pandas as pd
 import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    HAS_PLOTLY = True
+except ImportError:
+    go = None
+    px = None
+    HAS_PLOTLY = False
 
 # Dark-mode validated categorical color pair (surface #0e1117, WCAG contrast > 6:1, CVD ΔE > 90)
 # Validated via scripts/validate_palette.js --mode dark --surface "#0e1117"
@@ -243,26 +249,29 @@ def render_researcher_hub(embedded: bool = False):
                 list(db_stats["scenario_counts"].items()),
                 columns=["Scenario", "Count"],
             )
-            fig_sc = go.Figure(data=[
-                go.Bar(
-                    x=sc_df["Scenario"],
-                    y=sc_df["Count"],
-                    marker_color=COLOR_HUMAN,
-                    text=sc_df["Count"],
-                    textposition="auto",
-                    hovertemplate="<b>Scenario:</b> %{x}<br><b>Trials:</b> %{y}<extra></extra>",
+            if HAS_PLOTLY:
+                fig_sc = go.Figure(data=[
+                    go.Bar(
+                        x=sc_df["Scenario"],
+                        y=sc_df["Count"],
+                        marker_color=COLOR_HUMAN,
+                        text=sc_df["Count"],
+                        textposition="auto",
+                        hovertemplate="<b>Scenario:</b> %{x}<br><b>Trials:</b> %{y}<extra></extra>",
+                    )
+                ])
+                fig_sc.update_layout(
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    yaxis=dict(title="Trials (N)", gridcolor="rgba(255,255,255,0.08)"),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=280,
                 )
-            ])
-            fig_sc.update_layout(
-                margin=dict(l=20, r=20, t=20, b=20),
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                yaxis=dict(title="Trials (N)", gridcolor="rgba(255,255,255,0.08)"),
-                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                height=280,
-            )
-            st.plotly_chart(fig_sc, use_container_width=True)
+                st.plotly_chart(fig_sc, use_container_width=True)
+            else:
+                st.bar_chart(sc_df.set_index("Scenario"))
 
         with ov_col2:
             st.markdown("**Empirical Comparison by Scenario & Arm:**")
@@ -336,37 +345,40 @@ def render_researcher_hub(embedded: bool = False):
                         feat_df[feat_df["source"] == "ai"]["deception_rate"].mean() * 100,
                     ],
                 }
-                fig_act = go.Figure()
-                fig_act.add_trace(go.Bar(
-                    x=action_data["Action Type"],
-                    y=[round(v, 1) for v in action_data["Human (%)"]],
-                    name="Human",
-                    marker_color=COLOR_HUMAN,
-                    text=[f"{v:.1f}%" for v in action_data["Human (%)"]],
-                    textposition="outside",
-                    hovertemplate="<b>Human</b><br>%{x}: %{y:.1f}%<extra></extra>",
-                ))
-                fig_act.add_trace(go.Bar(
-                    x=action_data["Action Type"],
-                    y=[round(v, 1) for v in action_data["AI Agents (%)"]],
-                    name="AI Agent",
-                    marker_color=COLOR_AI,
-                    text=[f"{v:.1f}%" for v in action_data["AI Agents (%)"]],
-                    textposition="outside",
-                    hovertemplate="<b>AI Agent</b><br>%{x}: %{y:.1f}%<extra></extra>",
-                ))
-                fig_act.update_layout(
-                    barmode="group",
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=20, t=30, b=20),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    yaxis=dict(title="Action Allocation (%)", gridcolor="rgba(255,255,255,0.08)"),
-                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                    height=320,
-                )
-                st.plotly_chart(fig_act, use_container_width=True)
+                if HAS_PLOTLY:
+                    fig_act = go.Figure()
+                    fig_act.add_trace(go.Bar(
+                        x=action_data["Action Type"],
+                        y=[round(v, 1) for v in action_data["Human (%)"]],
+                        name="Human",
+                        marker_color=COLOR_HUMAN,
+                        text=[f"{v:.1f}%" for v in action_data["Human (%)"]],
+                        textposition="outside",
+                        hovertemplate="<b>Human</b><br>%{x}: %{y:.1f}%<extra></extra>",
+                    ))
+                    fig_act.add_trace(go.Bar(
+                        x=action_data["Action Type"],
+                        y=[round(v, 1) for v in action_data["AI Agents (%)"]],
+                        name="AI Agent",
+                        marker_color=COLOR_AI,
+                        text=[f"{v:.1f}%" for v in action_data["AI Agents (%)"]],
+                        textposition="outside",
+                        hovertemplate="<b>AI Agent</b><br>%{x}: %{y:.1f}%<extra></extra>",
+                    ))
+                    fig_act.update_layout(
+                        barmode="group",
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        yaxis=dict(title="Action Allocation (%)", gridcolor="rgba(255,255,255,0.08)"),
+                        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                        height=320,
+                    )
+                    st.plotly_chart(fig_act, use_container_width=True)
+                else:
+                    st.bar_chart(pd.DataFrame(action_data).set_index("Action Type"))
 
         with vcol2:
             st.markdown("#### ⏱️ 2. Cognitive Deliberation Latency (Reaction Time)")
@@ -380,26 +392,29 @@ def render_researcher_hub(embedded: bool = False):
                 """
                 lat_df = pd.read_sql_query(lat_query, conn)
             if not lat_df.empty:
-                fig_lat = go.Figure(data=[
-                    go.Bar(
-                        x=lat_df["scenario"],
-                        y=lat_df["avg_latency_ms"],
-                        marker_color=COLOR_HUMAN,
-                        text=[f"{v:.0f} ms" for v in lat_df["avg_latency_ms"]],
-                        textposition="outside",
-                        hovertemplate="<b>Scenario:</b> %{x}<br><b>Latency:</b> %{y:.0f} ms<extra></extra>",
+                if HAS_PLOTLY:
+                    fig_lat = go.Figure(data=[
+                        go.Bar(
+                            x=lat_df["scenario"],
+                            y=lat_df["avg_latency_ms"],
+                            marker_color=COLOR_HUMAN,
+                            text=[f"{v:.0f} ms" for v in lat_df["avg_latency_ms"]],
+                            textposition="outside",
+                            hovertemplate="<b>Scenario:</b> %{x}<br><b>Latency:</b> %{y:.0f} ms<extra></extra>",
+                        )
+                    ])
+                    fig_lat.update_layout(
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                        yaxis=dict(title="Latency (ms)", gridcolor="rgba(255,255,255,0.08)"),
+                        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                        height=320,
                     )
-                ])
-                fig_lat.update_layout(
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=20, t=30, b=20),
-                    yaxis=dict(title="Latency (ms)", gridcolor="rgba(255,255,255,0.08)"),
-                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                    height=320,
-                )
-                st.plotly_chart(fig_lat, use_container_width=True)
+                    st.plotly_chart(fig_lat, use_container_width=True)
+                else:
+                    st.bar_chart(lat_df.set_index("scenario"))
             else:
                 st.info("Latency logged automatically as human participants complete trials.")
 
@@ -433,31 +448,34 @@ def render_researcher_hub(embedded: bool = False):
                 """
                 gini_df = pd.read_sql_query(gini_query, conn)
             if not gini_df.empty:
-                fig_gini = go.Figure()
-                for src, col, name in [("human", COLOR_HUMAN, "Human"), ("ai", COLOR_AI, "AI Agent")]:
-                    s_df = gini_df[gini_df["source"] == src]
-                    if not s_df.empty:
-                        fig_gini.add_trace(go.Bar(
-                            x=s_df["scenario"],
-                            y=s_df["mean_gini"],
-                            name=name,
-                            marker_color=col,
-                            text=[f"{v:.2f}" for v in s_df["mean_gini"]],
-                            textposition="outside",
-                            hovertemplate=f"<b>{name}</b><br>Scenario: %{{x}}<br>Gini: %{{y:.3f}}<extra></extra>",
-                        ))
-                fig_gini.update_layout(
-                    barmode="group",
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=20, t=30, b=20),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    yaxis=dict(title="Gini Coefficient", gridcolor="rgba(255,255,255,0.08)"),
-                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                    height=320,
-                )
-                st.plotly_chart(fig_gini, use_container_width=True)
+                if HAS_PLOTLY:
+                    fig_gini = go.Figure()
+                    for src, col, name in [("human", COLOR_HUMAN, "Human"), ("ai", COLOR_AI, "AI Agent")]:
+                        s_df = gini_df[gini_df["source"] == src]
+                        if not s_df.empty:
+                            fig_gini.add_trace(go.Bar(
+                                x=s_df["scenario"],
+                                y=s_df["mean_gini"],
+                                name=name,
+                                marker_color=col,
+                                text=[f"{v:.2f}" for v in s_df["mean_gini"]],
+                                textposition="outside",
+                                hovertemplate=f"<b>{name}</b><br>Scenario: %{{x}}<br>Gini: %{{y:.3f}}<extra></extra>",
+                            ))
+                    fig_gini.update_layout(
+                        barmode="group",
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        yaxis=dict(title="Gini Coefficient", gridcolor="rgba(255,255,255,0.08)"),
+                        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                        height=320,
+                    )
+                    st.plotly_chart(fig_gini, use_container_width=True)
+                else:
+                    st.bar_chart(gini_df.pivot(index="scenario", columns="source", values="mean_gini"))
 
     # -------------------------------------------------------------
     # TAB: API TELEMETRY & IN-GAME AGENT PERFORMANCE
@@ -964,82 +982,91 @@ def render_researcher_hub(embedded: bool = False):
                         conn,
                     )
                 if not h_lat_dist_df.empty:
-                    fig_h_lat = px.histogram(
-                        h_lat_dist_df,
-                        x="decision_latency_ms",
-                        color="scenario",
-                        nbins=20,
-                        labels={"decision_latency_ms": "Human Latency (ms)", "scenario": "Scenario"},
-                        template="plotly_dark",
-                    )
-                    fig_h_lat.update_layout(
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        margin=dict(l=20, r=20, t=20, b=20),
-                        yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
-                        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                        height=240,
-                    )
-                    st.plotly_chart(fig_h_lat, use_container_width=True)
+                    if HAS_PLOTLY:
+                        fig_h_lat = px.histogram(
+                            h_lat_dist_df,
+                            x="decision_latency_ms",
+                            color="scenario",
+                            nbins=20,
+                            labels={"decision_latency_ms": "Human Latency (ms)", "scenario": "Scenario"},
+                            template="plotly_dark",
+                        )
+                        fig_h_lat.update_layout(
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            margin=dict(l=20, r=20, t=20, b=20),
+                            yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
+                            xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                            height=240,
+                        )
+                        st.plotly_chart(fig_h_lat, use_container_width=True)
+                    else:
+                        st.bar_chart(h_lat_dist_df.set_index("scenario"))
 
             with gcol2:
                 st.markdown("#### 🤝 Cooperation vs. Hoarding Dynamics")
                 st.caption("Behavioral balance between social sharing and self-preservation hoarding.")
-                fig_social = go.Figure()
-                fig_social.add_trace(go.Bar(
-                    x=game_perf_df["agent_policy"],
-                    y=game_perf_df["share_pct"],
-                    name="Cooperation / Share %",
-                    marker_color=COLOR_HUMAN,
-                    text=[f"{v:.1f}%" for v in game_perf_df["share_pct"]],
-                    textposition="outside",
-                    hovertemplate="<b>%{x}</b><br>Share: %{y:.1f}%<extra></extra>",
-                ))
-                fig_social.add_trace(go.Bar(
-                    x=game_perf_df["agent_policy"],
-                    y=game_perf_df["hoard_pct"],
-                    name="Selfish / Hoard %",
-                    marker_color=COLOR_AI,
-                    text=[f"{v:.1f}%" for v in game_perf_df["hoard_pct"]],
-                    textposition="outside",
-                    hovertemplate="<b>%{x}</b><br>Hoard: %{y:.1f}%<extra></extra>",
-                ))
-                fig_social.update_layout(
-                    barmode="group",
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    margin=dict(l=20, r=20, t=30, b=20),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    yaxis=dict(title="Percentage (%)", gridcolor="rgba(255,255,255,0.08)"),
-                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                    height=320,
-                )
-                st.plotly_chart(fig_social, use_container_width=True)
+                if HAS_PLOTLY:
+                    fig_social = go.Figure()
+                    fig_social.add_trace(go.Bar(
+                        x=game_perf_df["agent_policy"],
+                        y=game_perf_df["share_pct"],
+                        name="Cooperation / Share %",
+                        marker_color=COLOR_HUMAN,
+                        text=[f"{v:.1f}%" for v in game_perf_df["share_pct"]],
+                        textposition="outside",
+                        hovertemplate="<b>%{x}</b><br>Share: %{y:.1f}%<extra></extra>",
+                    ))
+                    fig_social.add_trace(go.Bar(
+                        x=game_perf_df["agent_policy"],
+                        y=game_perf_df["hoard_pct"],
+                        name="Selfish / Hoard %",
+                        marker_color=COLOR_AI,
+                        text=[f"{v:.1f}%" for v in game_perf_df["hoard_pct"]],
+                        textposition="outside",
+                        hovertemplate="<b>%{x}</b><br>Hoard: %{y:.1f}%<extra></extra>",
+                    ))
+                    fig_social.update_layout(
+                        barmode="group",
+                        template="plotly_dark",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=20, r=20, t=30, b=20),
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                        yaxis=dict(title="Percentage (%)", gridcolor="rgba(255,255,255,0.08)"),
+                        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                        height=320,
+                    )
+                    st.plotly_chart(fig_social, use_container_width=True)
+                else:
+                    st.bar_chart(game_perf_df[["agent_policy", "share_pct", "hoard_pct"]].set_index("agent_policy"))
 
             # Survival Rate by Policy
             st.markdown("#### 🛡️ Scarcity Survival Resilience by Policy")
             st.caption("Percentage of rounds where agents successfully maintained survival threshold (> 0 water).")
-            fig_surv = go.Figure(data=[
-                go.Bar(
-                    x=game_perf_df["agent_policy"],
-                    y=game_perf_df["round_survival_pct"],
-                    marker_color=COLOR_HUMAN,
-                    text=[f"{v:.1f}%" for v in game_perf_df["round_survival_pct"]],
-                    textposition="outside",
-                    hovertemplate="<b>Policy:</b> %{x}<br><b>Survival Rate:</b> %{y:.1f}%<extra></extra>",
+            if HAS_PLOTLY:
+                fig_surv = go.Figure(data=[
+                    go.Bar(
+                        x=game_perf_df["agent_policy"],
+                        y=game_perf_df["round_survival_pct"],
+                        marker_color=COLOR_HUMAN,
+                        text=[f"{v:.1f}%" for v in game_perf_df["round_survival_pct"]],
+                        textposition="outside",
+                        hovertemplate="<b>Policy:</b> %{x}<br><b>Survival Rate:</b> %{y:.1f}%<extra></extra>",
+                    )
+                ])
+                fig_surv.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    yaxis=dict(title="Round Survival Rate (%)", gridcolor="rgba(255,255,255,0.08)", range=[0, 115]),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=280,
                 )
-            ])
-            fig_surv.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=20, r=20, t=30, b=20),
-                yaxis=dict(title="Round Survival Rate (%)", gridcolor="rgba(255,255,255,0.08)", range=[0, 115]),
-                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                height=280,
-            )
-            st.plotly_chart(fig_surv, use_container_width=True)
+                st.plotly_chart(fig_surv, use_container_width=True)
+            else:
+                st.bar_chart(game_perf_df[["agent_policy", "round_survival_pct"]].set_index("agent_policy"))
         else:
             st.info("No action records found in database. Complete participant games or run `python tasks.py smoke` to populate.")
 
@@ -1246,26 +1273,29 @@ def render_researcher_hub(embedded: bool = False):
                         st.metric("Action Prediction Accuracy", f"{res['test_accuracy'] * 100:.1f}%")
                         st.metric("Trained Decision Steps", res["n_samples"])
                         acts_df = pd.DataFrame(list(res["action_counts"].items()), columns=["Action", "Count"])
-                        fig_acts = go.Figure(data=[
-                            go.Bar(
-                                x=acts_df["Action"],
-                                y=acts_df["Count"],
-                                marker_color=COLOR_HUMAN,
-                                text=acts_df["Count"],
-                                textposition="auto",
-                                hovertemplate="<b>Action:</b> %{x}<br><b>Count:</b> %{y}<extra></extra>",
+                        if HAS_PLOTLY:
+                            fig_acts = go.Figure(data=[
+                                go.Bar(
+                                    x=acts_df["Action"],
+                                    y=acts_df["Count"],
+                                    marker_color=COLOR_HUMAN,
+                                    text=acts_df["Count"],
+                                    textposition="auto",
+                                    hovertemplate="<b>Action:</b> %{x}<br><b>Count:</b> %{y}<extra></extra>",
+                                )
+                            ])
+                            fig_acts.update_layout(
+                                template="plotly_dark",
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(0,0,0,0)",
+                                margin=dict(l=20, r=20, t=20, b=20),
+                                yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
+                                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                                height=260,
                             )
-                        ])
-                        fig_acts.update_layout(
-                            template="plotly_dark",
-                            paper_bgcolor="rgba(0,0,0,0)",
-                            plot_bgcolor="rgba(0,0,0,0)",
-                            margin=dict(l=20, r=20, t=20, b=20),
-                            yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
-                            xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                            height=260,
-                        )
-                        st.plotly_chart(fig_acts, use_container_width=True)
+                            st.plotly_chart(fig_acts, use_container_width=True)
+                        else:
+                            st.bar_chart(acts_df.set_index("Action"))
 
     # -------------------------------------------------------------
     # TAB 5: INTERACTIVE BEHAVIOR SIMULATOR
@@ -1293,26 +1323,29 @@ def render_researcher_hub(embedded: bool = False):
             st.markdown("**Predicted Action Probability Distribution:**")
             prob_dict = {action: float(probs[idx]) for action, idx in chk_data["action_map"].items()}
             prob_df = pd.DataFrame(list(prob_dict.items()), columns=["Action", "Probability"])
-            fig_prob = go.Figure(data=[
-                go.Bar(
-                    x=prob_df["Action"],
-                    y=[p * 100 for p in prob_df["Probability"]],
-                    marker_color=COLOR_HUMAN,
-                    text=[f"{p*100:.1f}%" for p in prob_df["Probability"]],
-                    textposition="outside",
-                    hovertemplate="<b>Action:</b> %{x}<br><b>Probability:</b> %{y:.1f}%<extra></extra>",
+            if HAS_PLOTLY:
+                fig_prob = go.Figure(data=[
+                    go.Bar(
+                        x=prob_df["Action"],
+                        y=[p * 100 for p in prob_df["Probability"]],
+                        marker_color=COLOR_HUMAN,
+                        text=[f"{p*100:.1f}%" for p in prob_df["Probability"]],
+                        textposition="outside",
+                        hovertemplate="<b>Action:</b> %{x}<br><b>Probability:</b> %{y:.1f}%<extra></extra>",
+                    )
+                ])
+                fig_prob.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    yaxis=dict(title="Probability (%)", gridcolor="rgba(255,255,255,0.08)", range=[0, 115]),
+                    xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                    height=260,
                 )
-            ])
-            fig_prob.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=20, r=20, t=20, b=20),
-                yaxis=dict(title="Probability (%)", gridcolor="rgba(255,255,255,0.08)", range=[0, 115]),
-                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                height=260,
-            )
-            st.plotly_chart(fig_prob, use_container_width=True)
+                st.plotly_chart(fig_prob, use_container_width=True)
+            else:
+                st.bar_chart(prob_df.set_index("Action"))
 
             top_act = max(prob_dict.items(), key=lambda k: k[1])
             st.success(f"🎯 **Predicted Human Action:** `{top_act[0].upper()}` ({top_act[1] * 100:.1f}% confidence)")
