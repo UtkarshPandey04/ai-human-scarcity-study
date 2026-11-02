@@ -82,6 +82,7 @@ def train_distinguishability_classifier(
     db_path: str = DEFAULT_DB_PATH,
     progress_callback: Any = None,
     verbose: bool = True,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """Train regularized logistic regression model to distinguish human from AI trials."""
     init_db(db_path)
@@ -223,6 +224,7 @@ def train_human_behavior_policy(
     db_path: str = DEFAULT_DB_PATH,
     progress_callback: Any = None,
     verbose: bool = True,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """Train a multi-class policy model p(action | state) on human participant actions."""
     init_db(db_path)

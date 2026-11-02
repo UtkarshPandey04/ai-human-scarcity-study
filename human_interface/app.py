@@ -1319,6 +1319,12 @@ def debrief_screen():
 # ---------- ROUTER ----------
 if query_params.get("mode") == "researcher" or st.session_state.get("portal_active", False):
     import importlib
+    for m in ["analysis.train_models", "analysis", "dashboard.researcher_hub", "dashboard"]:
+        if m in sys.modules:
+            try:
+                importlib.reload(sys.modules[m])
+            except Exception:
+                sys.modules.pop(m, None)
     import dashboard.researcher_hub
     importlib.reload(dashboard.researcher_hub)
     from dashboard.researcher_hub import render_researcher_hub

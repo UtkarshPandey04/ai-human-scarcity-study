@@ -1258,7 +1258,17 @@ def render_researcher_hub(embedded: bool = False):
                     loss_hist1.append({"Epoch": epoch, "Loss": loss})
                     chart_spot1.line_chart(pd.DataFrame(loss_hist1).set_index("Epoch"))
 
-                res = train_distinguishability_classifier(progress_callback=update_classifier_ui, verbose=False)
+                try:
+                    res = train_distinguishability_classifier(progress_callback=update_classifier_ui, verbose=False)
+                except TypeError:
+                    import importlib
+                    import analysis.train_models
+                    importlib.reload(analysis.train_models)
+                    from analysis.train_models import train_distinguishability_classifier as _fresh_train_cls
+                    try:
+                        res = _fresh_train_cls(progress_callback=update_classifier_ui, verbose=False)
+                    except TypeError:
+                        res = _fresh_train_cls()
                 if "error" in res:
                     st.error(res["error"])
                 else:
@@ -1284,7 +1294,17 @@ def render_researcher_hub(embedded: bool = False):
                     loss_hist2.append({"Epoch": epoch, "Loss": loss})
                     chart_spot2.line_chart(pd.DataFrame(loss_hist2).set_index("Epoch"))
 
-                res = train_human_behavior_policy(progress_callback=update_policy_ui, verbose=False)
+                try:
+                    res = train_human_behavior_policy(progress_callback=update_policy_ui, verbose=False)
+                except TypeError:
+                    import importlib
+                    import analysis.train_models
+                    importlib.reload(analysis.train_models)
+                    from analysis.train_models import train_human_behavior_policy as _fresh_train_pol
+                    try:
+                        res = _fresh_train_pol(progress_callback=update_policy_ui, verbose=False)
+                    except TypeError:
+                        res = _fresh_train_pol()
                 if "error" in res:
                     st.error(res["error"])
                 else:

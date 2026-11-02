@@ -20,7 +20,7 @@ if PROJECT_ROOT not in sys.path:
 
 # Force clean module cache on every reload so deployed updates take effect immediately
 for mod_name in list(sys.modules.keys()):
-    if mod_name.startswith("dashboard") or mod_name.startswith("human_interface"):
+    if any(mod_name.startswith(p) for p in ("dashboard", "human_interface", "analysis", "common", "agents")):
         sys.modules.pop(mod_name, None)
 
 # Check query parameter for mode selection (?mode=researcher or ?mode=study)
