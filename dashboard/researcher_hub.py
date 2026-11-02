@@ -1248,54 +1248,74 @@ def render_researcher_hub(embedded: bool = False):
             st.markdown("### 🏆 Model 1: Distinguishability Classifier (Novelty N3)")
             st.caption("Predicts Human (1) vs. AI (0) using trial-level behavioral signatures.")
             if st.button("🚀 Retrain Distinguishability Classifier", type="primary", use_container_width=True):
-                with st.spinner("Training cross-validated classifier..."):
-                    res = train_distinguishability_classifier()
-                    if "error" in res:
-                        st.error(res["error"])
-                    else:
-                        st.success("Trained successfully!")
-                        st.metric("5-Fold CV Accuracy", f"{res['accuracy'] * 100:.1f}%")
-                        st.metric("ROC-AUC Score", f"{res['auc']:.3f}")
-                        st.markdown("**Top Learned Feature Weights:**")
-                        w_df = pd.DataFrame(list(res["feature_weights"].items()), columns=["Feature", "Weight"]).sort_values(by="Weight", ascending=False)
-                        st.dataframe(w_df, use_container_width=True)
+                prog_bar1 = st.progress(0, text="Running cross-validation & initializing epochs...")
+                chart_spot1 = st.empty()
+                loss_hist1: list[dict[str, float]] = []
+
+                def update_classifier_ui(epoch: int, total: int, loss: float) -> None:
+                    pct = min(100, int((epoch / total) * 100))
+                    prog_bar1.progress(pct, text=f"Epoch {epoch}/{total} — Binary Cross-Entropy Loss: {loss:.4f}")
+                    loss_hist1.append({"Epoch": epoch, "Loss": loss})
+                    chart_spot1.line_chart(pd.DataFrame(loss_hist1).set_index("Epoch"))
+
+                res = train_distinguishability_classifier(progress_callback=update_classifier_ui, verbose=False)
+                if "error" in res:
+                    st.error(res["error"])
+                else:
+                    prog_bar1.progress(100, text="Training Complete! (500 Epochs)")
+                    st.success("Trained successfully!")
+                    st.metric("5-Fold CV Accuracy", f"{res['accuracy'] * 100:.1f}%")
+                    st.metric("ROC-AUC Score", f"{res['auc']:.3f}")
+                    st.markdown("**Top Learned Feature Weights:**")
+                    w_df = pd.DataFrame(list(res["feature_weights"].items()), columns=["Feature", "Weight"]).sort_values(by="Weight", ascending=False)
+                    st.dataframe(w_df, use_container_width=True)
 
         with tcol2:
             st.markdown("### 🤖 Model 2: Human Behavioral Policy (Imitation Learning)")
             st.caption("Learns p(action | state) from actual human decisions.")
             if st.button("🚀 Retrain Human Clone Policy", type="primary", use_container_width=True):
-                with st.spinner("Training multi-class behavioral policy..."):
-                    res = train_human_behavior_policy()
-                    if "error" in res:
-                        st.error(res["error"])
-                    else:
-                        st.success("Trained successfully!")
-                        st.metric("Action Prediction Accuracy", f"{res['test_accuracy'] * 100:.1f}%")
-                        st.metric("Trained Decision Steps", res["n_samples"])
-                        acts_df = pd.DataFrame(list(res["action_counts"].items()), columns=["Action", "Count"])
-                        if HAS_PLOTLY:
-                            fig_acts = go.Figure(data=[
-                                go.Bar(
-                                    x=acts_df["Action"],
-                                    y=acts_df["Count"],
-                                    marker_color=COLOR_HUMAN,
-                                    text=acts_df["Count"],
-                                    textposition="auto",
-                                    hovertemplate="<b>Action:</b> %{x}<br><b>Count:</b> %{y}<extra></extra>",
-                                )
-                            ])
-                            fig_acts.update_layout(
-                                template="plotly_dark",
-                                paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="rgba(0,0,0,0)",
-                                margin=dict(l=20, r=20, t=20, b=20),
-                                yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
-                                xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-                                height=260,
+                prog_bar2 = st.progress(0, text="Initializing policy network epochs...")
+                chart_spot2 = st.empty()
+                loss_hist2: list[dict[str, float]] = []
+
+                def update_policy_ui(epoch: int, total: int, loss: float) -> None:
+                    pct = min(100, int((epoch / total) * 100))
+                    prog_bar2.progress(pct, text=f"Epoch {epoch}/{total} — Cross-Entropy Loss: {loss:.4f}")
+                    loss_hist2.append({"Epoch": epoch, "Loss": loss})
+                    chart_spot2.line_chart(pd.DataFrame(loss_hist2).set_index("Epoch"))
+
+                res = train_human_behavior_policy(progress_callback=update_policy_ui, verbose=False)
+                if "error" in res:
+                    st.error(res["error"])
+                else:
+                    prog_bar2.progress(100, text="Training Complete! (600 Epochs)")
+                    st.success("Trained successfully!")
+                    st.metric("Action Prediction Accuracy", f"{res['test_accuracy'] * 100:.1f}%")
+                    st.metric("Trained Decision Steps", res["n_samples"])
+                    acts_df = pd.DataFrame(list(res["action_counts"].items()), columns=["Action", "Count"])
+                    if HAS_PLOTLY:
+                        fig_acts = go.Figure(data=[
+                            go.Bar(
+                                x=acts_df["Action"],
+                                y=acts_df["Count"],
+                                marker_color=COLOR_HUMAN,
+                                text=acts_df["Count"],
+                                textposition="auto",
+                                hovertemplate="<b>Action:</b> %{x}<br><b>Count:</b> %{y}<extra></extra>",
                             )
-                            st.plotly_chart(fig_acts, use_container_width=True)
-                        else:
-                            st.bar_chart(acts_df.set_index("Action"))
+                        ])
+                        fig_acts.update_layout(
+                            template="plotly_dark",
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            margin=dict(l=20, r=20, t=20, b=20),
+                            yaxis=dict(title="Action Count", gridcolor="rgba(255,255,255,0.08)"),
+                            xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+                            height=260,
+                        )
+                        st.plotly_chart(fig_acts, use_container_width=True)
+                    else:
+                        st.bar_chart(acts_df.set_index("Action"))
 
     # -------------------------------------------------------------
     # TAB 5: INTERACTIVE BEHAVIOR SIMULATOR

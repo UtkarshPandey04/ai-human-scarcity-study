@@ -78,7 +78,11 @@ def compute_auc(y_true: np.ndarray, y_scores: np.ndarray) -> float:
     return pairs / (len(pos) * len(neg))
 
 
-def train_distinguishability_classifier(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any]:
+def train_distinguishability_classifier(
+    db_path: str = DEFAULT_DB_PATH,
+    progress_callback: Any = None,
+    verbose: bool = True,
+) -> dict[str, Any]:
     """Train regularized logistic regression model to distinguish human from AI trials."""
     init_db(db_path)
     with get_connection(db_path) as conn:
@@ -123,6 +127,9 @@ def train_distinguishability_classifier(db_path: str = DEFAULT_DB_PATH) -> dict[
     cv_scores = np.zeros(n_samples)
     cv_preds = np.zeros(n_samples)
 
+    if verbose:
+        print(f"Running {k_folds}-fold cross validation across {n_samples} trial feature vectors...")
+
     for i in range(k_folds):
         val_idx = folds[i]
         train_idx = np.setdiff1d(indices, val_idx)
@@ -154,13 +161,23 @@ def train_distinguishability_classifier(db_path: str = DEFAULT_DB_PATH) -> dict[
     # Train full model for saving
     w_full = np.zeros(n_features)
     b_full = 0.0
-    for _ in range(500):
+    full_epochs = 500
+    if verbose:
+        print(f"Training full logistic regression model ({full_epochs} epochs):")
+
+    for epoch in range(1, full_epochs + 1):
         lin = np.dot(X_norm, w_full) + b_full
         p = 1.0 / (1.0 + np.exp(-np.clip(lin, -15.0, 15.0)))
+        loss = -np.mean(y * np.log(np.clip(p, 1e-10, 1.0)) + (1.0 - y) * np.log(np.clip(1.0 - p, 1e-10, 1.0))) + 0.005 * np.sum(w_full ** 2)
         dw = (1.0 / n_samples) * np.dot(X_norm.T, (p - y)) + 0.01 * w_full
         db = (1.0 / n_samples) * np.sum(p - y)
         w_full -= 0.08 * dw
         b_full -= 0.08 * db
+
+        if verbose and (epoch % 100 == 0 or epoch == full_epochs):
+            print(f"  --> Epoch [{epoch:>3}/{full_epochs}] | BCE Loss: {loss:.4f}")
+        if progress_callback and (epoch % 10 == 0 or epoch == full_epochs):
+            progress_callback(epoch, full_epochs, float(loss))
 
     weights_dict = {col: float(w_full[idx]) for idx, col in enumerate(FEATURE_COLUMNS)}
 
@@ -202,7 +219,11 @@ def softmax(x: np.ndarray) -> np.ndarray:
     return e_x / np.sum(e_x, axis=-1, keepdims=True)
 
 
-def train_human_behavior_policy(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any]:
+def train_human_behavior_policy(
+    db_path: str = DEFAULT_DB_PATH,
+    progress_callback: Any = None,
+    verbose: bool = True,
+) -> dict[str, Any]:
     """Train a multi-class policy model p(action | state) on human participant actions."""
     init_db(db_path)
     with get_connection(db_path) as conn:
@@ -258,8 +279,11 @@ def train_human_behavior_policy(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any
     lr = 0.05
     epochs = 600
 
+    if verbose:
+        print(f"Training policy network on {len(X_tr)} training steps ({epochs} epochs):")
+
     losses = []
-    for epoch in range(epochs):
+    for epoch in range(1, epochs + 1):
         logits = np.dot(X_tr, W)
         probs = softmax(logits)
 
@@ -269,6 +293,11 @@ def train_human_behavior_policy(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any
 
         grad = (1.0 / len(X_tr)) * np.dot(X_tr.T, (probs - Y_tr)) + 0.01 * W
         W -= lr * grad
+
+        if verbose and (epoch % 50 == 0 or epoch == epochs):
+            print(f"  --> Epoch [{epoch:>3}/{epochs}] | Cross-Entropy Loss: {loss:.4f}")
+        if progress_callback and (epoch % 10 == 0 or epoch == epochs):
+            progress_callback(epoch, epochs, float(loss))
 
     # Test accuracy
     te_logits = np.dot(X_te, W)
