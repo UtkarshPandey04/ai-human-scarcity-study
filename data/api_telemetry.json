@@ -1,54 +1,54 @@
 {
   "groq": {
-    "total_calls": 12,
-    "successful_calls": 8,
+    "total_calls": 15,
+    "successful_calls": 10,
     "rate_limited_calls": 0,
-    "failed_calls": 4,
+    "failed_calls": 5,
     "total_prompt_tokens": 0,
     "total_completion_tokens": 0,
-    "total_latency_ms": 2794.5713996887207,
-    "avg_latency_ms": 232.9,
-    "last_latency_ms": 780.9,
+    "total_latency_ms": 3256.3300132751465,
+    "avg_latency_ms": 217.1,
+    "last_latency_ms": 461.6,
     "last_status": "Error",
-    "last_call_at": "2026-11-09T20:23:03.561335+00:00"
+    "last_call_at": "2026-11-09T20:36:47.315004+00:00"
   },
   "gemini": {
-    "total_calls": 4,
-    "successful_calls": 4,
+    "total_calls": 5,
+    "successful_calls": 5,
     "rate_limited_calls": 0,
     "failed_calls": 0,
     "total_prompt_tokens": 0,
     "total_completion_tokens": 0,
-    "total_latency_ms": 0.26416778564453125,
+    "total_latency_ms": 0.3077983856201172,
     "avg_latency_ms": 0.1,
-    "last_latency_ms": 0.1,
-    "last_status": "Healthy",
-    "last_call_at": "2026-11-09T20:23:02.682907+00:00"
-  },
-  "openrouter": {
-    "total_calls": 4,
-    "successful_calls": 4,
-    "rate_limited_calls": 0,
-    "failed_calls": 0,
-    "total_prompt_tokens": 0,
-    "total_completion_tokens": 0,
-    "total_latency_ms": 0.19741058349609375,
-    "avg_latency_ms": 0.0,
     "last_latency_ms": 0.0,
     "last_status": "Healthy",
-    "last_call_at": "2026-11-09T20:23:02.758301+00:00"
+    "last_call_at": "2026-11-09T20:36:46.761448+00:00"
   },
-  "ollama": {
-    "total_calls": 4,
-    "successful_calls": 4,
+  "openrouter": {
+    "total_calls": 5,
+    "successful_calls": 5,
     "rate_limited_calls": 0,
     "failed_calls": 0,
     "total_prompt_tokens": 0,
     "total_completion_tokens": 0,
-    "total_latency_ms": 0.23937225341796875,
+    "total_latency_ms": 0.25200843811035156,
     "avg_latency_ms": 0.1,
     "last_latency_ms": 0.1,
     "last_status": "Healthy",
-    "last_call_at": "2026-11-09T20:23:02.720696+00:00"
+    "last_call_at": "2026-11-09T20:36:46.831100+00:00"
+  },
+  "ollama": {
+    "total_calls": 5,
+    "successful_calls": 5,
+    "rate_limited_calls": 0,
+    "failed_calls": 0,
+    "total_prompt_tokens": 0,
+    "total_completion_tokens": 0,
+    "total_latency_ms": 0.2815723419189453,
+    "avg_latency_ms": 0.1,
+    "last_latency_ms": 0.0,
+    "last_status": "Healthy",
+    "last_call_at": "2026-11-09T20:36:46.798287+00:00"
   }
 }
