@@ -299,6 +299,13 @@ def seed_domain() -> int:
     return 0
 
 
+def enrich_human() -> int:
+    """Enrich human seeds with natural dialogues, demographic inputs, and Turing judgments."""
+    from scripts.enrich_human_seeds_inputs import main as run_pipeline
+    run_pipeline()
+    return 0
+
+
 TASKS = {
     "validate": validate,
     "validate_logs": validate_logs,
@@ -323,6 +330,7 @@ TASKS = {
     "test_exemplars": test_exemplars,
     "seed_domain": seed_domain,
     "feed_domain": seed_domain,
+    "enrich_human": enrich_human,
 }
 
 

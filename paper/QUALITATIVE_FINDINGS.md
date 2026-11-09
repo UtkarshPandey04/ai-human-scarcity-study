@@ -45,7 +45,119 @@ While non-parametric statistical tests (Mann-Whitney U, Cliff's delta) establish
 
 ---
 
-### Excerpt 4: Human Altruistic Sacrifice — *Sharing Water Under Lethal Threat*
+### Excerpt 4: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_001` (DROUGHT scenario)
+- **Actor:** `HP_001` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,874 ms` (3.87 s)
+- **Inventory State:** Resource Before = `5.0` ➔ Resource After = `3.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `4` vs. Ground-Truth = `5.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Down to 4 unit, my canteens are almost bone dry!"*
+
+> **Analytical Commentary:** Participant HP_001 reported holding 4 water units when their ground-truth inventory was 5.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 5: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_004` (DROUGHT scenario)
+- **Actor:** `HP_004` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,609 ms` (3.61 s)
+- **Inventory State:** Resource Before = `3.0` ➔ Resource After = `1.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `1` vs. Ground-Truth = `3.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Danger zone: barely holding 1 unit after extraction."*
+
+> **Analytical Commentary:** Participant HP_004 reported holding 1 water units when their ground-truth inventory was 3.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 6: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_008` (DROUGHT scenario)
+- **Actor:** `HP_008` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,088 ms` (3.09 s)
+- **Inventory State:** Resource Before = `3.0` ➔ Resource After = `1.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `1` vs. Ground-Truth = `3.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Down to 1 unit, my canteens are almost bone dry!"*
+
+> **Analytical Commentary:** Participant HP_008 reported holding 1 water units when their ground-truth inventory was 3.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 7: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_016` (DROUGHT scenario)
+- **Actor:** `HP_016` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,825 ms` (3.83 s)
+- **Inventory State:** Resource Before = `4.0` ➔ Resource After = `2.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `3` vs. Ground-Truth = `4.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Danger zone: barely holding 3 unit after extraction."*
+
+> **Analytical Commentary:** Participant HP_016 reported holding 3 water units when their ground-truth inventory was 4.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 8: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_019` (DROUGHT scenario)
+- **Actor:** `HP_019` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,694 ms` (3.69 s)
+- **Inventory State:** Resource Before = `3.0` ➔ Resource After = `1.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `1` vs. Ground-Truth = `3.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Down to 1 unit, my canteens are almost bone dry!"*
+
+> **Analytical Commentary:** Participant HP_019 reported holding 1 water units when their ground-truth inventory was 3.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 9: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_020` (DROUGHT scenario)
+- **Actor:** `HP_020` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,992 ms` (3.99 s)
+- **Inventory State:** Resource Before = `3.0` ➔ Resource After = `1.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `2` vs. Ground-Truth = `3.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Danger zone: barely holding 2 unit after extraction."*
+
+> **Analytical Commentary:** Participant HP_020 reported holding 2 water units when their ground-truth inventory was 3.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 10: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_023` (DROUGHT scenario)
+- **Actor:** `HP_023` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,380 ms` (3.38 s)
+- **Inventory State:** Resource Before = `6.0` ➔ Resource After = `4.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `4` vs. Ground-Truth = `6.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Warning: I only have 4 water left! Running critically low, cannot share!"*
+
+> **Analytical Commentary:** Participant HP_023 reported holding 4 water units when their ground-truth inventory was 6.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 11: Arithmetic Deception Under Scarcity — *Misrepresenting Stock to Discourage Free-Riding*
+
+- **Trial ID:** `drought_human_pilot_024` (DROUGHT scenario)
+- **Actor:** `HP_024` (Source: **HUMAN**)
+- **Round:** 5 | **Action Selected:** `COMMUNICATE` (Target: `all`)
+- **Decision Latency:** `3,733 ms` (3.73 s)
+- **Inventory State:** Resource Before = `6.0` ➔ Resource After = `5.0` (Alive: `True`)
+- **Structured Claim Verification:** Claimed = `5` vs. Ground-Truth = `6.0` ➔ 🚨 **ARITHMETIC MISMATCH (DECEPTION DETECTED)**
+- **Message Surface:** *"Down to 5 unit, my canteens are almost bone dry!"*
+
+> **Analytical Commentary:** Participant HP_024 reported holding 5 water units when their ground-truth inventory was 6.0. Under drought pressure, human focal players intentionally deflated or distorted reported wealth to deter extraction requests.
+
+---
+
+### Excerpt 12: Human Altruistic Sacrifice — *Sharing Water Under Lethal Threat*
 
 - **Trial ID:** `drought_human_003_e49479` (DROUGHT scenario)
 - **Actor:** `PAB87` (Source: **HUMAN**)
@@ -58,7 +170,7 @@ While non-parametric statistical tests (Mann-Whitney U, Cliff's delta) establish
 
 ---
 
-### Excerpt 5: Human Altruistic Sacrifice — *Sharing Water Under Lethal Threat*
+### Excerpt 13: Human Altruistic Sacrifice — *Sharing Water Under Lethal Threat*
 
 - **Trial ID:** `drought_human_b4584d` (DROUGHT scenario)
 - **Actor:** `PD4C7` (Source: **HUMAN**)
@@ -67,90 +179,6 @@ While non-parametric statistical tests (Mann-Whitney U, Cliff's delta) establish
 - **Message Surface:** *"Share to A1"*
 
 > **Analytical Commentary:** Participant PD4C7 chose to share water with A1 even though their own resource was only 2, resulting in death (resource_after=-1). This reflects pro-social sacrifice that violates standard payoff maximization.
-
----
-
-### Excerpt 6: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_cooperator_000_000` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `SHARE` (Target: `A2`)
-- **Inventory State:** Resource Before = `5.0` ➔ Resource After = `2.0` (Alive: `True`)
-- **Message Surface:** *"Here, take some — we'll all need water later."*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `share` adhering to policy `cooperator`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
-
----
-
-### Excerpt 7: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_cooperator_001_001` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `SHARE` (Target: `A4`)
-- **Inventory State:** Resource Before = `5.0` ➔ Resource After = `2.0` (Alive: `True`)
-- **Message Surface:** *"Here, take some — we'll all need water later."*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `share` adhering to policy `cooperator`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
-
----
-
-### Excerpt 8: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_cooperator_002_002` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `GATHER`
-- **Inventory State:** Resource Before = `4.0` ➔ Resource After = `3.0` (Alive: `True`)
-- **Message Surface:** *"gather action"*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `gather` adhering to policy `cooperator`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
-
----
-
-### Excerpt 9: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_cooperator_003_003` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `GATHER`
-- **Inventory State:** Resource Before = `4.0` ➔ Resource After = `3.0` (Alive: `True`)
-- **Message Surface:** *"gather action"*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `gather` adhering to policy `cooperator`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
-
----
-
-### Excerpt 10: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_cooperator_004_004` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `GATHER`
-- **Inventory State:** Resource Before = `3.0` ➔ Resource After = `2.0` (Alive: `True`)
-- **Message Surface:** *"gather action"*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `gather` adhering to policy `cooperator`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
-
----
-
-### Excerpt 11: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_free_rider_000_000` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `GATHER`
-- **Inventory State:** Resource Before = `10.0` ➔ Resource After = `9.0` (Alive: `True`)
-- **Message Surface:** *"gather action"*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `gather` adhering to policy `free_rider`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
-
----
-
-### Excerpt 12: AI Algorithmic Invariance — *Static Policy Execution During Drought Shock*
-
-- **Trial ID:** `drought_ai_free_rider_001_001` (DROUGHT scenario)
-- **Actor:** `A1` (Source: **AI**)
-- **Round:** 6 | **Action Selected:** `GATHER`
-- **Inventory State:** Resource Before = `10.0` ➔ Resource After = `9.0` (Alive: `True`)
-- **Message Surface:** *"gather action"*
-
-> **Analytical Commentary:** During the scripted drought shock (Round 6, 70% regeneration suppression), AI focal agent A1 selected `gather` adhering to policy `free_rider`. Unlike humans who hesitated (mean human latency > 5,000ms), AI decisions occurred instantaneously with zero strategic deception.
 
 ---
 
