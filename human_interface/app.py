@@ -1308,10 +1308,14 @@ def debrief_screen():
             st.markdown("🎯 **Model A: Distinguishability Classifier**")
             st.write(f"- 5-Fold Cross-Val Accuracy: **{cls_res.get('accuracy', 0.0) * 100:.1f}%**")
             st.write(f"- ROC-AUC Score: **{cls_res.get('auc', 0.0):.3f}**")
+            if "f1_score" in cls_res:
+                st.write(f"- F1 Score: **{cls_res['f1_score'] * 100:.1f}%**")
             st.caption("Checkpoint: `models/distinguishability_classifier.json`")
         with rcol2:
             st.markdown("🧬 **Model B: Human Clone Policy**")
             st.write(f"- Test Set Accuracy: **{pol_res.get('test_accuracy', 0.0) * 100:.1f}%**")
+            if "gain_over_floor" in pol_res:
+                st.write(f"- Gain vs Majority Floor: **+{pol_res['gain_over_floor'] * 100:.1f}%**")
             st.write(f"- Trained Steps: **{pol_res.get('n_samples', 0)}**")
             st.caption("Checkpoint: `models/human_clone_policy.json`")
 

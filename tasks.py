@@ -248,6 +248,11 @@ def train() -> int:
     return subprocess.call([sys.executable, "-m", "analysis.train_models", *sys.argv[2:]])
 
 
+def predict() -> int:
+    """Audit predictability of Distinguishability Classifier and Human Behavioral Policy."""
+    return subprocess.call([sys.executable, "-m", "analysis.check_predictability", *sys.argv[2:]])
+
+
 def export_data() -> int:
     """Export unified combined dataset (trials, demographics, features) to CSV."""
     from common.database import export_combined_dataset
@@ -325,6 +330,8 @@ TASKS = {
     "joint_analysis": joint_analysis,
     "sync_db": sync_db,
     "train": train,
+    "predict": predict,
+    "predictability": predict,
     "export_data": export_data,
     "export_sft": export_sft,
     "test_exemplars": test_exemplars,

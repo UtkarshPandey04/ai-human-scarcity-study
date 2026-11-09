@@ -158,6 +158,15 @@ def train_distinguishability_classifier(
 
     acc = float(np.mean(cv_preds == y))
     auc = float(compute_auc(y, cv_scores))
+    tp = int(np.sum((cv_preds == 1) & (y == 1)))
+    tn = int(np.sum((cv_preds == 0) & (y == 0)))
+    fp = int(np.sum((cv_preds == 1) & (y == 0)))
+    fn = int(np.sum((cv_preds == 0) & (y == 1)))
+    prec = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+    rec = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+    f1 = float(2 * prec * rec / (prec + rec)) if (prec + rec) > 0 else 0.0
+    majority_floor = float(max(int(np.sum(y == 1)), int(np.sum(y == 0))) / n_samples)
+    gain_over_floor = float(acc - majority_floor)
 
     # Train full model for saving
     w_full = np.zeros(n_features)
@@ -191,6 +200,12 @@ def train_distinguishability_classifier(
         "bias": float(b_full),
         "cv_accuracy": acc,
         "cv_auc": auc,
+        "precision": prec,
+        "recall": rec,
+        "f1_score": f1,
+        "confusion_matrix": {"tp": tp, "tn": tn, "fp": fp, "fn": fn},
+        "majority_floor": majority_floor,
+        "gain_over_floor": gain_over_floor,
         "n_samples": n_samples,
         "n_human": int(np.sum(y == 1)),
         "n_ai": int(np.sum(y == 0)),
@@ -203,6 +218,12 @@ def train_distinguishability_classifier(
     return {
         "accuracy": acc,
         "auc": auc,
+        "precision": prec,
+        "recall": rec,
+        "f1_score": f1,
+        "confusion_matrix": {"tp": tp, "tn": tn, "fp": fp, "fn": fn},
+        "majority_floor": majority_floor,
+        "gain_over_floor": gain_over_floor,
         "n_samples": n_samples,
         "n_human": int(np.sum(y == 1)),
         "n_ai": int(np.sum(y == 0)),
@@ -243,17 +264,28 @@ def train_human_behavior_policy(
     if len(rows) < 10:
         return {"error": f"Need at least 10 human action steps to train policy, found {len(rows)}."}
 
+    POLICY_FEATURE_NAMES = [
+        "bias", "round_norm", "resource_norm", "is_drought", "severity",
+        "surplus", "critical", "comm_window", "drought_pressure"
+    ]
+
     X_list = []
     y_list = []
 
     for r in rows:
         act_idx = ACTION_MAP.get(r["action_type"], 0)
-        rnd_norm = float(r["round"]) / 10.0
-        res_norm = float(r["resource_before"] or 5.0) / 10.0
-        is_drought = 1.0 if (r["scenario"] == "drought" and r["round"] == 6) else 0.0
+        rnd = float(r["round"])
+        rnd_norm = rnd / 10.0
+        res = float(r["resource_before"] or 5.0)
+        res_norm = res / 10.0
+        is_drought = 1.0 if (r["scenario"] == "drought" and rnd == 6) else 0.0
         sev = float(r["severity"] or (0.7 if r["scenario"] == "drought" else 0.0))
+        surplus = max(0.0, res - 3.0) / 10.0
+        critical = 1.0 if res <= 2.0 else 0.0
+        comm_window = 1.0 if int(rnd) in (2, 4, 5) else 0.0
+        drought_pressure = is_drought * (1.0 - res_norm)
 
-        feat = [1.0, rnd_norm, res_norm, is_drought, sev]
+        feat = [1.0, rnd_norm, res_norm, is_drought, sev, surplus, critical, comm_window, drought_pressure]
         X_list.append(feat)
         y_list.append(act_idx)
 
@@ -273,13 +305,14 @@ def train_human_behavior_policy(
     split = int(0.8 * n_samples)
     tr_idx, te_idx = indices[:split], indices[split:]
 
-    X_tr, Y_tr = X[tr_idx], Y_onehot[tr_idx]
+    X_tr, y_tr = X[tr_idx], y[tr_idx]
+    Y_tr = Y_onehot[tr_idx]
     X_te, y_te = X[te_idx], y[te_idx]
 
     # Initialize weights
     W = np.zeros((n_features, num_classes))
-    lr = 0.05
-    epochs = 600
+    lr = 0.12
+    epochs = 800
 
     if verbose:
         print(f"Training policy network on {len(X_tr)} training steps ({epochs} epochs):")
@@ -301,30 +334,61 @@ def train_human_behavior_policy(
         if progress_callback and (epoch % 10 == 0 or epoch == epochs):
             progress_callback(epoch, epochs, float(loss))
 
-    # Test accuracy
-    te_logits = np.dot(X_te, W)
-    te_preds = np.argmax(te_logits, axis=1)
-    test_acc = float(np.mean(te_preds == y_te)) if len(y_te) > 0 else 1.0
+    # Test accuracy & per-action metrics (using optimal multinomial solver if available)
+    try:
+        from sklearn.linear_model import LogisticRegression
+        clf_te = LogisticRegression(C=1.0, solver="lbfgs", max_iter=1000, random_state=42)
+        clf_te.fit(X_tr[:, 1:], y_tr)
+        te_preds = clf_te.predict(X_te[:, 1:])
+        test_acc = float(np.mean(te_preds == y_te)) if len(y_te) > 0 else 1.0
 
-    # Full fit
-    W_full = np.zeros((n_features, num_classes))
-    for _ in range(700):
-        logits = np.dot(X, W_full)
-        probs = softmax(logits)
-        grad = (1.0 / n_samples) * np.dot(X.T, (probs - Y_onehot)) + 0.01 * W_full
-        W_full -= lr * grad
+        clf_full = LogisticRegression(C=1.0, solver="lbfgs", max_iter=1000, random_state=42)
+        clf_full.fit(X[:, 1:], y)
+        W_full = np.zeros((n_features, num_classes))
+        for i, c in enumerate(clf_full.classes_):
+            W_full[0, c] = clf_full.intercept_[i]
+            W_full[1:, c] = clf_full.coef_[i]
+    except Exception:
+        te_logits = np.dot(X_te, W)
+        te_preds = np.argmax(te_logits, axis=1)
+        test_acc = float(np.mean(te_preds == y_te)) if len(y_te) > 0 else 1.0
 
-    # Action priors
+        W_full = np.zeros((n_features, num_classes))
+        for _ in range(900):
+            logits = np.dot(X, W_full)
+            probs = softmax(logits)
+            grad = (1.0 / n_samples) * np.dot(X.T, (probs - Y_onehot)) + 0.01 * W_full
+            W_full -= lr * grad
+
     action_counts = {k: int(np.sum(y == v)) for k, v in ACTION_MAP.items()}
+    majority_act_floor = float(max(action_counts.values()) / n_samples)
+    gain_over_floor = float(test_acc - majority_act_floor)
+
+    per_action_metrics = {}
+    for act_name, act_code in ACTION_MAP.items():
+        act_mask = (y_te == act_code)
+        sup = int(np.sum(act_mask))
+        if sup > 0:
+            rec = float(np.mean(te_preds[act_mask] == act_code))
+            pred_mask = (te_preds == act_code)
+            prec = float(np.mean(y_te[pred_mask] == act_code)) if np.sum(pred_mask) > 0 else 0.0
+            per_action_metrics[act_name] = {
+                "support": sup,
+                "recall": rec,
+                "precision": prec,
+            }
 
     checkpoint = {
         "model_type": "human_behavior_clone_policy",
         "action_map": ACTION_MAP,
-        "input_features": ["bias", "round_norm", "resource_norm", "is_drought", "severity"],
+        "input_features": POLICY_FEATURE_NAMES,
         "weights": W_full.tolist(),
         "n_samples": n_samples,
         "test_accuracy": test_acc,
+        "majority_floor": majority_act_floor,
+        "gain_over_floor": gain_over_floor,
         "action_counts": action_counts,
+        "per_action_metrics": per_action_metrics,
         "final_loss": losses[-1],
     }
 
@@ -335,7 +399,10 @@ def train_human_behavior_policy(
     return {
         "n_samples": n_samples,
         "test_accuracy": test_acc,
+        "majority_floor": majority_act_floor,
+        "gain_over_floor": gain_over_floor,
         "action_counts": action_counts,
+        "per_action_metrics": per_action_metrics,
         "checkpoint_path": chk_path,
         "weights": W_full,
     }
@@ -360,12 +427,21 @@ class HumanClonePolicy:
 
     def act(self, obs: Any) -> Action:
         """Predict human-like action given an environment Observation."""
-        rnd_norm = float(obs.round) / 10.0
-        res_norm = float(obs.own_resource) / 10.0
+        rnd = float(obs.round)
+        rnd_norm = rnd / 10.0
+        res = float(obs.own_resource)
+        res_norm = res / 10.0
         is_drought_val = 1.0 if obs.is_drought else 0.0
         sev = 0.7 if obs.is_drought else 0.0
+        surplus_val = max(0.0, res - 3.0) / 10.0
+        critical_val = 1.0 if res <= 2.0 else 0.0
+        comm_val = 1.0 if int(rnd) in (2, 4, 5) else 0.0
+        drought_press = is_drought_val * (1.0 - res_norm)
 
-        x = np.array([1.0, rnd_norm, res_norm, is_drought_val, sev])
+        if self.weights.shape[0] == 9:
+            x = np.array([1.0, rnd_norm, res_norm, is_drought_val, sev, surplus_val, critical_val, comm_val, drought_press])
+        else:
+            x = np.array([1.0, rnd_norm, res_norm, is_drought_val, sev])
         logits = np.dot(x, self.weights)
         probs = softmax(logits)
 

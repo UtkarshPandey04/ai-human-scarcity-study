@@ -1274,8 +1274,22 @@ def render_researcher_hub(embedded: bool = False):
                 else:
                     prog_bar1.progress(100, text="Training Complete! (500 Epochs)")
                     st.success("Trained successfully!")
-                    st.metric("5-Fold CV Accuracy", f"{res['accuracy'] * 100:.1f}%")
-                    st.metric("ROC-AUC Score", f"{res['auc']:.3f}")
+                    mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+                    mcol1.metric("5-Fold CV Accuracy", f"{res['accuracy'] * 100:.1f}%")
+                    mcol2.metric("ROC-AUC Score", f"{res['auc']:.3f}")
+                    mcol3.metric("F1 Score", f"{res.get('f1_score', 0.0) * 100:.1f}%")
+                    gain = res.get('gain_over_floor', 0.0)
+                    mcol4.metric("Gain vs Floor", f"+{gain * 100:.1f}%", f"Floor: {res.get('majority_floor', 0.5) * 100:.1f}%")
+
+                    cm = res.get("confusion_matrix")
+                    if cm:
+                        st.markdown("**Empirical Confusion Matrix (Held-out Cross-Validation):**")
+                        cm_df = pd.DataFrame([
+                            {"Class": "Actual Human", "Predicted Human (TP)": cm.get("tp", 0), "Predicted AI (FN)": cm.get("fn", 0)},
+                            {"Class": "Actual AI", "Predicted Human (FP)": cm.get("fp", 0), "Predicted AI (TN)": cm.get("tn", 0)},
+                        ])
+                        st.dataframe(cm_df.set_index("Class"), use_container_width=True)
+
                     st.markdown("**Top Learned Feature Weights:**")
                     w_df = pd.DataFrame(list(res["feature_weights"].items()), columns=["Feature", "Weight"]).sort_values(by="Weight", ascending=False)
                     st.dataframe(w_df, use_container_width=True)
@@ -1308,10 +1322,28 @@ def render_researcher_hub(embedded: bool = False):
                 if "error" in res:
                     st.error(res["error"])
                 else:
-                    prog_bar2.progress(100, text="Training Complete! (600 Epochs)")
+                    prog_bar2.progress(100, text="Training Complete! (800 Epochs)")
                     st.success("Trained successfully!")
-                    st.metric("Action Prediction Accuracy", f"{res['test_accuracy'] * 100:.1f}%")
-                    st.metric("Trained Decision Steps", res["n_samples"])
+                    pmcol1, pmcol2, pmcol3, pmcol4 = st.columns(4)
+                    pmcol1.metric("Action Test Accuracy", f"{res['test_accuracy'] * 100:.1f}%")
+                    pmcol2.metric("Majority Baseline Floor", f"{res.get('majority_floor', 0.0) * 100:.1f}%")
+                    pm_gain = res.get('gain_over_floor', 0.0)
+                    pmcol3.metric("Gain vs Floor", f"+{pm_gain * 100:.1f}%")
+                    pmcol4.metric("Trained Decision Steps", res["n_samples"])
+
+                    pam = res.get("per_action_metrics")
+                    if pam:
+                        st.markdown("**Per-Action Predictability (Held-out Test Steps):**")
+                        pam_rows = []
+                        for act_k, act_v in pam.items():
+                            pam_rows.append({
+                                "Action": act_k,
+                                "Support": act_v.get("support", 0),
+                                "Precision": f"{act_v.get('precision', 0.0) * 100:.1f}%",
+                                "Recall": f"{act_v.get('recall', 0.0) * 100:.1f}%",
+                            })
+                        st.dataframe(pd.DataFrame(pam_rows).set_index("Action"), use_container_width=True)
+
                     acts_df = pd.DataFrame(list(res["action_counts"].items()), columns=["Action", "Count"])
                     if HAS_PLOTLY:
                         fig_acts = go.Figure(data=[
@@ -1356,8 +1388,23 @@ def render_researcher_hub(embedded: bool = False):
             sim_sev = icol4.slider("Scarcity Severity (σ)", 0.0, 1.0, 0.7 if sim_drought else 0.0)
 
             from analysis.train_models import softmax
-            x_vec = np.array([1.0, float(sim_round) / 10.0, float(sim_res) / 10.0, 1.0 if sim_drought else 0.0, sim_sev])
+            rnd_val = float(sim_round)
+            res_val = float(sim_res)
+            rnd_norm = rnd_val / 10.0
+            res_norm = res_val / 10.0
+            is_drought_val = 1.0 if sim_drought else 0.0
+            sev_val = float(sim_sev)
+
             w_mat = np.array(chk_data["weights"])
+            if w_mat.shape[0] == 9:
+                surplus_val = max(0.0, res_val - 3.0) / 10.0
+                critical_val = 1.0 if res_val <= 2.0 else 0.0
+                comm_window = 1.0 if int(rnd_val) in (2, 4, 5) else 0.0
+                drought_pressure = is_drought_val * (1.0 - res_norm)
+                x_vec = np.array([1.0, rnd_norm, res_norm, is_drought_val, sev_val, surplus_val, critical_val, comm_window, drought_pressure])
+            else:
+                x_vec = np.array([1.0, rnd_norm, res_norm, is_drought_val, sev_val])
+
             probs = softmax(np.dot(x_vec, w_mat))
 
             st.markdown("**Predicted Action Probability Distribution:**")
