@@ -292,6 +292,13 @@ def test_exemplars() -> int:
     return 0
 
 
+def seed_domain() -> int:
+    """Feed all scenarios across all matched seeds (0..29) for both human and AI."""
+    from scripts.feed_all_scenarios_seeds import main as run_pipeline
+    run_pipeline()
+    return 0
+
+
 TASKS = {
     "validate": validate,
     "validate_logs": validate_logs,
@@ -314,6 +321,8 @@ TASKS = {
     "export_data": export_data,
     "export_sft": export_sft,
     "test_exemplars": test_exemplars,
+    "seed_domain": seed_domain,
+    "feed_domain": seed_domain,
 }
 
 

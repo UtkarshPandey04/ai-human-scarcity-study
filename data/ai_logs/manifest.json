@@ -23063,5 +23063,2405 @@
       "prompt_file_sha256": "23c3b942d26ce2c5468a9c87f05411e36dc1fe166e7f877ad72c4a7cd42663ce",
       "timestamp": "2026-10-14T04:54:02.617902+00:00"
     }
-  ]
+  ],
+  "calm_ai_cooperator_005_005": {
+    "scenario": "calm",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_006_006": {
+    "scenario": "calm",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_007_007": {
+    "scenario": "calm",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_008_008": {
+    "scenario": "calm",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_009_009": {
+    "scenario": "calm",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_010_010": {
+    "scenario": "calm",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_011_011": {
+    "scenario": "calm",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_012_012": {
+    "scenario": "calm",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_013_013": {
+    "scenario": "calm",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_014_014": {
+    "scenario": "calm",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_015_015": {
+    "scenario": "calm",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_016_016": {
+    "scenario": "calm",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_017_017": {
+    "scenario": "calm",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_018_018": {
+    "scenario": "calm",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_019_019": {
+    "scenario": "calm",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_020_020": {
+    "scenario": "calm",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_021_021": {
+    "scenario": "calm",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_022_022": {
+    "scenario": "calm",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_023_023": {
+    "scenario": "calm",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_024_024": {
+    "scenario": "calm",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_025_025": {
+    "scenario": "calm",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_026_026": {
+    "scenario": "calm",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_027_027": {
+    "scenario": "calm",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_028_028": {
+    "scenario": "calm",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_cooperator_029_029": {
+    "scenario": "calm",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_005_005": {
+    "scenario": "calm",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_006_006": {
+    "scenario": "calm",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_007_007": {
+    "scenario": "calm",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_008_008": {
+    "scenario": "calm",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_009_009": {
+    "scenario": "calm",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_010_010": {
+    "scenario": "calm",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_011_011": {
+    "scenario": "calm",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_012_012": {
+    "scenario": "calm",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_013_013": {
+    "scenario": "calm",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_014_014": {
+    "scenario": "calm",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_015_015": {
+    "scenario": "calm",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_016_016": {
+    "scenario": "calm",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_017_017": {
+    "scenario": "calm",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_018_018": {
+    "scenario": "calm",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_019_019": {
+    "scenario": "calm",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_020_020": {
+    "scenario": "calm",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_021_021": {
+    "scenario": "calm",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_022_022": {
+    "scenario": "calm",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_023_023": {
+    "scenario": "calm",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_024_024": {
+    "scenario": "calm",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_025_025": {
+    "scenario": "calm",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_026_026": {
+    "scenario": "calm",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_027_027": {
+    "scenario": "calm",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_028_028": {
+    "scenario": "calm",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_free_rider_029_029": {
+    "scenario": "calm",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_005_005": {
+    "scenario": "calm",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_006_006": {
+    "scenario": "calm",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_007_007": {
+    "scenario": "calm",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_008_008": {
+    "scenario": "calm",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_009_009": {
+    "scenario": "calm",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_010_010": {
+    "scenario": "calm",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_011_011": {
+    "scenario": "calm",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_012_012": {
+    "scenario": "calm",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_013_013": {
+    "scenario": "calm",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_014_014": {
+    "scenario": "calm",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_015_015": {
+    "scenario": "calm",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_016_016": {
+    "scenario": "calm",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_017_017": {
+    "scenario": "calm",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_018_018": {
+    "scenario": "calm",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_019_019": {
+    "scenario": "calm",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_020_020": {
+    "scenario": "calm",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_021_021": {
+    "scenario": "calm",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_022_022": {
+    "scenario": "calm",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_023_023": {
+    "scenario": "calm",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_024_024": {
+    "scenario": "calm",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_025_025": {
+    "scenario": "calm",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_026_026": {
+    "scenario": "calm",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_027_027": {
+    "scenario": "calm",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_028_028": {
+    "scenario": "calm",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_tit_for_tat_029_029": {
+    "scenario": "calm",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "calm_ai_random_005_005": {
+    "scenario": "calm",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "calm_ai_random_006_006": {
+    "scenario": "calm",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 27,
+    "status": "ok"
+  },
+  "calm_ai_random_007_007": {
+    "scenario": "calm",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 21,
+    "status": "ok"
+  },
+  "calm_ai_random_008_008": {
+    "scenario": "calm",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 22,
+    "status": "ok"
+  },
+  "calm_ai_random_009_009": {
+    "scenario": "calm",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "calm_ai_random_010_010": {
+    "scenario": "calm",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 22,
+    "status": "ok"
+  },
+  "calm_ai_random_011_011": {
+    "scenario": "calm",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "calm_ai_random_012_012": {
+    "scenario": "calm",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "calm_ai_random_013_013": {
+    "scenario": "calm",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 24,
+    "status": "ok"
+  },
+  "calm_ai_random_014_014": {
+    "scenario": "calm",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 28,
+    "status": "ok"
+  },
+  "calm_ai_random_015_015": {
+    "scenario": "calm",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "calm_ai_random_016_016": {
+    "scenario": "calm",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "calm_ai_random_017_017": {
+    "scenario": "calm",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "calm_ai_random_018_018": {
+    "scenario": "calm",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "calm_ai_random_019_019": {
+    "scenario": "calm",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "calm_ai_random_020_020": {
+    "scenario": "calm",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "calm_ai_random_021_021": {
+    "scenario": "calm",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "calm_ai_random_022_022": {
+    "scenario": "calm",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "calm_ai_random_023_023": {
+    "scenario": "calm",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 27,
+    "status": "ok"
+  },
+  "calm_ai_random_024_024": {
+    "scenario": "calm",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "calm_ai_random_025_025": {
+    "scenario": "calm",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "calm_ai_random_026_026": {
+    "scenario": "calm",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "calm_ai_random_027_027": {
+    "scenario": "calm",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 35,
+    "status": "ok"
+  },
+  "calm_ai_random_028_028": {
+    "scenario": "calm",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 28,
+    "status": "ok"
+  },
+  "calm_ai_random_029_029": {
+    "scenario": "calm",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_005_005": {
+    "scenario": "drought",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_006_006": {
+    "scenario": "drought",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_007_007": {
+    "scenario": "drought",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_008_008": {
+    "scenario": "drought",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_009_009": {
+    "scenario": "drought",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_010_010": {
+    "scenario": "drought",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_011_011": {
+    "scenario": "drought",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_012_012": {
+    "scenario": "drought",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_013_013": {
+    "scenario": "drought",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_014_014": {
+    "scenario": "drought",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_015_015": {
+    "scenario": "drought",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_016_016": {
+    "scenario": "drought",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_017_017": {
+    "scenario": "drought",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_018_018": {
+    "scenario": "drought",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_019_019": {
+    "scenario": "drought",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_020_020": {
+    "scenario": "drought",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_021_021": {
+    "scenario": "drought",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_022_022": {
+    "scenario": "drought",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_023_023": {
+    "scenario": "drought",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_024_024": {
+    "scenario": "drought",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_025_025": {
+    "scenario": "drought",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_026_026": {
+    "scenario": "drought",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_027_027": {
+    "scenario": "drought",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_028_028": {
+    "scenario": "drought",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_cooperator_029_029": {
+    "scenario": "drought",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_005_005": {
+    "scenario": "drought",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_006_006": {
+    "scenario": "drought",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_007_007": {
+    "scenario": "drought",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_008_008": {
+    "scenario": "drought",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_009_009": {
+    "scenario": "drought",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_010_010": {
+    "scenario": "drought",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_011_011": {
+    "scenario": "drought",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_012_012": {
+    "scenario": "drought",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_013_013": {
+    "scenario": "drought",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_014_014": {
+    "scenario": "drought",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_015_015": {
+    "scenario": "drought",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_016_016": {
+    "scenario": "drought",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_017_017": {
+    "scenario": "drought",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_018_018": {
+    "scenario": "drought",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_019_019": {
+    "scenario": "drought",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_020_020": {
+    "scenario": "drought",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_021_021": {
+    "scenario": "drought",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_022_022": {
+    "scenario": "drought",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_023_023": {
+    "scenario": "drought",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_024_024": {
+    "scenario": "drought",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_025_025": {
+    "scenario": "drought",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_026_026": {
+    "scenario": "drought",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_027_027": {
+    "scenario": "drought",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_028_028": {
+    "scenario": "drought",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_free_rider_029_029": {
+    "scenario": "drought",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_005_005": {
+    "scenario": "drought",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_006_006": {
+    "scenario": "drought",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_007_007": {
+    "scenario": "drought",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_008_008": {
+    "scenario": "drought",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_009_009": {
+    "scenario": "drought",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_010_010": {
+    "scenario": "drought",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_011_011": {
+    "scenario": "drought",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_012_012": {
+    "scenario": "drought",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_013_013": {
+    "scenario": "drought",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_014_014": {
+    "scenario": "drought",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_015_015": {
+    "scenario": "drought",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_016_016": {
+    "scenario": "drought",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_017_017": {
+    "scenario": "drought",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_018_018": {
+    "scenario": "drought",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_019_019": {
+    "scenario": "drought",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_020_020": {
+    "scenario": "drought",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_021_021": {
+    "scenario": "drought",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_022_022": {
+    "scenario": "drought",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_023_023": {
+    "scenario": "drought",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_024_024": {
+    "scenario": "drought",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_025_025": {
+    "scenario": "drought",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_026_026": {
+    "scenario": "drought",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_027_027": {
+    "scenario": "drought",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_028_028": {
+    "scenario": "drought",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_tit_for_tat_029_029": {
+    "scenario": "drought",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 50,
+    "status": "ok"
+  },
+  "drought_ai_random_005_005": {
+    "scenario": "drought",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "drought_ai_random_006_006": {
+    "scenario": "drought",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "drought_ai_random_007_007": {
+    "scenario": "drought",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 21,
+    "status": "ok"
+  },
+  "drought_ai_random_008_008": {
+    "scenario": "drought",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 22,
+    "status": "ok"
+  },
+  "drought_ai_random_009_009": {
+    "scenario": "drought",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "drought_ai_random_010_010": {
+    "scenario": "drought",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 22,
+    "status": "ok"
+  },
+  "drought_ai_random_011_011": {
+    "scenario": "drought",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "drought_ai_random_012_012": {
+    "scenario": "drought",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "drought_ai_random_013_013": {
+    "scenario": "drought",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 24,
+    "status": "ok"
+  },
+  "drought_ai_random_014_014": {
+    "scenario": "drought",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "drought_ai_random_015_015": {
+    "scenario": "drought",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 28,
+    "status": "ok"
+  },
+  "drought_ai_random_016_016": {
+    "scenario": "drought",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "drought_ai_random_017_017": {
+    "scenario": "drought",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "drought_ai_random_018_018": {
+    "scenario": "drought",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "drought_ai_random_019_019": {
+    "scenario": "drought",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "drought_ai_random_020_020": {
+    "scenario": "drought",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "drought_ai_random_021_021": {
+    "scenario": "drought",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "drought_ai_random_022_022": {
+    "scenario": "drought",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "drought_ai_random_023_023": {
+    "scenario": "drought",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 27,
+    "status": "ok"
+  },
+  "drought_ai_random_024_024": {
+    "scenario": "drought",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 28,
+    "status": "ok"
+  },
+  "drought_ai_random_025_025": {
+    "scenario": "drought",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "drought_ai_random_026_026": {
+    "scenario": "drought",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "drought_ai_random_027_027": {
+    "scenario": "drought",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 35,
+    "status": "ok"
+  },
+  "drought_ai_random_028_028": {
+    "scenario": "drought",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 28,
+    "status": "ok"
+  },
+  "drought_ai_random_029_029": {
+    "scenario": "drought",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_005_005": {
+    "scenario": "repeated_trust",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_006_006": {
+    "scenario": "repeated_trust",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_007_007": {
+    "scenario": "repeated_trust",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_008_008": {
+    "scenario": "repeated_trust",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_009_009": {
+    "scenario": "repeated_trust",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_010_010": {
+    "scenario": "repeated_trust",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_011_011": {
+    "scenario": "repeated_trust",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_012_012": {
+    "scenario": "repeated_trust",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_013_013": {
+    "scenario": "repeated_trust",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_014_014": {
+    "scenario": "repeated_trust",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_015_015": {
+    "scenario": "repeated_trust",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_016_016": {
+    "scenario": "repeated_trust",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_017_017": {
+    "scenario": "repeated_trust",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_018_018": {
+    "scenario": "repeated_trust",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_019_019": {
+    "scenario": "repeated_trust",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_020_020": {
+    "scenario": "repeated_trust",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_021_021": {
+    "scenario": "repeated_trust",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_022_022": {
+    "scenario": "repeated_trust",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_023_023": {
+    "scenario": "repeated_trust",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_024_024": {
+    "scenario": "repeated_trust",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_025_025": {
+    "scenario": "repeated_trust",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_026_026": {
+    "scenario": "repeated_trust",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_027_027": {
+    "scenario": "repeated_trust",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_028_028": {
+    "scenario": "repeated_trust",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_cooperator_029_029": {
+    "scenario": "repeated_trust",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "cooperator",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_005_005": {
+    "scenario": "repeated_trust",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_006_006": {
+    "scenario": "repeated_trust",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_007_007": {
+    "scenario": "repeated_trust",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_008_008": {
+    "scenario": "repeated_trust",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_009_009": {
+    "scenario": "repeated_trust",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_010_010": {
+    "scenario": "repeated_trust",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_011_011": {
+    "scenario": "repeated_trust",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_012_012": {
+    "scenario": "repeated_trust",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_013_013": {
+    "scenario": "repeated_trust",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_014_014": {
+    "scenario": "repeated_trust",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_015_015": {
+    "scenario": "repeated_trust",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_016_016": {
+    "scenario": "repeated_trust",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_017_017": {
+    "scenario": "repeated_trust",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_018_018": {
+    "scenario": "repeated_trust",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_019_019": {
+    "scenario": "repeated_trust",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_020_020": {
+    "scenario": "repeated_trust",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_021_021": {
+    "scenario": "repeated_trust",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_022_022": {
+    "scenario": "repeated_trust",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_023_023": {
+    "scenario": "repeated_trust",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_024_024": {
+    "scenario": "repeated_trust",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_025_025": {
+    "scenario": "repeated_trust",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_026_026": {
+    "scenario": "repeated_trust",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_027_027": {
+    "scenario": "repeated_trust",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_028_028": {
+    "scenario": "repeated_trust",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_free_rider_029_029": {
+    "scenario": "repeated_trust",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "free_rider",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_005_005": {
+    "scenario": "repeated_trust",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 118,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_006_006": {
+    "scenario": "repeated_trust",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_007_007": {
+    "scenario": "repeated_trust",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_008_008": {
+    "scenario": "repeated_trust",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_009_009": {
+    "scenario": "repeated_trust",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_010_010": {
+    "scenario": "repeated_trust",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_011_011": {
+    "scenario": "repeated_trust",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_012_012": {
+    "scenario": "repeated_trust",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_013_013": {
+    "scenario": "repeated_trust",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_014_014": {
+    "scenario": "repeated_trust",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_015_015": {
+    "scenario": "repeated_trust",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_016_016": {
+    "scenario": "repeated_trust",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_017_017": {
+    "scenario": "repeated_trust",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_018_018": {
+    "scenario": "repeated_trust",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 115,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_019_019": {
+    "scenario": "repeated_trust",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 117,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_020_020": {
+    "scenario": "repeated_trust",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 120,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_021_021": {
+    "scenario": "repeated_trust",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 117,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_022_022": {
+    "scenario": "repeated_trust",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 116,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_023_023": {
+    "scenario": "repeated_trust",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 117,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_024_024": {
+    "scenario": "repeated_trust",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 150,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_025_025": {
+    "scenario": "repeated_trust",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 117,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_026_026": {
+    "scenario": "repeated_trust",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 117,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_027_027": {
+    "scenario": "repeated_trust",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 118,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_028_028": {
+    "scenario": "repeated_trust",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 118,
+    "status": "ok"
+  },
+  "repeated_trust_ai_tit_for_tat_029_029": {
+    "scenario": "repeated_trust",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "tit_for_tat",
+    "rows": 117,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_005_005": {
+    "scenario": "repeated_trust",
+    "seed": 5,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_006_006": {
+    "scenario": "repeated_trust",
+    "seed": 6,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 27,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_007_007": {
+    "scenario": "repeated_trust",
+    "seed": 7,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 21,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_008_008": {
+    "scenario": "repeated_trust",
+    "seed": 8,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 22,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_009_009": {
+    "scenario": "repeated_trust",
+    "seed": 9,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_010_010": {
+    "scenario": "repeated_trust",
+    "seed": 10,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 22,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_011_011": {
+    "scenario": "repeated_trust",
+    "seed": 11,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_012_012": {
+    "scenario": "repeated_trust",
+    "seed": 12,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 30,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_013_013": {
+    "scenario": "repeated_trust",
+    "seed": 13,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_014_014": {
+    "scenario": "repeated_trust",
+    "seed": 14,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_015_015": {
+    "scenario": "repeated_trust",
+    "seed": 15,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_016_016": {
+    "scenario": "repeated_trust",
+    "seed": 16,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_017_017": {
+    "scenario": "repeated_trust",
+    "seed": 17,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_018_018": {
+    "scenario": "repeated_trust",
+    "seed": 18,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_019_019": {
+    "scenario": "repeated_trust",
+    "seed": 19,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_020_020": {
+    "scenario": "repeated_trust",
+    "seed": 20,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_021_021": {
+    "scenario": "repeated_trust",
+    "seed": 21,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 23,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_022_022": {
+    "scenario": "repeated_trust",
+    "seed": 22,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 25,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_023_023": {
+    "scenario": "repeated_trust",
+    "seed": 23,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 27,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_024_024": {
+    "scenario": "repeated_trust",
+    "seed": 24,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_025_025": {
+    "scenario": "repeated_trust",
+    "seed": 25,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 26,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_026_026": {
+    "scenario": "repeated_trust",
+    "seed": 26,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 29,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_027_027": {
+    "scenario": "repeated_trust",
+    "seed": 27,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 48,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_028_028": {
+    "scenario": "repeated_trust",
+    "seed": 28,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 28,
+    "status": "ok"
+  },
+  "repeated_trust_ai_random_029_029": {
+    "scenario": "repeated_trust",
+    "seed": 29,
+    "arm": "scripted",
+    "policy": "random",
+    "rows": 30,
+    "status": "ok"
+  }
 }
