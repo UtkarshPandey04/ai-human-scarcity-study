@@ -96,13 +96,19 @@ def _get_env_or_secret(key: str, default: str = "") -> str:
 
 
 DEFAULT_PROVIDER = _get_env_or_secret("LLM_PROVIDER", "heterogeneous")
-# Verified against this project's live keys on 2026-09-10 — both `llama-3.3-70b-versatile`
-# (Groq) and `gemini-2.5-flash` (Gemini) had been deprecated/retired since this file's original
-# knowledge cutoff. Re-verify with `client.models.list()` (Groq) if this ever 404s again — model
-# names go stale faster than code does; see the module docstring.
+# Verified against this project's live keys: `gemini-3.6-flash` and `gemini-3.5-flash`
+# frequently return HTTP 503 UNAVAILABLE under peak load, while `gemini-2.5-flash` is
+# retired for new projects. `gemini-3.5-flash-lite` + ordered flash-lite fallbacks
+# consistently return 200 OK across healthy keys. Re-verify with `client.models.list()`.
 DEFAULT_GROQ_MODEL = _get_env_or_secret("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_MAX_RETRIES = int(_get_env_or_secret("GROQ_MAX_RETRIES", "6"))
-DEFAULT_GEMINI_MODEL = _get_env_or_secret("GEMINI_MODEL", "gemini-3.6-flash")
+DEFAULT_GEMINI_MODEL = _get_env_or_secret("GEMINI_MODEL", "gemini-3.5-flash-lite")
+GEMINI_FALLBACK_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-lite-latest",
+]
 DEFAULT_OLLAMA_MODEL = _get_env_or_secret("OLLAMA_MODEL", "llama3.2")
 DEFAULT_OLLAMA_BASE_URL = _get_env_or_secret("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 DEFAULT_OPENROUTER_MODEL = _get_env_or_secret("OPENROUTER_MODEL", "liquid/lfm-2.5-2.6b:free")
@@ -111,6 +117,17 @@ _groq_key_idx = 0
 _gemini_key_idx = 0
 _openrouter_key_idx = 0
 _heterogeneous_call_idx = 0
+_BAD_API_KEYS: set[str] = set()
+
+
+def _filter_healthy_keys(keys: list[str]) -> list[str]:
+    """Exclude keys that permanently returned 401/403 in this process unless all failed."""
+    healthy = [k for k in keys if k not in _BAD_API_KEYS]
+    if healthy:
+        return healthy
+    for k in keys:
+        _BAD_API_KEYS.discard(k)
+    return keys
 
 
 def get_groq_api_keys() -> list[str]:
@@ -194,13 +211,15 @@ def _complete_groq(
     if schema is not None:
         create_kwargs["response_format"] = {"type": "json_object"}
 
+    active_keys = _filter_healthy_keys(keys)
     last_rate_limit = None
-    for attempt in range(len(keys)):
-        curr_key = keys[(_groq_key_idx + attempt) % len(keys)]
+    last_error = None
+    for attempt in range(len(active_keys)):
+        curr_key = active_keys[(_groq_key_idx + attempt) % len(active_keys)]
         client = Groq(api_key=curr_key, max_retries=GROQ_MAX_RETRIES)
         try:
             response = client.chat.completions.create(**create_kwargs)
-            _groq_key_idx = (_groq_key_idx + attempt + 1) % len(keys)
+            _groq_key_idx = (_groq_key_idx + attempt + 1) % len(active_keys)
             if usage is not None and response.usage is not None:
                 usage["prompt_tokens"] = response.usage.prompt_tokens
                 usage["completion_tokens"] = response.usage.completion_tokens
@@ -212,11 +231,18 @@ def _complete_groq(
             last_rate_limit = exc
             continue
         except Exception as exc:
+            last_error = exc
+            status_code = getattr(exc, "status_code", None)
+            if status_code in (401, 403):
+                _BAD_API_KEYS.add(curr_key)
+                continue
+            if status_code in (500, 502, 503, 504):
+                continue
             raise LLMCompletionError(f"groq request failed: {exc}") from exc
 
     if last_rate_limit:
         raise LLMRateLimitError(f"groq rate limit across all {len(keys)} key(s): {last_rate_limit}") from last_rate_limit
-    raise LLMCompletionError("groq request failed on all configured keys")
+    raise LLMCompletionError(f"groq request failed across configured keys: {last_error}")
 
 
 def _complete_gemini(
@@ -243,32 +269,52 @@ def _complete_gemini(
         system_instruction="\n\n".join(system_parts) or None,
     )
 
+    active_keys = _filter_healthy_keys(keys)
+    primary_model = model or DEFAULT_GEMINI_MODEL
+    models_to_try = (
+        [primary_model]
+        if model
+        else [primary_model, *(m for m in GEMINI_FALLBACK_MODELS if m != primary_model)]
+    )
+
     last_rate_limit = None
-    for attempt in range(len(keys)):
-        curr_key = keys[(_gemini_key_idx + attempt) % len(keys)]
-        client = genai.Client(api_key=curr_key)
-        try:
-            response = client.models.generate_content(
-                model=model or DEFAULT_GEMINI_MODEL, contents=contents, config=config
-            )
-            _gemini_key_idx = (_gemini_key_idx + attempt + 1) % len(keys)
-            if usage is not None and response.usage_metadata is not None:
-                usage["prompt_tokens"] = response.usage_metadata.prompt_token_count
-                usage["completion_tokens"] = response.usage_metadata.candidates_token_count
-                usage["model"] = model or DEFAULT_GEMINI_MODEL
-                usage["provider"] = "gemini"
-            return _parse_json(response.text, "gemini")
-        except errors.APIError as exc:
-            if exc.code == 429:
-                last_rate_limit = exc
-                continue
-            raise LLMCompletionError(f"gemini request failed: {exc}") from exc
-        except Exception as exc:
-            raise LLMCompletionError(f"gemini request failed: {exc}") from exc
+    last_error = None
+    for candidate_model in models_to_try:
+        # Refresh healthy keys on each model pass so newly blocked 403 keys are skipped immediately
+        iter_keys = _filter_healthy_keys(active_keys)
+        for attempt in range(len(iter_keys)):
+            curr_key = iter_keys[(_gemini_key_idx + attempt) % len(iter_keys)]
+            client = genai.Client(api_key=curr_key)
+            try:
+                response = client.models.generate_content(
+                    model=candidate_model, contents=contents, config=config
+                )
+                _gemini_key_idx = (_gemini_key_idx + attempt + 1) % len(iter_keys)
+                if usage is not None and response.usage_metadata is not None:
+                    usage["prompt_tokens"] = response.usage_metadata.prompt_token_count
+                    usage["completion_tokens"] = response.usage_metadata.candidates_token_count
+                    usage["model"] = candidate_model
+                    usage["provider"] = "gemini"
+                return _parse_json(response.text, "gemini")
+            except errors.APIError as exc:
+                last_error = exc
+                code = getattr(exc, "code", None)
+                if code == 429:
+                    last_rate_limit = exc
+                    continue
+                if code in (401, 403):
+                    _BAD_API_KEYS.add(curr_key)
+                    continue
+                if code in (404, 500, 502, 503, 504):
+                    break  # Overloaded/retired model — switch to next healthy backup model
+                raise LLMCompletionError(f"gemini request failed: {exc}") from exc
+            except Exception as exc:
+                last_error = exc
+                raise LLMCompletionError(f"gemini request failed: {exc}") from exc
 
     if last_rate_limit:
         raise LLMRateLimitError(f"gemini rate limit across all {len(keys)} key(s): {last_rate_limit}") from last_rate_limit
-    raise LLMCompletionError("gemini request failed on all configured keys")
+    raise LLMCompletionError(f"gemini request failed across configured keys/models: {last_error}")
 
 
 def _complete_openai_compatible(
@@ -360,9 +406,11 @@ def _complete_openrouter(
         raise LLMCompletionError("OPENROUTER_API_KEY is not set")
 
     global _openrouter_key_idx
+    active_keys = _filter_healthy_keys(keys)
     last_rate_limit = None
-    for attempt in range(len(keys)):
-        curr_key = keys[(_openrouter_key_idx + attempt) % len(keys)]
+    last_error = None
+    for attempt in range(len(active_keys)):
+        curr_key = active_keys[(_openrouter_key_idx + attempt) % len(active_keys)]
         try:
             res = _complete_openai_compatible(
                 messages,
@@ -375,17 +423,24 @@ def _complete_openrouter(
                 default_model=DEFAULT_OPENROUTER_MODEL,
                 provider_name="openrouter",
             )
-            _openrouter_key_idx = (_openrouter_key_idx + attempt + 1) % len(keys)
+            _openrouter_key_idx = (_openrouter_key_idx + attempt + 1) % len(active_keys)
             return res
         except LLMRateLimitError as exc:
             last_rate_limit = exc
             continue
-        except Exception:
+        except LLMCompletionError as exc:
+            last_error = exc
+            msg = str(exc)
+            if "(401)" in msg or "(403)" in msg:
+                _BAD_API_KEYS.add(curr_key)
+                continue
+            if "(500)" in msg or "(502)" in msg or "(503)" in msg or "(504)" in msg:
+                continue
             raise
 
     if last_rate_limit:
         raise LLMRateLimitError(f"openrouter rate limit across all {len(keys)} key(s): {last_rate_limit}") from last_rate_limit
-    raise LLMCompletionError("openrouter request failed on all configured keys")
+    raise LLMCompletionError(f"openrouter request failed across configured keys: {last_error}")
 
 
 
@@ -532,7 +587,8 @@ def ping_provider(provider: str) -> dict:
     start = time.time()
     try:
         test_msg = [ChatMessage(role="user", content="Respond with valid JSON: {\"ping\": \"pong\"}")]
-        res = complete(test_msg, provider=provider)
+        # Disable cache & fallback so pings genuinely verify the target provider's endpoint health
+        res = complete(test_msg, provider=provider, allow_fallback=False, use_cache=False)
         duration_ms = round((time.time() - start) * 1000, 1)
         return {
             "status": "ok",
@@ -584,6 +640,8 @@ def complete(
     model: str | None = None,
     temperature: float = 0.4,
     usage: dict | None = None,
+    allow_fallback: bool = True,
+    use_cache: bool = True,
 ) -> dict:
     """The one entry point agents/llm_reasoning.py should ever call.
     Includes in-memory cache and resilient multi-tier fallback (Groq -> OpenRouter -> Gemini -> Ollama).
@@ -599,7 +657,7 @@ def complete(
         raise ValueError(f"unknown provider {target_provider!r}, must be one of {sorted(PROVIDERS)}")
 
     # Check in-memory cache if caching is active
-    cache_enabled = os.environ.get("LLM_CACHE_ENABLED", "1").lower() in ("1", "true", "yes")
+    cache_enabled = use_cache and (os.environ.get("LLM_CACHE_ENABLED", "1").lower() in ("1", "true", "yes"))
     cache_key = None
     if cache_enabled:
         import copy
@@ -638,7 +696,10 @@ def complete(
         duration_ms = (time.time() - start_time) * 1000.0
         is_rl = isinstance(exc, LLMRateLimitError)
         record_api_call(target_provider, success=False, latency_ms=duration_ms, is_rate_limit=is_rl)
-        
+
+        if not allow_fallback:
+            raise
+
         # Multi-tier fallback chain: try alternative providers favoring healthy ones down to zero-cost Ollama
         candidates = FALLBACK_CHAINS.get(target_provider, ["groq", "openrouter", "gemini", "ollama"])
         for fallback in candidates:

@@ -806,16 +806,20 @@ def render_researcher_hub(embedded: bool = False):
         )
 
         from agents.llm_client import (
+            DEFAULT_GEMINI_MODEL,
+            DEFAULT_GROQ_MODEL,
+            DEFAULT_OPENROUTER_MODEL,
             get_api_telemetry,
             reset_api_telemetry,
             ping_provider,
             get_groq_api_keys,
             get_gemini_api_keys,
+            get_openrouter_api_keys,
         )
         telemetry = get_api_telemetry()
         groq_keys = get_groq_api_keys()
         gemini_keys = get_gemini_api_keys()
-        has_openrouter = bool(os.environ.get("OPENROUTER_API_KEY"))
+        openrouter_keys = get_openrouter_api_keys()
         ollama_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         ollama_model = os.environ.get("OLLAMA_MODEL", "llama3.2")
 
@@ -831,10 +835,10 @@ def render_researcher_hub(embedded: bool = False):
                 st.rerun()
 
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        total_endpoints = len(groq_keys) + len(gemini_keys) + (1 if has_openrouter else 0) + 1
-        kpi1.metric("Configured Endpoints", f"{total_endpoints} Key Pools", f"Groq({len(groq_keys)}) + Gem({len(gemini_keys)}) + OR + Ollama")
-        total_rpm = (len(groq_keys) * 30) + (len(gemini_keys) * 15) + (20 if has_openrouter else 0)
-        kpi2.metric("Aggregate Cloud Limit", f"{total_rpm} RPM Pool", f"Groq: {len(groq_keys)*30} | Gem: {len(gemini_keys)*15} | OR: 20")
+        total_endpoints = len(groq_keys) + len(gemini_keys) + len(openrouter_keys) + 1
+        kpi1.metric("Configured Endpoints", f"{total_endpoints} Key Pools", f"Groq({len(groq_keys)}) + Gem({len(gemini_keys)}) + OR({len(openrouter_keys)}) + Ollama")
+        total_rpm = (len(groq_keys) * 30) + (len(gemini_keys) * 15) + (len(openrouter_keys) * 20)
+        kpi2.metric("Aggregate Cloud Limit", f"{total_rpm} RPM Pool", f"Groq: {len(groq_keys)*30} | Gem: {len(gemini_keys)*15} | OR: {len(openrouter_keys)*20}")
         kpi3.metric("Ollama Fallback", "100% Free / Unlimited", "Zero Rate Limits on Fallback")
         kpi4.metric("Live Concurrent Capacity", "10-15 Users", "~900 complete studies / day")
 
@@ -854,7 +858,7 @@ def render_researcher_hub(embedded: bool = False):
                     <hr style="margin: 8px 0; border-color: #334155;">
                     <div style="font-size: 0.82rem;">🔑 <b>Keys Configured:</b> {len(groq_keys)} in pool</div>
                     <div style="font-size: 0.82rem;">📈 <b>Rate Limit:</b> {len(groq_keys)*30} RPM / {len(groq_keys)*14400:,} RPD</div>
-                    <div style="font-size: 0.82rem;">🤖 <b>Model:</b> <code>openai/gpt-oss-20b</code></div>
+                    <div style="font-size: 0.82rem;">🤖 <b>Model:</b> <code>{DEFAULT_GROQ_MODEL}</code></div>
                     <div style="font-size: 0.82rem; margin-top: 6px;">🟢 <b>Status:</b> {telemetry.get('groq', {}).get('last_status', 'Operational')}</div>
                 </div>
                 """,
@@ -870,7 +874,7 @@ def render_researcher_hub(embedded: bool = False):
                     <hr style="margin: 8px 0; border-color: #334155;">
                     <div style="font-size: 0.82rem;">🔑 <b>Keys Configured:</b> {len(gemini_keys)} in pool</div>
                     <div style="font-size: 0.82rem;">📈 <b>Rate Limit:</b> {len(gemini_keys)*15} RPM / {len(gemini_keys)*1500:,} RPD</div>
-                    <div style="font-size: 0.82rem;">🤖 <b>Model:</b> <code>gemini-3.6-flash</code></div>
+                    <div style="font-size: 0.82rem;">🤖 <b>Model:</b> <code>{DEFAULT_GEMINI_MODEL}</code></div>
                     <div style="font-size: 0.82rem; margin-top: 6px;">🟢 <b>Status:</b> {telemetry.get('gemini', {}).get('last_status', 'Operational')}</div>
                 </div>
                 """,
@@ -884,9 +888,9 @@ def render_researcher_hub(embedded: bool = False):
                     <div style="font-weight: 600; font-size: 1.05rem; color: #A855F7;">🔀 OpenRouter</div>
                     <div style="font-size: 0.82rem; color: #94A3B8; margin-top: 2px;">Tier: Free Open-Weight Gateway</div>
                     <hr style="margin: 8px 0; border-color: #334155;">
-                    <div style="font-size: 0.82rem;">🔑 <b>Keys Configured:</b> {'1 Active' if has_openrouter else 'Not Set'}</div>
-                    <div style="font-size: 0.82rem;">📈 <b>Rate Limit:</b> 20 RPM / 200 RPD</div>
-                    <div style="font-size: 0.82rem;">🤖 <b>Model:</b> <code>liquid/lfm-2.5-2.6b</code></div>
+                    <div style="font-size: 0.82rem;">🔑 <b>Keys Configured:</b> {f'{len(openrouter_keys)} in pool' if openrouter_keys else 'Not Set'}</div>
+                    <div style="font-size: 0.82rem;">📈 <b>Rate Limit:</b> {max(1, len(openrouter_keys))*20} RPM / {max(1, len(openrouter_keys))*200} RPD</div>
+                    <div style="font-size: 0.82rem;">🤖 <b>Model:</b> <code>{DEFAULT_OPENROUTER_MODEL}</code></div>
                     <div style="font-size: 0.82rem; margin-top: 6px;">🟢 <b>Status:</b> {telemetry.get('openrouter', {}).get('last_status', 'Ready')}</div>
                 </div>
                 """,
@@ -972,15 +976,22 @@ def render_researcher_hub(embedded: bool = False):
 
         if degraded:
             details = ", ".join(
-                f"**{p}** ({pct:.1f}% success; {rl} rate-limited / {tot} calls)"
+                f"**{p}** ({pct:.1f}% success; {rl} rate-limited, {err} errors / {tot} calls)"
                 for p, pct, tot, rl, err in degraded
             )
-            st.warning(
-                f"⚠️ **High API Degradation Alert (Success Rate < 50%)**: {details}. "
-                "Provider quotas or single-key rate limits are severely impacting call success. "
-                "Action recommended: populate `GROQ_API_KEYS`, `GEMINI_API_KEYS`, or `OPENROUTER_API_KEYS` "
-                "with a comma-separated key pool (3-4 keys each) and set `LLM_PROVIDER=heterogeneous` to balance traffic across healthy backends."
-            )
+            has_rate_limits = any(rl > 0 for _, _, _, rl, _ in degraded)
+            if has_rate_limits:
+                guidance = (
+                    "Provider quotas or single-key rate limits are impacting call success. "
+                    "Action recommended: populate `GROQ_API_KEYS`, `GEMINI_API_KEYS`, or `OPENROUTER_API_KEYS` "
+                    "with healthy comma-separated keys and set `LLM_PROVIDER=heterogeneous`."
+                )
+            else:
+                guidance = (
+                    "Non-rate-limit upstream errors (such as model `503 UNAVAILABLE` load spikes or a restricted `403` key) "
+                    "occurred historically. Backup model/key failover is active—click **🧹 Reset Stats** above and run **🚀 Test All Configured Endpoints Now** to verify current live health."
+                )
+            st.warning(f"⚠️ **High API Degradation Alert (Success Rate < 50%)**: {details}. {guidance}")
 
         t_rows = []
 
