@@ -279,6 +279,17 @@ class TestStreamlitAppScreens(unittest.TestCase):
         self.assertFalse(at.exception, f"Debrief screen error: {at.exception}")
         self.assertEqual(at.session_state.stage, "debrief")
 
+    def test_researcher_hub_renders_without_errors(self):
+        """Regression test verifying all 10 tabs in Researcher Hub render with zero NameErrors."""
+        from streamlit.testing.v1 import AppTest
+
+        hub_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dashboard", "app.py"))
+        at = AppTest.from_file(hub_path, default_timeout=30)
+        at.session_state["researcher_authenticated"] = True
+        at.run()
+        self.assertFalse(at.exception, f"Researcher Hub error: {at.exception}")
+        self.assertEqual(len(at.tabs), 10)
+
 
 if __name__ == "__main__":
     unittest.main()

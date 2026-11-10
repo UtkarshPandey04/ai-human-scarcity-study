@@ -1077,11 +1077,11 @@ def render_researcher_hub(embedded: bool = False):
         st.markdown("**Select LLMs to Test Side-by-Side:**")
         test_col1, test_col2, test_col3, test_col4 = st.columns(4)
         with test_col1:
-            use_groq = st.checkbox("Groq (`gpt-oss-20b`)", value=bool(groq_keys))
+            use_groq = st.checkbox(f"Groq (`{DEFAULT_GROQ_MODEL}`)", value=bool(groq_keys))
         with test_col2:
-            use_gemini = st.checkbox("Gemini (`gemini-3.6-flash`)", value=bool(gemini_keys))
+            use_gemini = st.checkbox(f"Gemini (`{DEFAULT_GEMINI_MODEL}`)", value=bool(gemini_keys))
         with test_col3:
-            use_openrouter = st.checkbox("OpenRouter (`lfm-2.5`)", value=has_openrouter)
+            use_openrouter = st.checkbox(f"OpenRouter (`{DEFAULT_OPENROUTER_MODEL}`)", value=bool(openrouter_keys))
         with test_col4:
             ollama_label = f"Ollama (`{ollama_model}`)" if ollama_online else f"Ollama (`{ollama_model}` - Offline)"
             use_ollama = st.checkbox(ollama_label, value=ollama_online)
@@ -1094,11 +1094,11 @@ def render_researcher_hub(embedded: bool = False):
 
             active_test_providers = []
             if use_groq:
-                active_test_providers.append(("groq", "Groq LPU", "openai/gpt-oss-20b"))
+                active_test_providers.append(("groq", "Groq LPU", DEFAULT_GROQ_MODEL))
             if use_gemini:
-                active_test_providers.append(("gemini", "Google Gemini", "gemini-3.6-flash"))
+                active_test_providers.append(("gemini", "Google Gemini", DEFAULT_GEMINI_MODEL))
             if use_openrouter:
-                active_test_providers.append(("openrouter", "OpenRouter", "liquid/lfm-2.5-2.6b:free"))
+                active_test_providers.append(("openrouter", "OpenRouter", DEFAULT_OPENROUTER_MODEL))
             if use_ollama:
                 active_test_providers.append(("ollama", "Ollama Local / Fallback", ollama_model))
 
@@ -1130,10 +1130,12 @@ def render_researcher_hub(embedded: bool = False):
                 for idx, (p_id, p_title, p_model) in enumerate(active_test_providers):
                     comp_progress.progress((idx + 1) / len(active_test_providers), text=f"Querying {p_title} ({p_model})...")
                     try:
-                        act, meta = decide(mock_obs, provider=p_id, model=p_model)
+                        # Pass model=None for Gemini so backup flash-lite failover chain stays active
+                        call_model = None if p_id == "gemini" else p_model
+                        act, meta = decide(mock_obs, provider=p_id, model=call_model)
                         reasoning_cards.append({
                             "provider": p_title,
-                            "model": p_model,
+                            "model": meta.get("model") or p_model,
                             "action": act.type.value,
                             "target": act.target,
                             "amount": act.amount,
