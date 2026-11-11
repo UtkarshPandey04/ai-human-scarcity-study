@@ -195,7 +195,12 @@ def render_researcher_hub(embedded: bool = False):
 
         st.divider()
         st.markdown("### 📥 Direct Data Exports")
-        csv_path = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+        import common.database as _db_mod
+        csv_path = os.path.join(_db_mod.PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+        try:
+            csv_path = export_combined_dataset(output_path=csv_path)
+        except Exception:
+            pass
         if os.path.exists(csv_path):
             with open(csv_path, "r", encoding="utf-8") as f:
                 st.download_button(

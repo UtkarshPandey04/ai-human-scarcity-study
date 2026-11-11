@@ -226,69 +226,106 @@ class TestDatabaseAndModelTraining(unittest.TestCase):
 
 class TestStreamlitAppScreens(unittest.TestCase):
     def test_all_screens_render_without_errors(self):
-        """Test all 4 screens (consent, instructions, game, debrief) end-to-end using AppTest."""
+        """Test all 4 screens (consent, instructions, game, debrief) end-to-end using AppTest
+        and verify progressive persistence to DB and combined CSV."""
+        from unittest.mock import patch
         from streamlit.testing.v1 import AppTest
+        from common.database import get_db_summary
 
-        app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "human_interface", "app.py"))
-        at = AppTest.from_file(app_path, default_timeout=15)
-        at.run()
-        self.assertFalse(at.exception, f"Consent screen error: {at.exception}")
-        self.assertEqual(at.session_state.stage, "consent")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_logs = os.path.join(tmp_dir, "data", "human_logs")
+            tmp_db = os.path.join(tmp_dir, "data", "scarcity_study.db")
+            os.makedirs(tmp_logs, exist_ok=True)
 
-        # Agree & continue -> instructions
-        at.checkbox[0].check().run()
-        for btn in at.button:
-            if "Agree" in btn.label:
-                btn.click().run()
-                break
-        self.assertFalse(at.exception, f"Instructions screen error: {at.exception}")
-        self.assertEqual(at.session_state.stage, "instructions")
+            with (
+                patch("human_interface.logging_utils.LOG_DIR", tmp_logs),
+                patch("common.database.DEFAULT_DB_PATH", tmp_db),
+                patch("common.database.PROJECT_ROOT", tmp_dir),
+            ):
+                app_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "human_interface", "app.py"))
+                at = AppTest.from_file(app_path, default_timeout=15)
+                at.run()
+                self.assertFalse(at.exception, f"Consent screen error: {at.exception}")
+                self.assertEqual(at.session_state.stage, "consent")
 
-        # Start simulation -> game
-        for btn in at.button:
-            if "Start" in btn.label:
-                btn.click().run()
-                break
-        self.assertFalse(at.exception, f"Game screen error: {at.exception}")
-        self.assertEqual(at.session_state.stage, "game")
+                # Agree & continue -> instructions
+                at.checkbox[0].check().run()
+                for btn in at.button:
+                    if "Agree" in btn.label:
+                        btn.click().run()
+                        break
+                self.assertFalse(at.exception, f"Instructions screen error: {at.exception}")
+                self.assertEqual(at.session_state.stage, "instructions")
 
-        # Execute game action
-        for btn in at.button:
-            if "Submit" in btn.label:
-                btn.click().run()
-                break
-        self.assertFalse(at.exception, f"Game step error: {at.exception}")
+                # Start simulation -> game
+                for btn in at.button:
+                    if "Start" in btn.label:
+                        btn.click().run()
+                        break
+                self.assertFalse(at.exception, f"Game screen error: {at.exception}")
+                self.assertEqual(at.session_state.stage, "game")
 
-        # Post-round transition screen stating for next round
-        self.assertTrue(at.session_state.round_transition_active)
-        self.assertEqual(at.session_state.round_transition_data["completed_round"], 1)
-        self.assertEqual(at.session_state.round_transition_data["next_round"], 2)
+                # Execute game action
+                for btn in at.button:
+                    if "Submit" in btn.label:
+                        btn.click().run()
+                        break
+                self.assertFalse(at.exception, f"Game step error: {at.exception}")
 
-        # Proceed to Round 2 via the transition UI
-        for btn in at.button:
-            if "Proceed to Round 2" in btn.label:
-                btn.click().run()
-                break
-        self.assertFalse(at.exception, f"Round 2 transition error: {at.exception}")
-        self.assertFalse(at.session_state.round_transition_active)
-        self.assertEqual(at.session_state.env.round, 2)
+                # Progressive persistence: Round 1 immediately visible in DB & exported CSV
+                trial_id = at.session_state.trial_id
+                summary = get_db_summary(db_path=tmp_db)
+                self.assertEqual(summary["total_trials"], 1)
+                self.assertEqual(summary["human_trials"], 1)
 
-        # Debrief screen
-        at.session_state.stage = "debrief"
-        at.run()
-        self.assertFalse(at.exception, f"Debrief screen error: {at.exception}")
-        self.assertEqual(at.session_state.stage, "debrief")
+                csv_path = os.path.join(tmp_dir, "data", "combined_scarcity_dataset.csv")
+                self.assertTrue(os.path.exists(csv_path))
+                with open(csv_path, "r", encoding="utf-8") as f:
+                    csv_lines = f.read().splitlines()
+                self.assertEqual(len(csv_lines), 2)
+                self.assertIn(trial_id, csv_lines[1])
+
+                # Post-round transition screen stating for next round
+                self.assertTrue(at.session_state.round_transition_active)
+                self.assertEqual(at.session_state.round_transition_data["completed_round"], 1)
+                self.assertEqual(at.session_state.round_transition_data["next_round"], 2)
+
+                # Proceed to Round 2 via the transition UI
+                for btn in at.button:
+                    if "Proceed to Round 2" in btn.label:
+                        btn.click().run()
+                        break
+                self.assertFalse(at.exception, f"Round 2 transition error: {at.exception}")
+                self.assertFalse(at.session_state.round_transition_active)
+                self.assertEqual(at.session_state.env.round, 2)
+
+                # Debrief screen & Turing judgment persistence
+                at.session_state.stage = "debrief"
+                at.run()
+                self.assertFalse(at.exception, f"Debrief screen error: {at.exception}")
+                self.assertEqual(at.session_state.stage, "debrief")
+
+                for btn in at.button:
+                    if "Submit Your Guess" in btn.label:
+                        btn.click().run()
+                        break
+                self.assertFalse(at.exception, f"Turing submission error: {at.exception}")
+                summary_after = get_db_summary(db_path=tmp_db)
+                self.assertEqual(summary_after["total_judgments"], 1)
 
     def test_researcher_hub_renders_without_errors(self):
         """Regression test verifying all 10 tabs in Researcher Hub render with zero NameErrors."""
+        from unittest.mock import patch
         from streamlit.testing.v1 import AppTest
 
-        hub_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dashboard", "app.py"))
-        at = AppTest.from_file(hub_path, default_timeout=30)
-        at.session_state["researcher_authenticated"] = True
-        at.run()
-        self.assertFalse(at.exception, f"Researcher Hub error: {at.exception}")
-        self.assertEqual(len(at.tabs), 10)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with patch("common.database.PROJECT_ROOT", tmp_dir):
+                hub_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "dashboard", "app.py"))
+                at = AppTest.from_file(hub_path, default_timeout=30)
+                at.session_state["researcher_authenticated"] = True
+                at.run()
+                self.assertFalse(at.exception, f"Researcher Hub error: {at.exception}")
+                self.assertEqual(len(at.tabs), 10)
 
 
 if __name__ == "__main__":

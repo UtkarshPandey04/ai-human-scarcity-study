@@ -12,12 +12,13 @@ Supports bidirectional sync with canonical JSONL logs.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import os
 import sqlite3
 import sys
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterator
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -28,16 +29,26 @@ from human_interface.session_analysis import calculate_gini
 DEFAULT_DB_PATH = os.path.join(PROJECT_ROOT, "data", "scarcity_study.db")
 
 
-def get_connection(db_path: str = DEFAULT_DB_PATH) -> sqlite3.Connection:
-    """Get a SQLite database connection with row factory enabled."""
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    conn = sqlite3.connect(db_path)
+@contextmanager
+def get_connection(db_path: str | None = None) -> Iterator[sqlite3.Connection]:
+    """Yield a SQLite connection, committing on success and closing cleanly on exit."""
+    resolved = db_path or DEFAULT_DB_PATH
+    os.makedirs(os.path.dirname(resolved), exist_ok=True)
+    conn = sqlite3.connect(resolved, timeout=15.0)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
-def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
+def init_db(db_path: str | None = None) -> None:
     """Initialize database tables and indexes if they do not exist."""
+    db_path = db_path or DEFAULT_DB_PATH
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
 
@@ -207,10 +218,11 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
 
 
 
-def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH) -> str | None:
+def save_trial_to_db(rows: list[dict[str, Any]], db_path: str | None = None) -> str | None:
     """Save or update a trial, all its actions, and derived features in the database."""
     if not rows:
         return None
+    db_path = db_path or DEFAULT_DB_PATH
 
     init_db(db_path)
     trial_id = rows[0]["trial_id"]
@@ -363,8 +375,13 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
                     skip_rate=excluded.skip_rate,
                     communicate_rate=excluded.communicate_rate,
                     total_shared=excluded.total_shared,
+                    stock_claims_count=excluded.stock_claims_count,
+                    deceptive_claims_count=excluded.deceptive_claims_count,
                     deception_rate=excluded.deception_rate,
+                    mean_latency_ms=excluded.mean_latency_ms,
+                    society_survival_rate=excluded.society_survival_rate,
                     society_gini=excluded.society_gini,
+                    alliance_count=excluded.alliance_count,
                     pilot=excluded.pilot,
                     policy=excluded.policy
                 """,
@@ -384,10 +401,15 @@ def save_trial_to_db(rows: list[dict[str, Any]], db_path: str = DEFAULT_DB_PATH)
     return trial_id
 
 
+# Backwards-compatible alias expected by older session hooks
+sync_trial_log_to_db = save_trial_to_db
+
+
 def save_turing_judgment(
-    participant_id: str, guess: str, correct: bool, db_path: str = DEFAULT_DB_PATH
+    participant_id: str, guess: str, correct: bool, db_path: str | None = None
 ) -> None:
     """Save a human behavioral Turing judgment to the database."""
+    db_path = db_path or DEFAULT_DB_PATH
     init_db(db_path)
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
@@ -401,10 +423,11 @@ def save_turing_judgment(
         conn.commit()
 
 
-def sync_all_logs_to_db(db_path: str = DEFAULT_DB_PATH) -> tuple[int, int]:
+def sync_all_logs_to_db(db_path: str | None = None) -> tuple[int, int]:
     """Scan data/human_logs and data/ai_logs and sync all trials into SQLite."""
     import glob
 
+    db_path = db_path or DEFAULT_DB_PATH
     init_db(db_path)
     dirs = [
         os.path.join(PROJECT_ROOT, "data", "human_logs"),
@@ -431,8 +454,9 @@ def sync_all_logs_to_db(db_path: str = DEFAULT_DB_PATH) -> tuple[int, int]:
     return synced, total
 
 
-def get_db_summary(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any]:
+def get_db_summary(db_path: str | None = None) -> dict[str, Any]:
     """Get high-level summary statistics of the database."""
+    db_path = db_path or DEFAULT_DB_PATH
     init_db(db_path)
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
@@ -469,25 +493,6 @@ def get_db_summary(db_path: str = DEFAULT_DB_PATH) -> dict[str, Any]:
     }
 
 
-def save_turing_judgment(
-    participant_id: str,
-    guess: str,
-    correct: bool,
-    db_path: str = DEFAULT_DB_PATH,
-) -> None:
-    """Save participant judgment from the Behavioral Turing Test."""
-    init_db(db_path)
-    with get_connection(db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO turing_judgments (participant_id, guess, correct, timestamp)
-            VALUES (?, ?, ?, ?)
-            """,
-            (participant_id, guess, 1 if correct else 0, datetime.now(timezone.utc).isoformat()),
-        )
-
-
 def load_human_action_dataset(db_path: str = DEFAULT_DB_PATH) -> list[dict[str, Any]]:
     """Load state-action observation pairs from human actions for training behavioral models."""
     init_db(db_path)
@@ -508,16 +513,19 @@ def load_human_action_dataset(db_path: str = DEFAULT_DB_PATH) -> list[dict[str, 
 
 
 def export_combined_dataset(
-    output_path: str = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv"),
-    db_path: str = DEFAULT_DB_PATH,
+    output_path: str | None = None,
+    db_path: str | None = None,
 ) -> str:
-    """Export the unified dataset view (metadata, demographics, features) to CSV."""
+    """Export the unified dataset view (metadata, demographics, features) to CSV, newest trials first."""
     import csv
+
+    db_path = db_path or DEFAULT_DB_PATH
+    output_path = output_path or os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
 
     init_db(db_path)
     with get_connection(db_path) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM v_combined_dataset")
+        cursor.execute("SELECT * FROM v_combined_dataset ORDER BY created_at DESC")
         rows = cursor.fetchall()
         if not rows:
             return output_path
@@ -534,14 +542,16 @@ def export_combined_dataset(
 
 
 def export_sft_dataset(
-    output_path: str = os.path.join(PROJECT_ROOT, "data", "llm_sft_dataset.jsonl"),
-    db_path: str = DEFAULT_DB_PATH,
+    output_path: str | None = None,
+    db_path: str | None = None,
 ) -> str:
     """Export human trial actions as a Supervised Fine-Tuning (SFT / LoRA) JSONL dataset.
 
     Formats each human turn into OpenAI / HuggingFace standard conversational format:
     {"messages": [{"role": "system", ...}, {"role": "user", ...}, {"role": "assistant", ...}]}
     """
+    db_path = db_path or DEFAULT_DB_PATH
+    output_path = output_path or os.path.join(PROJECT_ROOT, "data", "llm_sft_dataset.jsonl")
     init_db(db_path)
     system_instruction = (
         "You are a player in a resource-scarcity survival game. Each round you need 2 units of "

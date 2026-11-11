@@ -18,7 +18,7 @@ if PROJECT_ROOT not in sys.path:
 
 from common.schema import validate_row, validate_trial
 
-LOG_DIR = os.path.join("data", "human_logs")
+LOG_DIR = os.path.join(PROJECT_ROOT, "data", "human_logs")
 
 
 def ensure_log_dir():

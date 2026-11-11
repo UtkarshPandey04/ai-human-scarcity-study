@@ -294,6 +294,24 @@ def go_to(stage: str):
     st.rerun()
 
 
+def _persist_session_trial(export_sft: bool = False) -> bool:
+    """Persist current session rows to SQLite and regenerate combined CSV (and optionally SFT)."""
+    rows = st.session_state.get("all_trial_rows")
+    if not rows:
+        return False
+    try:
+        from common.database import export_combined_dataset, export_sft_dataset, save_trial_to_db
+        save_trial_to_db(rows)
+        export_combined_dataset()
+        if export_sft:
+            export_sft_dataset()
+        st.session_state.trial_synced_to_db = True
+        return True
+    except Exception as exc:
+        st.warning(f"Database sync warning: {exc}")
+        return False
+
+
 # ---------- SIDEBAR: STUDY CONFIG (Editable prior to game start) ----------
 with st.sidebar:
     st.header("⚙️ Island Setup")
@@ -368,7 +386,9 @@ with st.sidebar:
     st.caption(f"Trial ID: `{st.session_state.trial_id}`")
 
     with st.expander("📥 Researcher Data Export", expanded=False):
-        from common.database import DEFAULT_DB_PATH, export_combined_dataset, export_sft_dataset, get_db_summary, sync_all_logs_to_db
+        from common.database import DEFAULT_DB_PATH, export_combined_dataset, export_sft_dataset, get_db_summary, save_trial_to_db, sync_all_logs_to_db
+        if st.session_state.get("all_trial_rows") and not st.session_state.get("trial_synced_to_db"):
+            _persist_session_trial()
         try:
             db_summary = get_db_summary()
             st.caption(f"💾 Total Trials: **{db_summary['total_trials']}** ({db_summary['human_trials']} Human)")
@@ -378,13 +398,21 @@ with st.sidebar:
 
         if st.button("🔄 Sync & Refresh Database", use_container_width=True):
             with st.spinner("Syncing latest logs..."):
+                if st.session_state.get("all_trial_rows"):
+                    save_trial_to_db(st.session_state.all_trial_rows)
                 sync_all_logs_to_db()
                 export_combined_dataset()
                 export_sft_dataset()
                 st.success("Synced!")
                 st.rerun()
 
-        csv_path = os.path.join(PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+        import common.database as _db_mod
+        csv_path = os.path.join(_db_mod.PROJECT_ROOT, "data", "combined_scarcity_dataset.csv")
+        if not os.path.exists(csv_path):
+            try:
+                csv_path = export_combined_dataset()
+            except Exception:
+                pass
 
         if os.path.exists(csv_path):
             with open(csv_path, "r", encoding="utf-8") as f:
@@ -395,8 +423,8 @@ with st.sidebar:
                     mime="text/csv",
                     use_container_width=True,
                 )
-        if os.path.exists(DEFAULT_DB_PATH):
-            with open(DEFAULT_DB_PATH, "rb") as f:
+        if os.path.exists(_db_mod.DEFAULT_DB_PATH):
+            with open(_db_mod.DEFAULT_DB_PATH, "rb") as f:
                 st.download_button(
                     label="Download SQLite DB",
                     data=f.read(),
@@ -814,15 +842,8 @@ def game_screen():
         st.error("💀 **Game Over:** You ran out of water and could not survive on the island.")
         # Ensure trial is validated and synced to SQLite database and CSV right now!
         if not st.session_state.get("trial_synced_to_db") and st.session_state.all_trial_rows:
-            try:
-                from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
-                validate_trial_log(st.session_state.trial_id)
-                sync_trial_log_to_db(st.session_state.all_trial_rows)
-                export_combined_dataset()
-                export_sft_dataset()
-                st.session_state.trial_synced_to_db = True
-            except Exception:
-                pass
+            validate_trial_log(st.session_state.trial_id)
+            _persist_session_trial(export_sft=True)
         if st.button("Proceed to Debrief", type="primary"):
             go_to("debrief")
         return
@@ -1020,6 +1041,7 @@ def game_screen():
                     "decision_latency_ms": latency_ms,
                     "claim": claim_meta,
                     "demographics": st.session_state.get("demographics"),
+                    "coplayer_mode": st.session_state.get("coplayer_mode"),
                 }
                 st.session_state.action_log.append(row)
             else:
@@ -1094,17 +1116,11 @@ def game_screen():
         }
         st.session_state.round_transition_active = True
 
-        # Sync to DB if simulation finished or focal player died
-        if done or not focal_alive_after:
+        # Persist trial progressively after each round so DB and CSV exports show new entries immediately
+        is_finished = done or not focal_alive_after
+        if is_finished:
             validate_trial_log(st.session_state.trial_id)
-            try:
-                from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
-                sync_trial_log_to_db(st.session_state.all_trial_rows)
-                export_combined_dataset()
-                export_sft_dataset()
-                st.session_state.trial_synced_to_db = True
-            except Exception:
-                pass
+        _persist_session_trial(export_sft=is_finished)
 
         st.rerun()
 
@@ -1113,15 +1129,8 @@ def game_screen():
 def debrief_screen():
     # Guarantee that trial is synced to SQLite database and CSV export right upon landing!
     if not st.session_state.get("trial_synced_to_db") and st.session_state.all_trial_rows:
-        try:
-            from common.database import export_combined_dataset, export_sft_dataset, sync_trial_log_to_db
-            validate_trial_log(st.session_state.trial_id)
-            sync_trial_log_to_db(st.session_state.all_trial_rows)
-            export_combined_dataset()
-            export_sft_dataset()
-            st.session_state.trial_synced_to_db = True
-        except Exception:
-            pass
+        validate_trial_log(st.session_state.trial_id)
+        _persist_session_trial(export_sft=True)
 
     p_name = st.session_state.get("participant_name", "").strip()
     p_display = f"{p_name} ({st.session_state.participant_id})" if p_name else st.session_state.participant_id
@@ -1219,12 +1228,11 @@ def debrief_screen():
                     + "\n"
                 )
             try:
-                from common.database import export_combined_dataset, save_turing_judgment, sync_trial_log_to_db
+                from common.database import save_turing_judgment
                 save_turing_judgment(st.session_state.participant_id, choice, is_correct_val)
-                sync_trial_log_to_db(st.session_state.all_trial_rows)
-                export_combined_dataset()
-            except Exception:
-                pass
+            except Exception as exc:
+                st.warning(f"Could not persist Turing judgment: {exc}")
+            _persist_session_trial(export_sft=True)
             st.rerun()
     else:
         guess = st.session_state.turing_guess
